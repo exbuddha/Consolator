@@ -86,6 +86,9 @@ inline fun <R> trySafelyCancelingForResult(block: () -> R) =
     try { block() } catch (ex: CancellationException) { throw ex } catch (_: Throwable) { null }
 inline fun <R> tryCanceling(block: () -> R, exit: (Throwable) -> Any?) =
     try { block() } catch (ex: CancellationException) { throw ex } catch (ex: Throwable) { exit(ex) }
+inline fun <R> tryCanceling(block: () -> R) {
+    try { block() } catch (ex: Throwable) { throw CancellationException("", ex) }
+}
 inline fun <R> tryCancelingForResult(block: () -> R, exit: (Throwable) -> R?) =
     try { block() } catch (ex: CancellationException) { throw ex } catch (ex: Throwable) { exit(ex) }
 
