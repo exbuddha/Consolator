@@ -91,6 +91,8 @@ inline fun <R> tryCanceling(block: () -> R) {
 }
 inline fun <R> tryCancelingForResult(block: () -> R, exit: (Throwable) -> R?) =
     try { block() } catch (ex: CancellationException) { throw ex } catch (ex: Throwable) { exit(ex) }
+inline fun <R> tryCancelingForResult(block: () -> R) =
+    try { block() } catch (ex: Throwable) { throw CancellationException("", ex) }
 
 inline fun <reified R : Any> Any?.asType(): R? =
     if (this is R) this else null

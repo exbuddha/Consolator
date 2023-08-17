@@ -22,14 +22,14 @@ abstract class BaseFragment : Fragment() {
                     if (db === null)
                         db = buildDatabase()
                     schedule(Context::signalDbCreated)
-                    session = with(db!!.runtimeDao()) {
-                        trySafelyCancelingForResult {
-                            getSession(
-                                newSession(instance!!.startTime))
+                    if (session === null)
+                        session = with(db!!.runtimeDao()) {
+                            tryCancelingForResult {
+                                getSession(
+                                    newSession(instance!!.startTime))
+                            }
                         }
-                    }
-                    if (session !== null)
-                        schedule(Context::signalSessionCreated)
+                    schedule(Context::signalSessionCreated)
                 }
             }
         }
