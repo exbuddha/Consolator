@@ -54,8 +54,8 @@ interface UniqueContext { var startTime: Long }
 typealias ContextStep = suspend Context.() -> Unit
 
 private typealias ExceptionHandler = (Thread, Throwable) -> Unit
-private operator fun ExceptionHandler.plusAssign(other: ExceptionHandler) {}
-private operator fun ExceptionHandler.minusAssign(other: ExceptionHandler) {}
+private operator fun ExceptionHandler.plus(other: ExceptionHandler): ExceptionHandler = TODO()
+private operator fun ExceptionHandler.minus(other: ExceptionHandler): ExceptionHandler = TODO()
 
 typealias AnyArray = Array<out Any?>
 typealias AnyFunction = () -> Any?
