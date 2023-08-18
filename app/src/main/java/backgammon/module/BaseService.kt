@@ -32,8 +32,6 @@ open class BaseService : Service(), BaseServiceScope {
                             ioStart {
                                 reset()
                                 netDb = trySafelyForResult(::buildDatabase)
-                                if (db !== null)
-                                    schedule(Context::signalDbCreated)
                             }
                         }
                 }
