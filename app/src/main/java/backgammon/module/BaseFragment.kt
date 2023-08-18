@@ -9,6 +9,7 @@ import androidx.fragment.app.FragmentTransaction.*
 import kotlinx.coroutines.*
 import backgammon.module.application.*
 import backgammon.module.BaseApplication.Companion.ACTION_NAV_MAIN_UI
+import backgammon.module.BaseApplication.Companion.ACTION_MIGRATE_APP
 
 abstract class BaseFragment : Fragment() {
     private val viewModel
@@ -52,7 +53,7 @@ abstract class BaseFragment : Fragment() {
                                 }
                             }
                         }
-                    else ->
+                    ACTION_MIGRATE_APP ->
                         Scheduler.defer(::onViewCreated, Migration::class)
                 }
             }
