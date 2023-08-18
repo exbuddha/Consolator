@@ -8,8 +8,9 @@ import androidx.lifecycle.*
 import java.lang.*
 import kotlin.reflect.*
 import kotlinx.coroutines.*
-import backgammon.module.BaseApplication.Companion.ACTION_MIGRATE_APP
 import backgammon.module.Scheduler.Event
+import backgammon.module.State.Finished
+import backgammon.module.BaseApplication.Companion.ACTION_MIGRATE_APP
 
 var instance: BaseApplication? = null
 var service: BaseService? = null
@@ -33,6 +34,7 @@ fun Context.signalDbCreated() {
 @Event(ACTION_MIGRATE_APP)
 fun Context.signalSessionCreated() {
     // update db records
+    State[1] = Finished
 }
 
 fun Context.intendFor(cls: Class<*>) = Intent(this, cls)

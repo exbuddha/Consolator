@@ -69,19 +69,6 @@ abstract class BaseFragment : Fragment() {
         }
     }
 
-    override fun onResume() {
-        if (State[1] === State.Finished) {
-            with(Scheduler) {
-                ignore()
-                clock?.apply {
-                    Process.setThreadPriority(threadId, Thread.NORM_PRIORITY)
-                }
-                sequencer = null
-            }
-        }
-        super.onResume()
-    }
-
     private var navigate = fun(_: View, bundle: Bundle?): Pair<Fragment, Int?> {
         if (bundle?.getShort(ACTION_KEY, -1) == ACTION_NAV_MAIN_UI)
             abstraction.module.Fragment(::screenEventInterceptor).apply {
@@ -96,6 +83,11 @@ abstract class BaseFragment : Fragment() {
         vararg param: Any?,
         r: Runnable?
     ): Pair<KFunction<R>?, Boolean?>? = null
+
+    override fun onDestroyView() {
+        cancel(MainViewGroup::class)
+        super.onDestroyView()
+    }
 
     protected annotation class MainViewGroup
 

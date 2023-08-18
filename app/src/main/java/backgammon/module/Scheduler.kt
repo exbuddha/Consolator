@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.*
 import backgammon.module.BaseService.*
 import backgammon.module.BaseActivity.*
 import backgammon.module.Scheduler.Lock
+import android.os.Process
 
 inline fun <reified R : Resolver, T> Context.defer(member: KCallable<T>) =
     Scheduler.defer(member, R::class, this)
@@ -596,6 +597,14 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     var clock: Clock? = null
     var sequencer: Sequencer? = null
 
+    fun windDown() {
+        ignore()
+        clock?.apply {
+            Process.setThreadPriority(threadId, Thread.NORM_PRIORITY)
+        }
+        sequencer = null
+    }
+
     fun clearResolverObjects() {
         serviceOnStartCommandResolver = null
         serviceOnBindResolver = null
@@ -678,6 +687,10 @@ fun LifecycleOwner.relaunchJobIfNotActive(
     block: CoroutineStep) =
     if (instance.getter.call()?.isActive == true) instance as Job
     else launch(context, start, block).also { instance.setter.call(it) }
+fun LifecycleOwner.cancel(node: KClass<out Annotation>) {
+    State[1] = State.Failed
+}
+infix fun Job.onCancel(action: DescriptiveStep) {}
 
 val mainThread = Thread.currentThread()
 fun Thread.isMainThread() = this === mainThread
@@ -722,7 +735,6 @@ abstract class ForgetfulWorkResolver : WorkRef(), Resolver {
     override fun commit() = super.commit().also { work = null }
 }
 
-infix fun Job.onCancel(action: DescriptiveStep) {}
 typealias JobFunction = suspend (Any?) -> Any?
 
 @Retention(SOURCE)
@@ -821,11 +833,19 @@ private typealias ResolverKProperty = KMutableProperty<out Resolver?>
 
 private typealias ID = Short
 sealed interface State {
-    object Finished : State
+    object Failed : Finished
+    object Succeeded : Finished
+    interface Finished : State {
+        companion object : Finished
+    }
     companion object {
         operator fun invoke(): State = Lock.Open
         operator fun get(id: ID): State = Lock.Open
-        operator fun set(id: ID, lock: Any) {}
+        operator fun set(id: ID, lock: Any) {
+            when (id.toInt()) {
+                1 -> if (lock is Finished) Scheduler.windDown()
+            }
+        }
         operator fun plus(lock: Any): State = TODO()
         operator fun plusAssign(lock: Any) {}
         operator fun minus(lock: Any): State = TODO()
