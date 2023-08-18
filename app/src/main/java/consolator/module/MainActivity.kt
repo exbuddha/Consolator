@@ -20,7 +20,7 @@ open class MainActivity : BaseActivity() {
             supportFragmentManager.commit {
                 setReorderingAllowed(true)
                 add<MainFragment>(R.id.layout_background)
-                setVisible(true)
+                setVisible(false)
             }
     }
 

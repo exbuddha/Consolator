@@ -21,6 +21,9 @@ abstract class BaseFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        parentFragmentManager.commit {
+            show(this@BaseFragment)
+        }
         launch @MainViewGroup @Listening {
             Scheduler.EventBus.collect {
                 when (it?.transit) {
