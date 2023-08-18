@@ -4,9 +4,9 @@ import android.app.*
 import android.content.*
 import android.os.*
 import android.util.*
+import java.io.*
 import kotlin.coroutines.*
 import kotlinx.coroutines.*
-import java.io.*
 
 open class BaseService : Service(), BaseServiceScope {
     override var startTime = 0L

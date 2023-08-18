@@ -5,9 +5,9 @@ import android.content.*
 import android.content.pm.*
 import androidx.core.content.*
 import androidx.lifecycle.*
+import java.lang.*
 import kotlin.reflect.*
 import kotlinx.coroutines.*
-import java.lang.*
 import backgammon.module.BaseApplication.Companion.ACTION_MIGRATE_APP
 import backgammon.module.Scheduler.Event
 
