@@ -84,7 +84,12 @@ abstract class BaseFragment : Fragment() {
         throw BaseImplementationRestriction
     }
 
-    inline fun <reified R> screenEventInterceptor(callback: KFunction<R>, vararg param: Any?): KFunction<R> = TODO()
+    inline fun <reified R> screenEventInterceptor(
+        listener: Any,
+        callback: KFunction<R>,
+        vararg param: Any?,
+        r: Runnable?
+    ): Pair<KFunction<R>?, Boolean?>? = null
 
     protected annotation class MainViewGroup
 
