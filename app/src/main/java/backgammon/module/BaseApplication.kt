@@ -1,6 +1,7 @@
 package backgammon.module
 
 import android.app.*
+import android.content.*
 import backgammon.module.application.*
 
 open class BaseApplication : Application(), UniqueContext {
@@ -8,6 +9,14 @@ open class BaseApplication : Application(), UniqueContext {
     override fun onCreate() {
         Thread.setDefaultUncaughtExceptionHandler { th, ex ->
             reactToUncaughtExceptionThrown(th, ex)
+        }
+        reactToUncaughtExceptionThrown = { th, ex ->
+            with(getSharedPreferences("uncaught", MODE_PRIVATE).edit()) {
+                putLong("start", startTime)
+                putLong("now", now())
+                putBoolean("main", th.isMainThread())
+                putException("exception", ex)
+            }
         }
         super.onCreate()
         instance = this
@@ -23,6 +32,14 @@ open class BaseApplication : Application(), UniqueContext {
     }
     override fun onLowMemory() {
         defer<MemoryManager>(::onLowMemory) { super.onLowMemory() }
+    }
+
+    private fun SharedPreferences.Editor.putException(name: String, ex: Throwable) {
+        putString("${name}-message", ex.message)
+        ex.cause?.let { cause ->
+            putString("${name}-cause", cause::class.qualifiedName)
+            putString("${name}-cause-msg", cause.message)
+        }
     }
 
     companion object {

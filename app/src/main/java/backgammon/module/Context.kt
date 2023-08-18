@@ -25,7 +25,7 @@ val foregroundContext: Context
 
 @Event(ACTION_MIGRATE_APP)
 fun Context.signalDbCreated() {
-    reactToUncaughtExceptionThrown = { thread, throwable ->
+    reactToUncaughtExceptionThrown += { th, ex ->
         // record in db
     }
 }
@@ -52,6 +52,10 @@ fun isTimeIntervalExceeded(interval: Long, last: Long) =
 
 interface UniqueContext { var startTime: Long }
 typealias ContextStep = suspend Context.() -> Unit
+
+private typealias ExceptionHandler = (Thread, Throwable) -> Unit
+private operator fun ExceptionHandler.plusAssign(other: ExceptionHandler) {}
+private operator fun ExceptionHandler.minusAssign(other: ExceptionHandler) {}
 
 typealias AnyArray = Array<out Any?>
 typealias AnyFunction = () -> Any?
