@@ -92,7 +92,7 @@ var reactToInternetAvailabilityRequestFailed: (Any?, Throwable) -> Any? = { _, _
 private const val MIN_TIME_INTERVAL_INET_AVAIL = 5000L
 var internetAvailabilityTimeInterval = MIN_TIME_INTERVAL_INET_AVAIL
     set(value) {
-        field = minOf(value, MIN_TIME_INTERVAL_INET_AVAIL)
+        field = maxOf(value, MIN_TIME_INTERVAL_INET_AVAIL)
     }
 private var lastInternetAvailabilityResponseTime = 0L
     set(value) {
