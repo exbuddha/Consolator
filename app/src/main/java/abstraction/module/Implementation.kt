@@ -1,5 +1,8 @@
 package abstraction.module
 
-import androidx.fragment.app.Fragment
+import androidx.fragment.app.*
+import kotlin.reflect.*
 
-fun Fragment() = Fragment()
+fun Fragment(interceptor: (KFunction<*>, Array<*>) -> KFunction<*>) = OverlayFragment()
+
+open class OverlayFragment : Fragment()

@@ -6,6 +6,7 @@ import android.util.*
 import android.view.*
 import androidx.fragment.app.*
 import androidx.fragment.app.FragmentTransaction.*
+import kotlin.reflect.*
 import kotlinx.coroutines.*
 import backgammon.module.application.*
 import backgammon.module.BaseApplication.Companion.ACTION_NAV_MAIN_UI
@@ -46,7 +47,8 @@ abstract class BaseFragment : Fragment() {
                             schedule {
                                 parentFragmentManager.commit {
                                     setTransition(TRANSIT_FRAGMENT_OPEN)
-                                    add(this@BaseFragment.id,
+                                    replace(
+                                        this@BaseFragment.id,
                                         transitFragment(view, savedInstanceState?.apply {
                                             putShort(ACTION_KEY, ACTION_NAV_MAIN_UI)
                                         }))
@@ -76,11 +78,13 @@ abstract class BaseFragment : Fragment() {
 
     private var transitFragment = fun(_: View, bundle: Bundle?): Fragment {
         if (bundle?.getShort(ACTION_KEY, -1) == ACTION_NAV_MAIN_UI)
-            abstraction.module.Fragment().apply {
+            abstraction.module.Fragment(::interceptScreenEvent).apply {
                 // ...
             }
         throw BaseImplementationRestriction
     }
+
+    inline fun <reified R> interceptScreenEvent(callback: KFunction<R>, vararg param: Any?): KFunction<R> = TODO()
 
     protected annotation class MainViewGroup
 
