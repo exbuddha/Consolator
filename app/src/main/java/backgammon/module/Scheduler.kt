@@ -19,7 +19,7 @@ inline fun <reified R : Resolver, T> Context.defer(member: KCallable<T>) =
 inline fun <reified R : Resolver> Context.defer(member: KFunction<Unit>, vararg value: Any?, noinline `super`: Work) =
     Scheduler.defer(member, R::class, this, *value, `super`)
 inline fun <reified R : Resolver> Context.work(vararg id: Any?, noinline work: Work) =
-    Scheduler.from(this, R::class, *id, work = work)
+    Scheduler.work(this, R::class, *id, work = work)
 inline fun <reified R : Resolver> Context.step(vararg id: Any?, noinline step: CoroutineStep? = null) =
     work<R>(*id) { Scheduler.step(this, R::class, *id, step = step) }
 
@@ -67,7 +67,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
                 else -> throw BaseImplementationRestriction
             }
         }
-    fun from(vararg id: Any?, work: Work) {
+    fun work(vararg id: Any?, work: Work) {
         when (id[0]) {
             is BaseServiceScope -> when (id[1]) {
                 StartCommandResolver::class ->
