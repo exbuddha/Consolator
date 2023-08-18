@@ -13,7 +13,8 @@ fun Fragment(interceptor: ScreenEventInterceptor?): Pair<Fragment, Int?> =
 
 open class OverlayFragment(private val interceptor: ScreenEventInterceptor?) : Fragment(), OnContextClickListener {
     override fun onContextClick(event: MotionEvent): Boolean {
-        intercept(OnContextClickListener::onContextClick, event) {
+        intercept(
+            OnContextClickListener::onContextClick, event) {
             // post-process event
         }
         return true
