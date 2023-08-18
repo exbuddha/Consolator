@@ -770,7 +770,7 @@ fun <R> with(vararg args: Any?): (KCallable<R>) -> R = {
 }
 
 private typealias SequencerScope = LiveDataScope<Step?>
-suspend fun SequencerScope.reset() = Scheduler.sequencer?.let { emit { it.reset() } }
+suspend fun SequencerScope.reset() { Scheduler.sequencer?.apply { emit { reset() } } }
 private typealias SequencerStep = suspend SequencerScope.() -> Unit
 private typealias StepObserver = Observer<Step?>
 private typealias LiveStep = LiveData<Step?>
