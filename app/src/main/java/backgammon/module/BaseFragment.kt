@@ -31,9 +31,10 @@ abstract class BaseFragment : Fragment() {
                         viewModel?.apply {
                             schedule {
                                 parentFragmentManager.commit {
-                                    val (overlay, transition) = navigate(view, savedInstanceState?.apply {
-                                        putShort(ACTION_KEY, ACTION_NAV_MAIN_UI)
-                                    })
+                                    val (overlay, transition) =
+                                        navigate(view, savedInstanceState?.apply {
+                                            putShort(ACTION_KEY, ACTION_NAV_MAIN_UI)
+                                        })
                                     setTransition(transition ?: TRANSIT_FRAGMENT_OPEN)
                                     replace(
                                         this@BaseFragment.id,
@@ -85,7 +86,7 @@ abstract class BaseFragment : Fragment() {
         callback: KFunction<R>,
         vararg param: Any?,
         r: Runnable?
-    ): Pair<KFunction<R>?, Boolean?>? = null
+    ): Pair<Predicate?, Boolean?>? = null
 
     override fun onDestroyView() {
         cancel(MainViewGroup::class)
