@@ -774,9 +774,7 @@ fun <R> with(vararg args: Any?): (KCallable<R>) -> R = {
     it.call(args)
 }
 
-private typealias SchedulerStep = suspend SchedulerScope.() -> Unit
-interface SchedulerJobScope : SchedulerScope
-private typealias DescriptiveStep = suspend SchedulerJobScope.(Job) -> Unit
+private typealias DescriptiveStep = suspend SchedulerScope.(Job) -> Unit
 private typealias SequencerScope = LiveDataScope<Step?>
 suspend fun SequencerScope.reset() { Scheduler.sequencer?.apply { emit { reset() } } }
 private typealias SequencerStep = suspend SequencerScope.() -> Unit
