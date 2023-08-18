@@ -11,9 +11,8 @@ import backgammon.module.Predicate
 fun Fragment(interceptor: ScreenEventInterceptor?): Pair<Fragment, Int?> =
     Pair(OverlayFragment(interceptor), null)
 
-open class OverlayFragment(
-    private val interceptor: ScreenEventInterceptor?
-) : Fragment(),
+open class OverlayFragment(private val interceptor: ScreenEventInterceptor?) :
+    Fragment(),
     OnContextClickListener {
     override fun onContextClick(event: MotionEvent): Boolean {
         intercept(
