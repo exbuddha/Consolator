@@ -78,13 +78,13 @@ abstract class BaseFragment : Fragment() {
 
     private var transitFragment = fun(_: View, bundle: Bundle?): Fragment {
         if (bundle?.getShort(ACTION_KEY, -1) == ACTION_NAV_MAIN_UI)
-            abstraction.module.Fragment(::interceptScreenEvent).apply {
+            abstraction.module.Fragment(::screenEventInterceptor).apply {
                 // ...
             }
         throw BaseImplementationRestriction
     }
 
-    inline fun <reified R> interceptScreenEvent(callback: KFunction<R>, vararg param: Any?): KFunction<R> = TODO()
+    inline fun <reified R> screenEventInterceptor(callback: KFunction<R>, vararg param: Any?): KFunction<R> = TODO()
 
     protected annotation class MainViewGroup
 
