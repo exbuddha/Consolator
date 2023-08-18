@@ -4,6 +4,8 @@ import android.content.Context
 import android.os.*
 import android.util.*
 import android.view.*
+import androidx.core.util.component1
+import androidx.core.util.component2
 import androidx.fragment.app.*
 import androidx.fragment.app.FragmentTransaction.*
 import kotlin.reflect.*
@@ -25,14 +27,13 @@ abstract class BaseFragment : Fragment() {
                         viewModel?.apply {
                             schedule {
                                 parentFragmentManager.commit {
-                                    transitFragment(view, savedInstanceState?.apply {
+                                    val (overlay, transition) = navigate(view, savedInstanceState?.apply {
                                         putShort(ACTION_KEY, ACTION_NAV_MAIN_UI)
-                                    }).let { overlay ->
-                                        setTransition(overlay.second ?: TRANSIT_FRAGMENT_OPEN)
-                                        replace(
-                                            this@BaseFragment.id,
-                                            overlay.first)
-                                    }
+                                    })
+                                    setTransition(transition ?: TRANSIT_FRAGMENT_OPEN)
+                                    replace(
+                                        this@BaseFragment.id,
+                                        overlay)
                                 }
                             }
                         }
@@ -78,7 +79,7 @@ abstract class BaseFragment : Fragment() {
         super.onResume()
     }
 
-    private var transitFragment = fun(_: View, bundle: Bundle?): Pair<Fragment, Int?> {
+    private var navigate = fun(_: View, bundle: Bundle?): Pair<Fragment, Int?> {
         if (bundle?.getShort(ACTION_KEY, -1) == ACTION_NAV_MAIN_UI)
             abstraction.module.Fragment(::screenEventInterceptor).apply {
                 // ...
