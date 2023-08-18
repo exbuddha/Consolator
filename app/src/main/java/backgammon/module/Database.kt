@@ -14,7 +14,7 @@ import backgammon.module.AppDatabase.Companion.File
 private const val DB_VERSION = 1
 
 inline fun <reified D : RoomDatabase> Context.buildDatabase() = with(D::class) {
-    synchronized(objectInstance!!) {
+    synchronized(objectInstance ?: AppDatabase) {
         db ?: Room.databaseBuilder(
             this@buildDatabase,
             java,
