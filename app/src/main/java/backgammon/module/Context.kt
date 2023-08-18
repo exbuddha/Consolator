@@ -16,7 +16,7 @@ var service: BaseService? = null
 var db: AppDatabase? = null
 var netDb: NetworkDatabase? = null
 var session: RuntimeSessionEntity? = null
-lateinit var reactToUncaughtExceptionThrown: (Thread, Throwable) -> Unit
+lateinit var reactToUncaughtExceptionThrown: ExceptionHandler
 
 val foregroundLifecycleOwner: LifecycleOwner
     get() = TODO()
