@@ -11,6 +11,7 @@ import androidx.fragment.app.FragmentTransaction.*
 import kotlin.reflect.*
 import kotlinx.coroutines.*
 import backgammon.module.application.*
+import backgammon.module.Scheduler.Event.Listening
 import backgammon.module.BaseApplication.Companion.ACTION_NAV_MAIN_UI
 import backgammon.module.BaseApplication.Companion.ACTION_MIGRATE_APP
 
@@ -20,7 +21,7 @@ abstract class BaseFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        launch @MainViewGroup {
+        launch @MainViewGroup @Listening {
             Scheduler.EventBus.collect {
                 when (it?.transit) {
                     ACTION_NAV_MAIN_UI ->
@@ -41,13 +42,15 @@ abstract class BaseFragment : Fragment() {
                         Scheduler.defer(::onViewCreated, Migration::class)
                 }
             }
+        } onCancel {
+            // handle listening error
         }
         Log.i(UI_TAG, "Main fragment view is created.")
     }
 
     override fun onAttach(context: Context) {
         super.onAttach(context)
-        launch(Dispatchers.IO) @JobTreeRoot {
+        launch(Dispatchers.IO) @JobTreeRoot @MainViewGroup {
             trySafelyCanceling {
                 with(context) {
                     if (db === null)

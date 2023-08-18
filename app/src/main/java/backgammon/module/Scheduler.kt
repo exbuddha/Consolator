@@ -622,7 +622,11 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
 
     @Retention(SOURCE)
     @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
-    annotation class Event(val transit: Short = 0)
+    annotation class Event(val transit: Short = 0) {
+        @Retention(SOURCE)
+        @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+        annotation class Listening
+    }
     private val KCallable<*>.event
         get() = annotations.find { it is Event } as? Event
     fun trySafelyForAnnotatedEvent(step: KFunction<*>) =
@@ -718,6 +722,7 @@ abstract class ForgetfulWorkResolver : WorkRef(), Resolver {
     override fun commit() = super.commit().also { work = null }
 }
 
+infix fun Job.onCancel(action: DescriptiveStep) {}
 typealias JobFunction = suspend (Any?) -> Any?
 
 @Retention(SOURCE)
@@ -769,6 +774,9 @@ fun <R> with(vararg args: Any?): (KCallable<R>) -> R = {
     it.call(args)
 }
 
+private typealias SchedulerStep = suspend SchedulerScope.() -> Unit
+interface SchedulerJobScope : SchedulerScope
+private typealias DescriptiveStep = suspend SchedulerJobScope.(Job) -> Unit
 private typealias SequencerScope = LiveDataScope<Step?>
 suspend fun SequencerScope.reset() { Scheduler.sequencer?.apply { emit { reset() } } }
 private typealias SequencerStep = suspend SequencerScope.() -> Unit
