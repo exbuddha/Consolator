@@ -8,12 +8,14 @@ import androidx.core.util.component1
 import androidx.core.util.component2
 import androidx.fragment.app.*
 import androidx.fragment.app.FragmentTransaction.*
+import kotlin.annotation.AnnotationRetention.*
+import kotlin.annotation.AnnotationTarget.*
 import kotlin.reflect.*
 import kotlinx.coroutines.*
-import backgammon.module.application.*
 import backgammon.module.Scheduler.Event.Listening
 import backgammon.module.BaseApplication.Companion.ACTION_NAV_MAIN_UI
 import backgammon.module.BaseApplication.Companion.ACTION_MIGRATE_APP
+import backgammon.module.application.*
 
 abstract class BaseFragment : Fragment() {
     private val viewModel
@@ -94,6 +96,8 @@ abstract class BaseFragment : Fragment() {
         super.onDestroyView()
     }
 
+    @Retention(SOURCE)
+    @Target(EXPRESSION)
     protected annotation class MainViewGroup
 
     companion object {

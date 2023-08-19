@@ -580,27 +580,6 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     val resumeSequencer = Runnable { sequencer?.resume() }
     val retrySequencer = Runnable { sequencer?.retry() }
 
-    private lateinit var _key: CoroutineContext.Key<*>
-    private val _element by lazy {
-        object : CoroutineContext.Element {
-            override val key
-                get() = _key
-        }
-    }
-    override fun <R> fold(initial: R, operation: (R, CoroutineContext.Element) -> R): R  {
-        // context expansion by attachment: register operation callback.
-        // return a default state or a new one depending on the initial value.
-        return operation.invoke(initial, _element)
-    }
-    override fun <E : CoroutineContext.Element> get(key: CoroutineContext.Key<E>): E? {
-        // context element lookup
-        return null
-    }
-    override fun minusKey(key: CoroutineContext.Key<*>): CoroutineContext {
-        // context convergence by detachment: unregister element and restate.
-        return this
-    }
-
     var clock: Clock? = null
     var sequencer: Sequencer? = null
 
@@ -634,14 +613,12 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     private fun annotatedScope(step: CoroutineStep?) =
         (step as KCallable<*>).schedulerScope!!.type.reconstruct(step)
 
-    enum class Lock : State { Closed, Open }
-
     @Retention(SOURCE)
     @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
     annotation class Event(val transit: Short = 0) {
         @Retention(SOURCE)
         @Target(CONSTRUCTOR, FUNCTION, PROPERTY, EXPRESSION)
-        annotation class Listening
+        annotation class Listening(val timeout: Long = 0)
     }
     private val KCallable<*>.event
         get() = annotations.find { it is Event } as? Event
@@ -649,6 +626,27 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         trySafelyForResult { annotatedEvent(step) }
     fun annotatedEvent(step: KFunction<*>) =
         step.event!!
+
+    private lateinit var _key: CoroutineContext.Key<*>
+    private val _element by lazy {
+        object : CoroutineContext.Element {
+            override val key
+                get() = _key
+        }
+    }
+    override fun <R> fold(initial: R, operation: (R, CoroutineContext.Element) -> R): R  {
+        // context expansion by attachment: register operation callback.
+        // return a default state or a new one depending on the initial value.
+        return operation.invoke(initial, _element)
+    }
+    override fun <E : CoroutineContext.Element> get(key: CoroutineContext.Key<E>): E? {
+        // context element lookup
+        return null
+    }
+    override fun minusKey(key: CoroutineContext.Key<*>): CoroutineContext {
+        // context convergence by detachment: unregister element and restate.
+        return this
+    }
 
     override fun onChanged(step: Step?) {
         if (step !== null) runBlocking { step() }
@@ -660,6 +658,8 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         }
         fun signal(transit: Short) {}
     }
+
+    enum class Lock : State { Closed, Open }
 }
 
 val Step.transit
