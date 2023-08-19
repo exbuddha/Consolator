@@ -17,8 +17,8 @@ open class OverlayFragment(private val interceptor: ScreenEventInterceptor?) :
     override fun onContextClick(event: MotionEvent): Boolean {
         intercept(
             OnContextClickListener::onContextClick, event) {
-            // post-process event
-        }
+                // post-process event
+            }
         return true
     }
 
