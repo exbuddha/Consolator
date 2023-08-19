@@ -2,6 +2,7 @@ package backgammon.module
 
 import android.content.*
 import android.os.*
+import android.os.Process
 import androidx.lifecycle.*
 import java.lang.*
 import kotlin.annotation.AnnotationRetention.*
@@ -13,7 +14,7 @@ import kotlinx.coroutines.flow.*
 import backgammon.module.BaseService.*
 import backgammon.module.BaseActivity.*
 import backgammon.module.Scheduler.Lock
-import android.os.Process
+import backgammon.module.application.*
 
 inline fun <reified R : Resolver, T> Context.defer(member: KCallable<T>) =
     Scheduler.defer(member, R::class, this)
@@ -33,6 +34,10 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     inline fun <reified R : Resolver, T> defer(member: KCallable<T>, resolver: KClass<out R>?, vararg value: Any?): Unit? =
         when (resolver) {
             null -> null
+            Migration::class ->
+                setResolverThenResolve(
+                    ::applicationMigrationResolver,
+                    Migration::class)
             else -> when (member.javaClass.enclosingClass) {
                 BaseService::class.java -> when (resolver) {
                     StartCommandResolver::class ->
@@ -142,6 +147,8 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     var activityNightModeChangeManager: NightModeChangeManager? = null
         private set
     var activityLocalesChangeManager: LocalesChangeManager? = null
+        private set
+    var applicationMigrationResolver: Migration? = null
         private set
     fun setResolverThenCommit(instance: ResolverKProperty, type: ResolverKClass) =
         (instance.reconstruct(type, null) as? WorkRef)?.commit()
