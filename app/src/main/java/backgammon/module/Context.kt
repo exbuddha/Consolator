@@ -50,6 +50,10 @@ fun Context.signalSessionCreated() {
     State[1] = Finished
 }
 
+fun Context.signalNetDbInitialized() {
+    // update net function pointers
+}
+
 fun Context.intendFor(cls: Class<*>) = Intent(this, cls)
 fun Context.intendFor(cls: KClass<*>) = intendFor(cls.java)
 fun Context.isPermissionGranted(permission: String) =
