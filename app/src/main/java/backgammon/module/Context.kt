@@ -11,7 +11,7 @@ import java.lang.*
 import kotlin.reflect.*
 import kotlinx.coroutines.*
 import backgammon.module.Scheduler.Event
-import backgammon.module.State.Finished
+import backgammon.module.State.Resolved
 import backgammon.module.AppDatabase.Companion.File
 import backgammon.module.BaseApplication.Companion.ACTION_MIGRATE_APP
 
@@ -48,7 +48,7 @@ fun Context.signalDbCreated() {
 @Event(ACTION_MIGRATE_APP)
 fun Context.signalSessionCreated() {
     // update db records
-    State[1] = Finished
+    State[1] = Resolved
 }
 
 fun Context.signalNetDbInitialized() {

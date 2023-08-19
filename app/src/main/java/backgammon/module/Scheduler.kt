@@ -843,33 +843,36 @@ private typealias ResolverKProperty = KMutableProperty<out Resolver?>
 
 private typealias ID = Short
 sealed interface State {
-    object Failed : Finished
-    object Succeeded : Finished
-    interface Finished : State {
-        companion object : Finished
+    object Failed : Resolved
+    object Succeeded : Resolved
+    interface Resolved : State {
+        companion object : Resolved
+    }
+    interface Ambiguous : State {
+        companion object : Ambiguous
     }
     companion object {
         operator fun invoke(): State = Lock.Open
         operator fun get(id: ID): State = Lock.Open
         operator fun set(id: ID, lock: Any) {
             when (id.toInt()) {
-                1 -> if (lock is Finished) Scheduler.windDown()
+                1 -> if (lock is Resolved) Scheduler.windDown()
             }
         }
-        operator fun plus(lock: Any): State = TODO()
+        operator fun plus(lock: Any): State = Ambiguous
         operator fun plusAssign(lock: Any) {}
-        operator fun minus(lock: Any): State = TODO()
+        operator fun minus(lock: Any): State = Ambiguous
         operator fun minusAssign(lock: Any) {}
-        operator fun times(lock: Any): State = TODO()
+        operator fun times(lock: Any): State = Ambiguous
         operator fun timesAssign(lock: Any) {}
-        operator fun div(lock: Any): State = TODO()
+        operator fun div(lock: Any): State = Ambiguous
         operator fun divAssign(lock: Any) {}
-        operator fun rem(lock: Any): State = TODO()
+        operator fun rem(lock: Any): State = Ambiguous
         operator fun remAssign(lock: Any) {}
-        operator fun unaryPlus(): State = TODO()
-        operator fun unaryMinus(): State = TODO()
-        operator fun rangeTo(lock: Any): State = TODO()
-        operator fun not(): State = TODO()
+        operator fun unaryPlus(): State = Ambiguous
+        operator fun unaryMinus(): State = Ambiguous
+        operator fun rangeTo(lock: Any): State = Ambiguous
+        operator fun not(): State = Ambiguous
         operator fun contains(lock: Any) = false
         operator fun compareTo(lock: Any) = 1
     }
