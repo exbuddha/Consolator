@@ -608,7 +608,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     annotation class Scope(val type: KClass<out CoroutineScope>)
     private val KCallable<*>.schedulerScope
         get() = annotations.find { it is Scope } as? Scope
-    private fun trySafelyForAnnotatedScope(step: CoroutineStep?) =
+    fun trySafelyForAnnotatedScope(step: CoroutineStep?) =
         trySafelyForResult { annotatedScope(step) }
     private fun annotatedScope(step: CoroutineStep?) =
         (step as KCallable<*>).schedulerScope!!.type.reconstruct(step)
@@ -683,9 +683,11 @@ inline fun <R> commitAsync(lock: Any, crossinline predicate: Predicate, crossinl
 }
 
 fun LifecycleOwner.launch(context: CoroutineContext, start: CoroutineStart, step: CoroutineStep) =
-    lifecycleScope.launch(context, start, step)
+    (Scheduler.trySafelyForAnnotatedScope(step) ?:
+    lifecycleScope).launch(context, start, step)
 fun LifecycleOwner.launch(context: CoroutineContext, step: CoroutineStep) =
-    lifecycleScope.launch(context, block = step)
+    (Scheduler.trySafelyForAnnotatedScope(step) ?:
+    lifecycleScope).launch(context, block = step)
 fun LifecycleOwner.launch(step: CoroutineStep) =
     launch(Scheduler, step)
 fun LifecycleOwner.relaunchJobIfNotActive(
