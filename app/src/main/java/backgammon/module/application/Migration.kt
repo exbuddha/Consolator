@@ -3,7 +3,7 @@ package backgammon.module.application
 import backgammon.module.*
 import backgammon.module.BaseApplication.Companion.ACTION_NAV_MAIN_UI
 
-abstract class Migration : StepResolver() {
+class Migration : StepResolver() {
     override fun resolve(vararg id: Any?) {
         // listen to db updates
         // preload data
