@@ -74,7 +74,7 @@ private fun clearInternetAvailabilityCallbackObjects() {
 
 var internetAvailabilityJobFunction: JobFunction = { scope ->
     if (repeatInternetAvailabilityRequest && isInternetAvailabilityTimeIntervalExceeded) {
-        Log.i(INET_TAG, "Trying to send out http request for internet availability...")
+        info(INET_TAG, "Trying to send out http request for internet availability...")
         tryCanceling({
             sendInternetAvailabilityRequest { response ->
                 hasInternet = response.isSuccessful
@@ -82,7 +82,7 @@ var internetAvailabilityJobFunction: JobFunction = { scope ->
                     lastInternetAvailabilityResponseTime = now()
                 trySafelyCanceling { reactToInternetAvailabilityResponseReceived.invoke(scope, response) }
                 response.close()
-                Log.i(INET_TAG, "Received response for internet availability.")
+                info(INET_TAG, "Received response for internet availability.")
             }
         }, { ex ->
             trySafelyCanceling { reactToInternetAvailabilityRequestFailed.invoke(scope, ex) }

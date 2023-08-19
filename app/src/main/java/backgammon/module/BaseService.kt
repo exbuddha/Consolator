@@ -37,7 +37,7 @@ open class BaseService : Service(), BaseServiceScope {
                             }
                         }
                 }
-                Log.i(SVC_TAG, "Clock is detected.")
+                info(SVC_TAG, "Clock is detected.")
             }
         }
         return mode!!

@@ -53,7 +53,7 @@ abstract class BaseFragment : Fragment() {
         } onCancel {
             // handle listening error
         }
-        Log.i(UI_TAG, "Main fragment view is created.")
+        info(UI_TAG, "Main fragment view is created.")
     }
 
     override fun onAttach(context: Context) {

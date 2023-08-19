@@ -3,6 +3,7 @@ package backgammon.module
 import android.Manifest
 import android.content.*
 import android.content.pm.*
+import android.util.*
 import androidx.core.content.*
 import androidx.lifecycle.*
 import androidx.room.*
@@ -135,3 +136,20 @@ open class BaseImplementationRestriction(
 ) : UnsupportedOperationException(msg, cause) {
     companion object : BaseImplementationRestriction()
 }
+
+fun info(tag: String, msg: String) = _infoLogger(tag, msg)
+fun debug(tag: String, msg: String) = _debugLogger(tag, msg)
+fun warning(tag: String, msg: String) = _warningLogger(tag, msg)
+
+private typealias LogFunction = (String, String) -> Any?
+fun bypassInfoLog() { _infoLogger = { _, _ -> } }
+fun bypassDebugLog() { _debugLogger = { _, _ -> } }
+fun bypassWarningLog() { _warningLogger = { _, _ -> } }
+fun bypassAllLogs() {
+    bypassInfoLog()
+    bypassDebugLog()
+    bypassWarningLog()
+}
+private var _infoLogger: LogFunction = Log::i
+private var _debugLogger: LogFunction = Log::d
+private var _warningLogger: LogFunction = Log::w
