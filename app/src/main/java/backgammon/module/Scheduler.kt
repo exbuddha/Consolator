@@ -633,7 +633,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
     annotation class Event(val transit: Short = 0) {
         @Retention(SOURCE)
-        @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+        @Target(CONSTRUCTOR, FUNCTION, PROPERTY, EXPRESSION)
         annotation class Listening
     }
     private val KCallable<*>.event

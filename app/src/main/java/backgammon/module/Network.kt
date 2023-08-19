@@ -5,6 +5,8 @@ import android.net.ConnectivityManager.*
 import android.net.NetworkCapabilities.*
 import android.util.*
 import androidx.lifecycle.*
+import kotlin.annotation.AnnotationRetention.*
+import kotlin.annotation.AnnotationTarget.*
 import kotlin.coroutines.*
 import kotlinx.coroutines.*
 import okhttp3.*
@@ -104,12 +106,16 @@ private val internetAvailabilityDelayTime
 private val isInternetAvailabilityTimeIntervalExceeded
     get() = isTimeIntervalExceeded(internetAvailabilityTimeInterval, lastInternetAvailabilityResponseTime)
 private var repeatInternetAvailabilityRequest = true
-@JobTreeRoot
+@JobTreeRoot @NetworkListener
 var internetAvailabilityJob: Job? = null
     set(value) {
         // update addressable layer?
         field = value
     }
+
+@Retention(SOURCE)
+@Target(FUNCTION, PROPERTY)
+annotation class NetworkListener
 
 private val connectivityManager
     get() = instance!!.getSystemService(ConnectivityManager::class.java)!!
