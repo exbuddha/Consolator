@@ -27,7 +27,7 @@ abstract class BaseFragment : Fragment() {
         launch @MainViewGroup @Listening {
             Scheduler.EventBus.collect {
                 when (it?.transit) {
-                    ACTION_NAV_MAIN_UI ->
+                    ACTION_NAV_MAIN_UI -> {
                         viewModel?.apply {
                             schedule {
                                 parentFragmentManager.commit {
@@ -42,6 +42,8 @@ abstract class BaseFragment : Fragment() {
                                 }
                             }
                         }
+                        close(MainViewGroup::class)
+                    }
                     ACTION_MIGRATE_APP ->
                         Scheduler.defer(::onViewCreated, Migration::class)
                 }
@@ -89,7 +91,7 @@ abstract class BaseFragment : Fragment() {
     ): Pair<Predicate?, Boolean?>? = null
 
     override fun onDestroyView() {
-        cancel(MainViewGroup::class)
+        close(MainViewGroup::class)
         super.onDestroyView()
     }
 

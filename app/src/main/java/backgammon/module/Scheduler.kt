@@ -658,6 +658,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         override suspend fun collect(collector: FlowCollector<Step?>) {
             collector.emitAll(this)
         }
+        fun signal(transit: Short) {}
     }
 }
 
@@ -694,7 +695,7 @@ fun LifecycleOwner.relaunchJobIfNotActive(
     block: CoroutineStep) =
     if (instance.getter.call()?.isActive == true) instance as Job
     else launch(context, start, block).also { instance.setter.call(it) }
-fun LifecycleOwner.cancel(node: KClass<out Annotation>) {
+fun LifecycleOwner.close(node: KClass<out Annotation>) {
     State[1] = State.Failed
 }
 infix fun Job.onCancel(action: DescriptiveStep) {}
