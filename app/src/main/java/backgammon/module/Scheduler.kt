@@ -816,18 +816,18 @@ interface Expiry : MutableSet<Lifetime> {
         }
     }
     companion object : Expiry {
-        override fun add(element: Lifetime): Boolean = TODO()
-        override fun addAll(elements: Collection<Lifetime>): Boolean = TODO()
-        override fun clear() = TODO()
+        override fun add(element: Lifetime) = false
+        override fun addAll(elements: Collection<Lifetime>) = false
+        override fun clear() {}
         override fun iterator(): MutableIterator<Lifetime> = TODO()
-        override fun remove(element: Lifetime): Boolean = TODO()
-        override fun removeAll(elements: Collection<Lifetime>): Boolean = TODO()
-        override fun retainAll(elements: Collection<Lifetime>): Boolean = TODO()
+        override fun remove(element: Lifetime): Boolean = false
+        override fun removeAll(elements: Collection<Lifetime>) = false
+        override fun retainAll(elements: Collection<Lifetime>) = false
         override val size: Int
-            get() = TODO()
-        override fun contains(element: Lifetime): Boolean = TODO()
-        override fun containsAll(elements: Collection<Lifetime>): Boolean = TODO()
-        override fun isEmpty(): Boolean = TODO()
+            get() = 0
+        override fun contains(element: Lifetime) = false
+        override fun containsAll(elements: Collection<Lifetime>) = false
+        override fun isEmpty() = true
     }
 }
 typealias Lifetime = (KMutableProperty<*>) -> Boolean?
