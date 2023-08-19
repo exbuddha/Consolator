@@ -59,8 +59,7 @@ abstract class BaseFragment : Fragment() {
         launch(Dispatchers.IO) @JobTreeRoot @MainViewGroup {
             trySafelyCanceling {
                 with(context) {
-                    if (db === null)
-                        db = buildDatabase()
+                    buildAppDatabase()
                     schedule(Context::signalDbCreated)
                     if (session === null)
                         session = with(db!!.runtimeDao()) {

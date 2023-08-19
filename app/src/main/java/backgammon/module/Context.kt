@@ -5,11 +5,13 @@ import android.content.*
 import android.content.pm.*
 import androidx.core.content.*
 import androidx.lifecycle.*
+import androidx.room.*
 import java.lang.*
 import kotlin.reflect.*
 import kotlinx.coroutines.*
 import backgammon.module.Scheduler.Event
 import backgammon.module.State.Finished
+import backgammon.module.AppDatabase.Companion.File
 import backgammon.module.BaseApplication.Companion.ACTION_MIGRATE_APP
 
 var instance: BaseApplication? = null
@@ -23,6 +25,17 @@ val foregroundLifecycleOwner: LifecycleOwner
     get() = TODO()
 val foregroundContext: Context
     get() = instance!!
+
+inline fun <reified D : RoomDatabase> Context.buildDatabase() = with(D::class) {
+    Room.databaseBuilder(
+        this@buildDatabase,
+        java,
+        (annotations.last { it is File } as File).name
+    ).build()
+}
+fun Context.buildAppDatabase() = commitAsync(AppDatabase, { db === null }) {
+    db = buildDatabase()
+}
 
 @Event(ACTION_MIGRATE_APP)
 fun Context.signalDbCreated() {

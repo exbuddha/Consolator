@@ -1,6 +1,5 @@
 package backgammon.module
 
-import android.content.Context
 import android.net.*
 import androidx.room.*
 import java.text.*
@@ -8,20 +7,10 @@ import java.util.*
 import kotlin.annotation.AnnotationTarget.*
 import kotlin.reflect.*
 import com.google.gson.*
-import backgammon.module.AppDatabase.Companion.CURRENT_TIMESTAMP
 import backgammon.module.AppDatabase.Companion.File
+import backgammon.module.AppDatabase.Companion.CURRENT_TIMESTAMP
 
 private const val DB_VERSION = 1
-
-inline fun <reified D : RoomDatabase> Context.buildDatabase() = with(D::class) {
-    synchronized(objectInstance ?: AppDatabase) {
-        db ?: Room.databaseBuilder(
-            this@buildDatabase,
-            java,
-            (annotations.last { it is File } as File).name
-        ).build()
-    } as D
-}
 
 @Database(version = DB_VERSION, exportSchema = false, entities = [
     RuntimeSessionEntity::class,
@@ -47,7 +36,6 @@ abstract class AppDatabase : RoomDatabase() {
 @File("net.db")
 abstract class NetworkDatabase : RoomDatabase() {
     abstract fun networkDao(): NetworkDao
-    companion object
 }
 
 abstract class BaseEntity(
