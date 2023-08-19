@@ -3,10 +3,10 @@ plugins {
     id 'org.jetbrains.kotlin.android'
 }
 android {
-    namespace 'backgammon.module'
+    namespace 'consolator.module'
     compileSdk 34
     defaultConfig {
-        applicationId "backgammon.module"
+        applicationId 'consolator.app'
         minSdk 31
         targetSdk 34
         versionCode 1

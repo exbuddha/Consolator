@@ -7,7 +7,6 @@ import androidx.core.os.LocaleListCompat
 import androidx.fragment.app.add
 import androidx.fragment.app.commit
 import backgammon.module.BaseActivity
-import backgammon.module.R
 import backgammon.module.defer
 import backgammon.module.step
 

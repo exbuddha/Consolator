@@ -5,6 +5,7 @@ import androidx.appcompat.app.*
 import androidx.lifecycle.*
 import backgammon.module.activity.*
 import backgammon.module.application.*
+import consolator.module.R
 
 abstract class BaseActivity : AppCompatActivity() {
     abstract val viewModel: VM

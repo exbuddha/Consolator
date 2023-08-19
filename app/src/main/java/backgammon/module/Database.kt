@@ -9,6 +9,7 @@ import kotlin.reflect.*
 import com.google.gson.*
 import backgammon.module.AppDatabase.Companion.File
 import backgammon.module.AppDatabase.Companion.CURRENT_TIMESTAMP
+import consolator.module.BuildConfig
 
 private const val DB_VERSION = 1
 
