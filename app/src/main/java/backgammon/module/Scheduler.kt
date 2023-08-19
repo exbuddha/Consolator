@@ -697,9 +697,7 @@ fun LifecycleOwner.relaunchJobIfNotActive(
     block: CoroutineStep) =
     if (instance.getter.call()?.isActive == true) instance as Job
     else launch(context, start, block).also { instance.setter.call(it) }
-fun LifecycleOwner.close(node: KClass<out Annotation>) {
-    State[1] = State.Failed
-}
+fun LifecycleOwner.close(node: KClass<out Annotation>) {}
 infix fun Job.onCancel(action: DescriptiveStep) {}
 
 val mainThread = Thread.currentThread()
@@ -750,6 +748,10 @@ typealias JobFunction = suspend (Any?) -> Any?
 @Retention(SOURCE)
 @Target(CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
 annotation class JobTreeRoot
+
+@Retention(SOURCE)
+@Target(CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+annotation class JobTree(val branch: String = "", val level: UByte = 0u)
 
 infix fun <R, S> (suspend () -> R).then(next: suspend () -> S): suspend () -> S = {
     this@then()

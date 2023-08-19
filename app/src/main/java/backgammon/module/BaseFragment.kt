@@ -52,6 +52,7 @@ abstract class BaseFragment : Fragment() {
             }
         } onCancel {
             // handle listening error
+            State[1] = State.Failed
         }
         info(UI_TAG, "Main fragment view is created.")
     }
