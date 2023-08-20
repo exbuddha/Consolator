@@ -25,8 +25,7 @@ open class BaseService : Service(), BaseServiceScope {
         work<StartCommandResolver> {
             clockAhead {
                 startTime = getStartTimeExtra(intent)
-                with(Scheduler) {
-                    clock?.startTime = startTime
+                scheduler {
                     if (netDb === null)
                         sequencer = Scheduler.Sequencer().apply {
                             ioStart {

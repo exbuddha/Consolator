@@ -3,8 +3,8 @@ package backgammon.module.application
 import backgammon.module.*
 import backgammon.module.BaseApplication.Companion.ACTION_NAV_MAIN_UI
 
-class Migration : StepResolver() {
-    override fun resolve(vararg id: Any?) {
+class Migration : Deferral() {
+    override fun commit() {
         // listen to db updates
         // preload data
         // reset function pointers

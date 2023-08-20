@@ -74,8 +74,8 @@ interface UniqueContext { var startTime: Long }
 typealias ContextStep = suspend Context.() -> Unit
 
 private typealias ExceptionHandler = (Thread, Throwable) -> Unit
-private operator fun ExceptionHandler.plus(other: ExceptionHandler): ExceptionHandler = TODO()
-private operator fun ExceptionHandler.minus(other: ExceptionHandler): ExceptionHandler = TODO()
+private operator fun ExceptionHandler.plus(other: ExceptionHandler): ExceptionHandler = this
+private operator fun ExceptionHandler.minus(other: ExceptionHandler): ExceptionHandler = this
 
 typealias AnyArray = Array<out Any?>
 typealias AnyFunction = () -> Any?
@@ -120,13 +120,16 @@ inline fun <R> tryCancelingForResult(block: () -> R) =
 
 inline fun <reified R : Any> Any?.asType(): R? =
     if (this is R) this else null
-fun <T : Any> KClass<out T>.reconstruct(vararg args: Any?): T =
-    if (isCompanion) objectInstance!!
-    else firstConstructor().call(*args)
+fun <T : Any> KClass<out T>.reconstruct(vararg args: Any?): T = when {
+    isCompanion -> objectInstance!!
+    args.isEmpty() -> emptyConstructor().call()
+    else -> firstConstructor().call(*args)
+}
+fun <T : Any> KClass<out T>.emptyConstructor() = constructors.first { it.parameters.isEmpty() }
 fun <T : Any> KClass<out T>.firstConstructor() = constructors.first()
 fun <T : Any> KMutableProperty<out T?>.reconstruct(type: KClass<out T>, relay: KMutableProperty<out T?>? = this) =
     if (getter.call() === null) {
-        setter.call(type.firstConstructor().call())
+        setter.call(type.emptyConstructor().call())
         relay
     } else this
 

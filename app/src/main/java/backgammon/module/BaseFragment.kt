@@ -27,7 +27,7 @@ abstract class BaseFragment : Fragment() {
             show(this@BaseFragment)
         }
         launch @MainViewGroup @Listening {
-            Scheduler.EventBus.collect {
+            Scheduler.EventBus.collectSafely {
                 when (it?.transit) {
                     ACTION_NAV_MAIN_UI -> {
                         viewModel?.apply {
@@ -65,8 +65,8 @@ abstract class BaseFragment : Fragment() {
                     buildAppDatabase()
                     schedule(Context::signalDbCreated)
                     if (session === null)
-                        session = with(db!!.runtimeDao()) {
-                            tryCancelingForResult {
+                        session = tryCancelingForResult {
+                            runtimeDao {
                                 getSession(
                                     newSession(instance!!.startTime))
                             }
@@ -85,7 +85,7 @@ abstract class BaseFragment : Fragment() {
         throw BaseImplementationRestriction
     }
 
-    inline fun <reified R> screenEventInterceptor(
+    private inline fun <reified R> screenEventInterceptor(
         listener: Any,
         callback: KFunction<R>,
         vararg param: Any?,

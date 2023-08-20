@@ -20,8 +20,9 @@ open class BaseApplication : Application(), UniqueContext {
         }
         super.onCreate()
         instance = this
-        with(Scheduler) {
-            clock = Scheduler.Clock(priority = Thread.MAX_PRIORITY).alsoStart()
+        scheduler {
+            clock = Scheduler.Clock(priority = Thread.MAX_PRIORITY)
+                .alsoStart()
             observe()
         }
         startService(intendFor(BaseService::class).putExtra(START_TIME_KEY, startTime))

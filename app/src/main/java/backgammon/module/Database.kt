@@ -295,6 +295,9 @@ abstract class NetworkDao {
     abstract suspend fun dropNetworkCapabilities()
 }
 
+inline fun <R> runtimeDao(block: RuntimeDao.() -> R) = db!!.runtimeDao().block()
+inline fun <R> networkDao(block: NetworkDao.() -> R) = netDb!!.networkDao().block()
+
 private val buildInfo
     get() = "${BuildConfig.APPLICATION_ID} ${BuildConfig.BUILD_TYPE} ${BuildConfig.VERSION_NAME}"
 

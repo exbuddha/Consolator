@@ -16,13 +16,13 @@ import backgammon.module.BaseActivity.*
 import backgammon.module.Scheduler.Lock
 import backgammon.module.application.*
 
-inline fun <reified R : Resolver, T> Context.defer(member: KCallable<T>) =
+inline fun <reified R : Deferral, T> Context.defer(member: KCallable<T>) =
     Scheduler.defer(member, R::class, this)
-inline fun <reified R : Resolver> Context.defer(member: KFunction<Unit>, vararg value: Any?, noinline `super`: Work) =
+inline fun <reified R : Deferral> Context.defer(member: KFunction<Unit>, vararg value: Any?, noinline `super`: Work) =
     Scheduler.defer(member, R::class, this, *value, `super`)
-inline fun <reified R : Resolver> Context.work(vararg id: Any?, noinline work: Work) =
+inline fun <reified R : Deferral> Context.work(vararg id: Any?, noinline work: Work) =
     Scheduler.work(this, R::class, *id, work = work)
-inline fun <reified R : Resolver> Context.step(vararg id: Any?, noinline step: CoroutineStep? = null) =
+inline fun <reified R : Deferral> Context.step(vararg id: Any?, noinline step: CoroutineStep? = null) =
     work<R>(*id) { Scheduler.step(this, R::class, *id, step = step) }
 
 interface SchedulerScope : CoroutineScope {
@@ -31,11 +31,11 @@ interface SchedulerScope : CoroutineScope {
 }
 
 object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, StepObserver {
-    inline fun <reified R : Resolver, T> defer(member: KCallable<T>, resolver: KClass<out R>?, vararg value: Any?): Unit? =
+    inline fun <reified R : Deferral, T> defer(member: KCallable<T>, resolver: KClass<out R>?, vararg value: Any?): Unit? =
         when (resolver) {
             null -> null
             Migration::class ->
-                setResolverThenResolve(
+                setResolverThenCommit(
                     ::applicationMigrationResolver,
                     Migration::class)
             else -> when (member.javaClass.enclosingClass) {
@@ -158,11 +158,9 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     open class Clock(
         name: String? = null,
         priority: Int = Thread.currentThread().priority
-    ) : HandlerThread(name, priority), UniqueContext {
-        override var startTime = 0L
+    ) : HandlerThread(name, priority) {
         override fun start() {
             commitAsyncIfNotAlive {
-                startTime = now()
                 super.start()
                 queue = java.util.LinkedList()
             }
@@ -652,10 +650,9 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         if (step !== null) runBlocking { step() }
     }
 
-    object EventBus : Flow<Step?> {
-        override suspend fun collect(collector: FlowCollector<Step?>) {
-            collector.emitAll(this)
-        }
+    @OptIn(FlowPreview::class)
+    object EventBus : AbstractFlow<Step?>() {
+        override suspend fun collectSafely(collector: FlowCollector<Step?>) {}
         fun signal(transit: Short) {}
     }
 
@@ -665,6 +662,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
 val Step.transit
     get() = Scheduler.trySafelyForAnnotatedEvent(this as KFunction<*>)?.transit
 
+inline fun <R> scheduler(block: Scheduler.() -> R) = Scheduler.block()
 fun scheduleNow(step: Step) { Scheduler.value = step }
 fun schedule(step: Step) = Scheduler.postValue(step)
 fun Context.scheduleNow(ref: ContextStep) = scheduleNow(step = { ref() })
@@ -705,10 +703,13 @@ fun Thread.isMainThread() = this === mainThread
 fun onMainThread() = Thread.currentThread().isMainThread()
 private fun withPriority(priority: Int, target: Runnable) = Thread(target).also { it.priority = priority }
 
-abstract class WorkRef {
+abstract class Deferral {
+    abstract fun commit(): Unit?
+}
+abstract class WorkRef : Deferral() {
     var work: Work? = null
     var id: AnyArray? = null
-    open fun commit(): Unit? {
+    override fun commit(): Unit? {
         work?.invoke() ?: return null
         return Unit
     }
@@ -840,8 +841,8 @@ typealias Work = () -> Unit
 typealias Step = suspend () -> Unit
 typealias CoroutineStep = suspend CoroutineScope.() -> Unit
 
-private typealias ResolverKClass = KClass<out Resolver>
-private typealias ResolverKProperty = KMutableProperty<out Resolver?>
+private typealias ResolverKClass = KClass<out Deferral>
+private typealias ResolverKProperty = KMutableProperty<out Deferral?>
 
 private typealias ID = Short
 sealed interface State {
