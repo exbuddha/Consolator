@@ -452,7 +452,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         fun captureOnceBefore(block: CaptureFunction) {
             captureOnce(before, block)
         }
-        private fun nullStepTo(block: CaptureFunction, async: Boolean = false) = Triple(nullStep, block, async)
+        private fun nullStepTo(block: CaptureFunction) = Triple(nullStep, block, false)
         private fun stepToNull(async: Boolean = false, step: () -> LiveStep?) = Triple(step, nullBlock, async)
         private val nullStep: () -> LiveStep? = { null }
         private val nullBlock: CaptureFunction? = null
