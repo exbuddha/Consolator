@@ -282,7 +282,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             prepare()
             while (jump() ?: return) {
                 (seq[ln].run(::observe) ?:
-                bypass()) && continue
+                capture()) && continue
             }
             end()
         }
@@ -296,7 +296,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             isObserving = true
             return true
         }
-        private fun bypass(step: Step? = null): Boolean {
+        private fun capture(step: Step? = null): Boolean {
             latestCapture = seq[ln].second?.invoke(step).also {
                 if (it is Boolean) return it
             }
