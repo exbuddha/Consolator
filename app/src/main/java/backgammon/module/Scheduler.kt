@@ -656,8 +656,12 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
 
     @OptIn(FlowPreview::class)
     object EventBus : AbstractFlow<Step?>() {
-        override suspend fun collectSafely(collector: FlowCollector<Step?>) {}
-        fun signal(transit: Short) {}
+        override suspend fun collectSafely(collector: FlowCollector<Step?>) {
+            // emit signalled events to collector
+        }
+        fun signal(transit: Short) {
+            // record signal event
+        }
     }
 
     enum class Lock : State { Closed, Open }
