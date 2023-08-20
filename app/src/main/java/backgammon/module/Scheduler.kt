@@ -748,8 +748,6 @@ abstract class ForgetfulWorkResolver : WorkRef(), Resolver {
     override fun commit() = super.commit().also { work = null }
 }
 
-typealias JobFunction = suspend (Any?) -> Any?
-
 @Retention(SOURCE)
 @Target(CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
 annotation class JobTreeRoot
@@ -803,6 +801,8 @@ fun <R> with(vararg args: Any?): (KCallable<R>) -> R = {
     it.call(args)
 }
 
+typealias JobFunction = suspend (Any?) -> Any?
+typealias CoroutineStep = suspend CoroutineScope.() -> Unit
 private typealias DescriptiveStep = suspend SchedulerScope.(Job) -> Unit
 private typealias SequencerScope = LiveDataScope<Step?>
 suspend fun SequencerScope.reset() { Scheduler.sequencer?.apply { emit { reset() } } }
@@ -843,7 +843,6 @@ private typealias RunnableList = MutableList<Runnable>
 private typealias MessageFunction = (Message) -> Any?
 typealias Work = () -> Unit
 typealias Step = suspend () -> Unit
-typealias CoroutineStep = suspend CoroutineScope.() -> Unit
 
 private typealias ResolverKClass = KClass<out Deferral>
 private typealias ResolverKProperty = KMutableProperty<out Deferral?>
