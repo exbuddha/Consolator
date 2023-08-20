@@ -13,6 +13,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import backgammon.module.BaseService.*
 import backgammon.module.BaseActivity.*
+import backgammon.module.Scheduler.EventBus.Relay
 import backgammon.module.Scheduler.Lock
 import backgammon.module.application.*
 
@@ -667,14 +668,16 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             // record signal event
         }
 
-        object Relay : Step { override suspend fun invoke() {} }
+        abstract class Relay(val transit: Short? = null) : Step {
+            override suspend fun invoke() {}
+        }
     }
 
     enum class Lock : State { Closed, Open }
 }
 
 val Step.transit
-    get() = annotatedEvent?.transit
+    get() = if (this is Relay) transit else annotatedEvent?.transit
 val ContextStep.transit
     get() = annotatedEvent?.transit
 private val Any.annotatedEvent
