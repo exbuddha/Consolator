@@ -281,24 +281,26 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         private fun advance() {
             prepare()
             while (jump() ?: return) {
-                val ref = seq[ln]
-                val latestStep = ref.first.invoke()
-                this.latestStep = latestStep
-                if (latestStep === null)
-                    bypass()
-                else {
-                    run(latestStep)
-                    if (ref.third) continue
-                }
+                (seq[ln].run(::observe) ?:
+                bypass()) && continue
             }
             end()
         }
-        private fun run(step: LiveStep) {
-            step.observeForever(observer)
+        private fun observe(work: LiveWork): Boolean? {
+            work.first.invoke().let { step ->
+                latestStep = step
+                if (step === null) return null
+                try { step.observeForever(observer) }
+                catch (_: Throwable) { return false }
+            }
             isObserving = true
+            return true
         }
-        private fun bypass(step: Step? = null) {
-            latestCapture = seq[ln].second?.invoke(step)
+        private fun bypass(step: Step? = null): Boolean {
+            latestCapture = seq[ln].second?.invoke(step).also {
+                if (it is Boolean) return it
+            }
+            return true
         }
         fun reset(step: LiveStep? = latestStep) {
             step?.removeObserver(observer)
