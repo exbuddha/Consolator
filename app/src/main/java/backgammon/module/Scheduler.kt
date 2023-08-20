@@ -751,7 +751,7 @@ private fun Resolver.assignStepThenResolve(step: CoroutineStep?) {
 }
 private fun Resolver.assignStepThenResolveAndUnset(step: CoroutineStep?) {
     assignStepThenResolve(step)
-    asMutableProperty().expire()
+    asMutableProperty()?.expire()
 }
 abstract class StepResolver : StepRef(), Resolver
 abstract class WorkResolver : WorkRef(), Resolver
@@ -848,7 +848,7 @@ interface Expiry : MutableSet<Lifetime> {
 }
 typealias Lifetime = (KMutableProperty<*>) -> Boolean?
 private fun KMutableProperty<*>.expire() = setter.call(null)
-private fun Any?.asMutableProperty() = this as KMutableProperty<*>
+private fun Any?.asMutableProperty() = this as? KMutableProperty<*>
 
 private typealias RunnableList = MutableList<Runnable>
 private typealias MessageFunction = (Message) -> Any?
