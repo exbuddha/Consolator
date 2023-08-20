@@ -8,12 +8,15 @@ import androidx.fragment.app.*
 import kotlin.reflect.*
 import kotlinx.coroutines.*
 import backgammon.module.Predicate
+import java.lang.ref.WeakReference
 
 fun Fragment(context: Context, interceptor: ScreenEventInterceptor?): Pair<Fragment, Int?> =
-    Pair(OverlayFragment(interceptor), null)
+    Pair(OverlayFragment(WeakReference(context), interceptor), null)
 
-open class OverlayFragment(private val interceptor: ScreenEventInterceptor?) :
-    Fragment(),
+open class OverlayFragment(
+    private val context: WeakReference<out Context>,
+    private val interceptor: ScreenEventInterceptor?
+) : Fragment(),
     OnContextClickListener {
     override fun onContextClick(event: MotionEvent): Boolean {
         intercept(
