@@ -659,16 +659,23 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         override suspend fun collectSafely(collector: FlowCollector<Step?>) {
             // emit signalled events to collector
         }
-        fun signal(transit: Short) {
+
+        fun signal(transit: Short?) {
             // record signal event
         }
+
+        object Relay : Step { override suspend fun invoke() {} }
     }
 
     enum class Lock : State { Closed, Open }
 }
 
 val Step.transit
-    get() = Scheduler.trySafelyForAnnotatedEvent(this as KFunction<*>)?.transit
+    get() = annotatedEvent?.transit
+val ContextStep.transit
+    get() = annotatedEvent?.transit
+private val Any.annotatedEvent
+    get() = Scheduler.trySafelyForAnnotatedEvent(this as KFunction<*>)
 
 inline fun <R> scheduler(block: Scheduler.() -> R) = Scheduler.block()
 fun scheduleNow(step: Step) { Scheduler.value = step }

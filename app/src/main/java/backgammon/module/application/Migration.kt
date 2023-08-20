@@ -1,6 +1,7 @@
 package backgammon.module.application
 
 import backgammon.module.*
+import backgammon.module.Scheduler.EventBus.signal
 import backgammon.module.BaseApplication.Companion.ACTION_NAV_MAIN_UI
 
 class Migration : Deferral() {
@@ -9,6 +10,6 @@ class Migration : Deferral() {
         // preload data
         // reset function pointers
         // repeat until stable
-        Scheduler.EventBus.signal(@JobTreeRoot ACTION_NAV_MAIN_UI)
+        signal(@JobTreeRoot ACTION_NAV_MAIN_UI)
     }
 }

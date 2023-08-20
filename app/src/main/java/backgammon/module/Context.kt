@@ -11,6 +11,7 @@ import java.lang.*
 import kotlin.reflect.*
 import kotlinx.coroutines.*
 import backgammon.module.Scheduler.Event
+import backgammon.module.Scheduler.EventBus
 import backgammon.module.State.Resolved
 import backgammon.module.AppDatabase.Companion.File
 import backgammon.module.BaseApplication.Companion.ACTION_MIGRATE_APP
@@ -27,16 +28,8 @@ val foregroundLifecycleOwner: LifecycleOwner
 val foregroundContext: Context
     get() = instance!!
 
-inline fun <reified D : RoomDatabase> Context.buildDatabase() = with(D::class) {
-    Room.databaseBuilder(
-        this@buildDatabase,
-        java,
-        (annotations.last { it is File } as File).name
-    ).build()
-}
-fun Context.buildAppDatabase() = commitAsync(AppDatabase, { db === null }) {
-    db = buildDatabase()
-}
+fun Context.signal(step: ContextStep) =
+    EventBus.signal(step.transit)
 
 @Event(ACTION_MIGRATE_APP)
 fun Context.signalDbCreated() {
@@ -55,14 +48,25 @@ fun Context.signalNetDbInitialized() {
     // update net function pointers
 }
 
-fun Context.intendFor(cls: Class<*>) = Intent(this, cls)
-fun Context.intendFor(cls: KClass<*>) = intendFor(cls.java)
-fun Context.isPermissionGranted(permission: String) =
-    ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
 fun Context.isNetworkStateAccessPermitted() =
     isPermissionGranted(Manifest.permission.ACCESS_NETWORK_STATE)
 fun Context.isInternetAccessPermitted() =
     isNetworkStateAccessPermitted() and isPermissionGranted(Manifest.permission.INTERNET)
+fun Context.isPermissionGranted(permission: String) =
+    ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
+fun Context.intendFor(cls: Class<*>) = Intent(this, cls)
+fun Context.intendFor(cls: KClass<*>) = intendFor(cls.java)
+
+inline fun <reified D : RoomDatabase> Context.buildDatabase() = with(D::class) {
+    Room.databaseBuilder(
+        this@buildDatabase,
+        java,
+        (annotations.last { it is File } as File).name
+    ).build()
+}
+fun Context.buildAppDatabase() = commitAsync(AppDatabase, { db === null }) {
+    db = buildDatabase()
+}
 
 fun now() = java.util.Calendar.getInstance().timeInMillis
 fun getDelayTime(interval: Long, last: Long) =

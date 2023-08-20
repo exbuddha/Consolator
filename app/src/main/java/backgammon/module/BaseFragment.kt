@@ -13,6 +13,7 @@ import kotlin.annotation.AnnotationTarget.*
 import kotlin.reflect.*
 import kotlinx.coroutines.*
 import backgammon.module.Scheduler.Event.Listening
+import backgammon.module.Scheduler.EventBus
 import backgammon.module.BaseApplication.Companion.ACTION_NAV_MAIN_UI
 import backgammon.module.BaseApplication.Companion.ACTION_MIGRATE_APP
 import backgammon.module.application.*
@@ -27,7 +28,7 @@ abstract class BaseFragment : Fragment() {
             show(this@BaseFragment)
         }
         launch @MainViewGroup @Listening {
-            Scheduler.EventBus.collectSafely {
+            EventBus.collectSafely {
                 when (it?.transit) {
                     ACTION_NAV_MAIN_UI -> {
                         viewModel?.apply {
@@ -63,7 +64,7 @@ abstract class BaseFragment : Fragment() {
             trySafelyCanceling {
                 with(context) {
                     buildAppDatabase()
-                    schedule(Context::signalDbCreated)
+                    signal(Context::signalDbCreated)
                     if (session === null)
                         session = tryCancelingForResult {
                             runtimeDao {
@@ -71,7 +72,7 @@ abstract class BaseFragment : Fragment() {
                                     newSession(instance!!.startTime))
                             }
                         }
-                    schedule(Context::signalSessionCreated)
+                    signal(Context::signalSessionCreated)
                 }
             }
         }
