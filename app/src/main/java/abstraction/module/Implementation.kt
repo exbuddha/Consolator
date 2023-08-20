@@ -10,10 +10,12 @@ import kotlinx.coroutines.*
 import backgammon.module.Predicate
 import java.lang.ref.WeakReference
 
-fun Fragment(context: Context, interceptor: ScreenEventInterceptor?): Pair<Fragment, Int?> =
-    Pair(OverlayFragment(WeakReference(context), interceptor), null)
+object UI : (Context, ScreenEventInterceptor?) -> Pair<out Fragment, Int?> {
+    override fun invoke(context: Context, interceptor: ScreenEventInterceptor?): Pair<out Fragment, Int?> =
+        Pair(OverlayFragment(WeakReference(context), interceptor), null)
+}
 
-open class OverlayFragment(
+private open class OverlayFragment(
     private val context: WeakReference<out Context>,
     private val interceptor: ScreenEventInterceptor?
 ) : Fragment(),

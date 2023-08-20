@@ -80,7 +80,7 @@ abstract class BaseFragment : Fragment() {
 
     private var navigate = fun(_: View, bundle: Bundle?): Pair<Fragment, Int?> {
         if (bundle?.getShort(ACTION_KEY, -1) == ACTION_NAV_MAIN_UI)
-            abstraction.module.Fragment(requireActivity(), ::screenEventInterceptor).apply {
+            abstraction.module.UI(requireActivity(), ::screenEventInterceptor).apply {
                 // ...
             }
         throw BaseImplementationRestriction
