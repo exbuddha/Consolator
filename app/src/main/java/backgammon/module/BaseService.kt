@@ -32,7 +32,7 @@ open class BaseService : Service(), BaseServiceScope {
                                 reset()
                                 netDb = trySafelyForResult(::buildDatabase)
                                 // update net db records
-                                schedule(Context::signalNetDbInitialized)
+                                event(Context::stageNetDbInitialized)
                             }
                         }
                 }

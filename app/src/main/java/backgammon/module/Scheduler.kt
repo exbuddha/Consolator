@@ -660,6 +660,9 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             // emit signalled events to collector
         }
 
+        fun event(step: ContextStep) {
+            // record context event
+        }
         fun signal(transit: Short?) {
             // record signal event
         }

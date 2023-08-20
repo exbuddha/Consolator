@@ -64,7 +64,7 @@ abstract class BaseFragment : Fragment() {
             trySafelyCanceling {
                 with(context) {
                     buildAppDatabase()
-                    signal(Context::signalDbCreated)
+                    event(Context::stageDbCreated)
                     if (session === null)
                         session = tryCancelingForResult {
                             runtimeDao {
@@ -72,7 +72,7 @@ abstract class BaseFragment : Fragment() {
                                     newSession(instance!!.startTime))
                             }
                         }
-                    signal(Context::signalSessionCreated)
+                    event(Context::stageSessionCreated)
                 }
             }
         }

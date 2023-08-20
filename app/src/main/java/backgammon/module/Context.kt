@@ -28,23 +28,23 @@ val foregroundLifecycleOwner: LifecycleOwner
 val foregroundContext: Context
     get() = instance!!
 
-fun Context.signal(step: ContextStep) =
-    EventBus.signal(step.transit)
+fun Context.event(stage: ContextStep) =
+    EventBus.event(stage)
 
 @Event(ACTION_MIGRATE_APP)
-fun Context.signalDbCreated() {
+fun Context.stageDbCreated() {
     reactToUncaughtExceptionThrown += { th, ex ->
         // record in db
     }
 }
 
 @Event(ACTION_MIGRATE_APP)
-fun Context.signalSessionCreated() {
+fun Context.stageSessionCreated() {
     // update db records
     State[1] = Resolved
 }
 
-fun Context.signalNetDbInitialized() {
+fun Context.stageNetDbInitialized() {
     // update net function pointers
 }
 
