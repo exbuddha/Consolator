@@ -222,8 +222,8 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             io(false, step)
             start()
         }
-        fun ioResume(step: SequencerStep) {
-            io(false, step)
+        fun ioResume(async: Boolean = false, step: SequencerStep) {
+            io(async, step)
             resume()
         }
         fun io(async: Boolean = false, step: SequencerStep) = attach(Dispatchers.IO, async, step)
@@ -234,8 +234,8 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             unconfined(false, step)
             start()
         }
-        fun unconfinedResume(step: SequencerStep) {
-            unconfined(false, step)
+        fun unconfinedResume(async: Boolean = false, step: SequencerStep) {
+            unconfined(async, step)
             resume()
         }
         fun unconfined(async: Boolean = false, step: SequencerStep) = attach(Dispatchers.Unconfined, async, step)
