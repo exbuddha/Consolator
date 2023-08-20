@@ -1,5 +1,6 @@
 package abstraction.module
 
+import android.content.Context
 import android.util.*
 import android.view.GestureDetector.*
 import android.view.*
@@ -8,7 +9,7 @@ import kotlin.reflect.*
 import kotlinx.coroutines.*
 import backgammon.module.Predicate
 
-fun Fragment(interceptor: ScreenEventInterceptor?): Pair<Fragment, Int?> =
+fun Fragment(context: Context, interceptor: ScreenEventInterceptor?): Pair<Fragment, Int?> =
     Pair(OverlayFragment(interceptor), null)
 
 open class OverlayFragment(private val interceptor: ScreenEventInterceptor?) :
