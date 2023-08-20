@@ -226,10 +226,10 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             io(false, step)
             resume()
         }
-        fun io(async: Boolean, step: SequencerStep) = attach(Dispatchers.IO, async, step)
-        fun io(index: Int, async: Boolean, step: SequencerStep) = attach(index, Dispatchers.IO, async, step)
-        fun ioAfter(async: Boolean, step: SequencerStep) = attachAfter(Dispatchers.IO, async, step)
-        fun ioBefore(async: Boolean, step: SequencerStep) = attachBefore(Dispatchers.IO, async, step)
+        fun io(async: Boolean = false, step: SequencerStep) = attach(Dispatchers.IO, async, step)
+        fun io(index: Int, async: Boolean = false, step: SequencerStep) = attach(index, Dispatchers.IO, async, step)
+        fun ioAfter(async: Boolean = false, step: SequencerStep) = attachAfter(Dispatchers.IO, async, step)
+        fun ioBefore(async: Boolean = false, step: SequencerStep) = attachBefore(Dispatchers.IO, async, step)
         fun unconfinedStart(step: SequencerStep) {
             unconfined(false, step)
             start()
@@ -238,10 +238,10 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             unconfined(false, step)
             resume()
         }
-        fun unconfined(async: Boolean, step: SequencerStep) = attach(Dispatchers.Unconfined, async, step)
-        fun unconfined(index: Int, async: Boolean, step: SequencerStep) = attach(index, Dispatchers.Unconfined, async, step)
-        fun unconfinedAfter(async: Boolean, step: SequencerStep) = attachAfter(Dispatchers.Unconfined, async, step)
-        fun unconfinedBefore(async: Boolean, step: SequencerStep) = attachBefore(Dispatchers.Unconfined, async, step)
+        fun unconfined(async: Boolean = false, step: SequencerStep) = attach(Dispatchers.Unconfined, async, step)
+        fun unconfined(index: Int, async: Boolean = false, step: SequencerStep) = attach(index, Dispatchers.Unconfined, async, step)
+        fun unconfinedAfter(async: Boolean = false, step: SequencerStep) = attachAfter(Dispatchers.Unconfined, async, step)
+        fun unconfinedBefore(async: Boolean = false, step: SequencerStep) = attachBefore(Dispatchers.Unconfined, async, step)
 
         private var observer: StepObserver = Scheduler
         private var seq: MutableList<LiveWork> = mutableListOf()
@@ -375,37 +375,37 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         fun attachOnceBefore(work: LiveWork) {
             attachOnce(before, work)
         }
-        fun attach(async: Boolean, step: SequencerStep) =
+        fun attach(async: Boolean = false, step: SequencerStep) =
             stepToNull(async) { liveData(block = step) }.also { attach(it) }
-        fun attach(async: Boolean, step: SequencerStep, capture: CaptureFunction) =
+        fun attach(async: Boolean = false, step: SequencerStep, capture: CaptureFunction) =
             Triple({ liveData(block = step) }, capture, async).also { attach(it) }
-        fun attach(context: CoroutineContext, async: Boolean, step: SequencerStep) =
+        fun attach(context: CoroutineContext, async: Boolean = false, step: SequencerStep) =
             stepToNull(async) { liveData(context, block = step) }.also { attach(it) }
-        fun attach(context: CoroutineContext, async: Boolean, step: SequencerStep, capture: CaptureFunction) =
+        fun attach(context: CoroutineContext, async: Boolean = false, step: SequencerStep, capture: CaptureFunction) =
             Triple({ liveData(context, block = step) }, capture, async).also { attach(it) }
-        fun attach(index: Int, async: Boolean, step: SequencerStep) =
+        fun attach(index: Int, async: Boolean = false, step: SequencerStep) =
             stepToNull(async) { liveData(block = step) }.also { attach(index, it) }
-        fun attach(index: Int, async: Boolean, step: SequencerStep, capture: CaptureFunction) =
+        fun attach(index: Int, async: Boolean = false, step: SequencerStep, capture: CaptureFunction) =
             Triple({ liveData(block = step) }, capture, async).also { attach(index, it) }
-        fun attach(index: Int, context: CoroutineContext, async: Boolean, step: SequencerStep) =
+        fun attach(index: Int, context: CoroutineContext, async: Boolean = false, step: SequencerStep) =
             stepToNull(async) { liveData(context, block = step) }.also { attach(index, it) }
-        fun attach(index: Int, context: CoroutineContext, async: Boolean, step: SequencerStep, capture: CaptureFunction) =
+        fun attach(index: Int, context: CoroutineContext, async: Boolean = false, step: SequencerStep, capture: CaptureFunction) =
             Triple({ liveData(context, block = step) }, capture, async).also { attach(index, it) }
-        fun attachAfter(async: Boolean, step: SequencerStep) =
+        fun attachAfter(async: Boolean = false, step: SequencerStep) =
             stepToNull(async) { liveData(block = step) }.also { attachAfter(it) }
-        fun attachAfter(async: Boolean, step: SequencerStep, capture: CaptureFunction) =
+        fun attachAfter(async: Boolean = false, step: SequencerStep, capture: CaptureFunction) =
             Triple({ liveData(block = step) }, capture, async).also { attachAfter(it) }
-        fun attachAfter(context: CoroutineContext, async: Boolean, step: SequencerStep) =
+        fun attachAfter(context: CoroutineContext, async: Boolean = false, step: SequencerStep) =
             stepToNull(async) { liveData(context, block = step) }.also { attachAfter(it) }
-        fun attachAfter(context: CoroutineContext, async: Boolean, step: SequencerStep, capture: CaptureFunction) =
+        fun attachAfter(context: CoroutineContext, async: Boolean = false, step: SequencerStep, capture: CaptureFunction) =
             Triple({ liveData(context, block = step) }, capture, async).also { attachAfter(it) }
-        fun attachBefore(async: Boolean, step: SequencerStep) =
+        fun attachBefore(async: Boolean = false, step: SequencerStep) =
             stepToNull(async) { liveData(block = step) }.also { attachBefore(it) }
-        fun attachBefore(async: Boolean, step: SequencerStep, capture: CaptureFunction) =
+        fun attachBefore(async: Boolean = false, step: SequencerStep, capture: CaptureFunction) =
             Triple({ liveData(block = step) }, capture, async).also { attachBefore(it) }
-        fun attachBefore(context: CoroutineContext, async: Boolean, step: SequencerStep) =
+        fun attachBefore(context: CoroutineContext, async: Boolean = false, step: SequencerStep) =
             stepToNull(async) { liveData(context, block = step) }.also { attachBefore(it) }
-        fun attachBefore(context: CoroutineContext, async: Boolean, step: SequencerStep, capture: CaptureFunction) =
+        fun attachBefore(context: CoroutineContext, async: Boolean = false, step: SequencerStep, capture: CaptureFunction) =
             Triple({ liveData(context, block = step) }, capture, async).also { attachBefore(it) }
 
         fun capture(block: CaptureFunction) {
