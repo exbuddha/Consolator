@@ -218,7 +218,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         }
     }
 
-    class Sequencer {
+    class Sequencer(private var observer: StepObserver) {
         fun ioStart(step: SequencerStep) {
             io(false, step)
             start()
@@ -244,7 +244,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         fun unconfinedAfter(async: Boolean = false, step: SequencerStep) = attachAfter(Dispatchers.Unconfined, async, step)
         fun unconfinedBefore(async: Boolean = false, step: SequencerStep) = attachBefore(Dispatchers.Unconfined, async, step)
 
-        private var observer: StepObserver = Scheduler
+        constructor() : this(Scheduler)
         private var seq: MutableList<LiveWork> = mutableListOf()
         private var ln: Int = -1
         private var latestStep: LiveStep? = null
@@ -674,7 +674,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             // record signal event
         }
 
-        abstract class Relay(val transit: Short? = null) : Step {
+        open class Relay(val transit: Short? = null) : Step {
             override suspend fun invoke() {}
         }
     }
