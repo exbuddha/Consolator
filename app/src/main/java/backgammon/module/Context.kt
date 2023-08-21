@@ -88,7 +88,6 @@ typealias LongFunction = () -> Long
 typealias Predicate = () -> Boolean
 typealias AnyPredicate = (Any?) -> Boolean
 typealias IntPredicate = (Int) -> Boolean
-typealias ThrowablePredicate = (Throwable?) -> Boolean
 
 const val START_TIME_KEY = "1"
 const val MODE_KEY = "2"
@@ -131,11 +130,17 @@ fun <T : Any> KClass<out T>.reconstruct(vararg args: Any?): T = when {
 }
 fun <T : Any> KClass<out T>.emptyConstructor() = constructors.first { it.parameters.isEmpty() }
 fun <T : Any> KClass<out T>.firstConstructor() = constructors.first()
-fun <T : Any> KMutableProperty<out T?>.reconstruct(type: KClass<out T>, relay: KMutableProperty<out T?>? = this) =
+fun <T : Any> KMutableProperty<out T?>.reconstruct(type: KClass<out T>, provider: Any? = null, relay: KMutableProperty<out T?>? = this) =
     if (getter.call() === null) {
-        setter.call(type.emptyConstructor().call())
+        setter.call(when {
+            type.isInner ->
+                setter.call((provider.asType<Provider>())?.invoke(type))
+            else ->
+                type.emptyConstructor().call()
+        })
         relay
     } else this
+typealias Provider = (KClass<*>) -> Any
 
 open class BaseImplementationRestriction(
     msg: String = "Base implementation restricted",

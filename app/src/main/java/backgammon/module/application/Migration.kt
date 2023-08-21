@@ -12,4 +12,8 @@ class Migration : Deferral() {
         // repeat until stable
         signal(@JobTreeRoot ACTION_NAV_MAIN_UI)
     }
+
+    var progress: Byte = 0
+        get() = (field * 100 / Byte.MAX_VALUE).toByte()
+        private set
 }

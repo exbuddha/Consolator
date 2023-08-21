@@ -152,9 +152,9 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     var applicationMigrationResolver: Migration? = null
         private set
     fun setResolverThenCommit(instance: ResolverKProperty, type: ResolverKClass) =
-        (instance.reconstruct(type, null) as? WorkRef)?.commit()
+        (instance.reconstruct(type, relay = null) as? WorkRef)?.commit()
     fun setResolverThenResolve(instance: ResolverKProperty, type: ResolverKClass, vararg value: Any?) =
-        (instance.reconstruct(type, null) as? Resolver)?.resolve(value)
+        (instance.reconstruct(type, value[0], null) as? Resolver)?.resolve(value)
 
     open class Clock(
         name: String? = null,
@@ -770,10 +770,20 @@ private fun Resolver.assignStepThenResolveAndUnset(step: CoroutineStep?) {
     assignStepThenResolve(step)
     asMutableProperty()?.expire()
 }
-abstract class StepResolver : StepRef(), Resolver
 abstract class WorkResolver : WorkRef(), Resolver
 abstract class ForgetfulWorkResolver : WorkRef(), Resolver {
-    override fun commit() = super.commit().also { work = null }
+    override fun commit() {
+        super.commit()
+        work = null
+    }
+}
+abstract class StepResolver : StepRef(), Resolver
+abstract class ForgetfulStepResolver : StepRef(), Resolver {
+    override fun resolve(vararg id: Any?) {
+        commit()
+        work = null
+        this.id = null
+    }
 }
 
 @Retention(SOURCE)

@@ -14,6 +14,7 @@ import backgammon.module.BaseApplication.Companion.ACTION_NAV_MAIN_UI
 class MainFragment : BaseFragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // show animation or progress bar
     }
 
     override var navigate = fun(_: View, bundle: Bundle?): Pair<Fragment, Int?> {
