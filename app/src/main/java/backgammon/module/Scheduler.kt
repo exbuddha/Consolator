@@ -302,7 +302,8 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             return async
         }
         private fun capture(): Boolean {
-            latestCapture = seq[ln].second?.let { capture ->
+            seq[ln].second?.let { capture ->
+                latestCapture = capture
                 capture()?.let {
                     if (it is Boolean) return it
                 }
