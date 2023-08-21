@@ -283,25 +283,29 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             prepare()
             while (jump() ?: return) {
                 (seq[ln].run(::observe) ?:
-                capture()) && continue
+                capture()) || return
             }
             end()
         }
         private fun observe(work: LiveWork): Boolean? {
-            work.first.invoke().let { step ->
-                latestStep = step
-                if (step === null) return null
-                try { step.observeForever(observer) }
-                catch (_: Throwable) { return false }
+            val (step, _, async) = work
+            latestStep = step()
+            try {
+                step()?.observeForever(observer) ?:
+                return null
+            } catch (ex: Throwable) {
+                hasError = true
+                this.ex = ex
+                return false
             }
             isObserving = true
-            return true
+            return async
         }
-        private fun capture(step: Step? = null): Boolean {
-            latestCapture = seq[ln].second?.invoke(step).also {
+        private fun capture(): Boolean {
+            latestCapture = seq[ln].second?.invoke()?.also {
                 if (it is Boolean) return it
             }
-            return true
+            return false
         }
         fun reset(step: LiveStep? = latestStep) {
             step?.removeObserver(observer)
@@ -826,7 +830,7 @@ suspend fun SequencerScope.reset() { Scheduler.sequencer?.apply { emit { reset()
 private typealias SequencerStep = suspend SequencerScope.() -> Unit
 private typealias StepObserver = Observer<Step?>
 private typealias LiveStep = LiveData<Step?>
-private typealias CaptureFunction = (Step?) -> Any?
+private typealias CaptureFunction = AnyFunction
 private typealias LiveWork = Triple<() -> LiveStep?, CaptureFunction?, Boolean>
 private typealias LiveWorkPredicate = (LiveWork) -> Boolean
 
