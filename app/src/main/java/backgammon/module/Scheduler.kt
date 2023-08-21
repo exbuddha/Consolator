@@ -245,8 +245,8 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         fun unconfinedBefore(async: Boolean = false, step: SequencerStep) = attachBefore(Dispatchers.Unconfined, async, step)
 
         constructor() : this(Scheduler)
-        private var seq: MutableList<LiveWork> = mutableListOf()
-        private var ln: Int = -1
+        private var seq: LiveSequence = mutableListOf()
+        private var ln = -1
         private val work
             get() = seq[ln]
         private var latestStep: LiveStep? = null
@@ -308,8 +308,8 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         private fun capture(): Boolean {
             work.second.let { capture ->
                 latestCapture = capture
-                capture?.invoke()?.let {
-                    if (it is Boolean) return it
+                capture?.invoke()?.let { async ->
+                    if (async is Boolean) return async
                 }
             }
             return false
@@ -323,11 +323,11 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
                 isCompleted = true
         }
 
-        var isActive: Boolean = false
-        var isObserving: Boolean = false
-        var isCompleted: Boolean = false
-        var isCancelled: Boolean = false
-        var hasError: Boolean = false
+        var isActive = false
+        var isObserving = false
+        var isCompleted = false
+        var isCancelled = false
+        var hasError = false
         var ex: Throwable? = null
         fun clearFlags() {
             isActive = false
@@ -548,7 +548,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
                     noneReversed(predicate)
             }
         }
-        private inline fun MutableList<LiveWork>.noneReversed(predicate: LiveWorkPredicate): Boolean {
+        private inline fun LiveSequence.noneReversed(predicate: LiveWorkPredicate): Boolean {
             if (size == 0) return true
             for (i in (size - 1) downTo 0)
                 if (predicate(this[i]))
@@ -849,6 +849,7 @@ private typealias StepObserver = Observer<Step?>
 private typealias LiveStep = LiveData<Step?>
 private typealias CaptureFunction = AnyFunction
 private typealias LiveWork = Triple<() -> LiveStep?, CaptureFunction?, Boolean>
+private typealias LiveSequence = MutableList<LiveWork>
 private typealias LiveWorkPredicate = (LiveWork) -> Boolean
 
 interface Expiry : MutableSet<Lifetime> {
