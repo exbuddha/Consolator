@@ -134,7 +134,7 @@ fun <T : Any> KMutableProperty<out T?>.reconstruct(type: KClass<out T>, provider
     if (getter.call() === null) {
         setter.call(when {
             type.isInner ->
-                setter.call((provider.asType<Provider>())?.invoke(type))
+                (provider.asType<Provider>())?.invoke(type)
             else ->
                 type.emptyConstructor().call()
         })

@@ -34,21 +34,21 @@ interface SchedulerScope : CoroutineScope {
 object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, StepObserver {
     inline fun <reified R : Deferral, T> defer(member: KCallable<T>, resolver: KClass<out R>?, vararg value: Any?): Unit? =
         when (resolver) {
-            null -> null
             Migration::class ->
                 setResolverThenCommit(
                     ::applicationMigrationResolver,
                     Migration::class)
+            null -> null
             else -> when (member.javaClass.enclosingClass) {
                 BaseService::class.java -> when (resolver) {
                     StartCommandResolver::class ->
                         setResolverThenCommit(
                             ::serviceOnStartCommandResolver,
-                            WorkResolver::class)
+                            StartCommandResolver::class)
                     BindResolver::class ->
                         setResolverThenCommit(
                             ::serviceOnBindResolver,
-                            WorkResolver::class)
+                            BindResolver::class)
                     else ->
                         throw BaseImplementationRestriction
                 }
@@ -783,6 +783,7 @@ abstract class ForgetfulStepResolver : StepRef(), Resolver {
         commit()
         work = null
         this.id = null
+        step = null
     }
 }
 
