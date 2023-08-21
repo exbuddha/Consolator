@@ -16,11 +16,13 @@ import backgammon.module.Scheduler.Event.Listening
 import backgammon.module.Scheduler.EventBus
 import backgammon.module.BaseApplication.Companion.ACTION_NAV_MAIN_UI
 import backgammon.module.BaseApplication.Companion.ACTION_MIGRATE_APP
-import backgammon.module.application.*
+import backgammon.module.application.Migration
 
 abstract class BaseFragment : Fragment() {
     private val viewModel
         get() = activity?.asType<BaseActivity>()?.viewModel
+
+    protected abstract var navigate: (View, Bundle?) -> Pair<Fragment, Int?>
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -77,21 +79,6 @@ abstract class BaseFragment : Fragment() {
             }
         }
     }
-
-    private var navigate = fun(_: View, bundle: Bundle?): Pair<Fragment, Int?> {
-        if (bundle?.getShort(ACTION_KEY, -1) == ACTION_NAV_MAIN_UI)
-            abstraction.module.UI(requireActivity(), ::screenEventInterceptor).apply {
-                // ...
-            }
-        throw BaseImplementationRestriction
-    }
-
-    private inline fun <reified R> screenEventInterceptor(
-        listener: Any,
-        callback: KFunction<R>,
-        vararg param: Any?,
-        r: Runnable?
-    ): Pair<Predicate?, Boolean?>? = null
 
     override fun onDestroyView() {
         close(MainViewGroup::class)

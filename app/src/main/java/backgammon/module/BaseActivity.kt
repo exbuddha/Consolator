@@ -5,15 +5,15 @@ import androidx.appcompat.app.*
 import androidx.lifecycle.*
 import backgammon.module.activity.*
 import backgammon.module.application.*
-import consolator.module.R
 
 abstract class BaseActivity : AppCompatActivity() {
+    abstract val backgroundLayout: Int
     abstract val viewModel: VM
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (savedInstanceState === null) {
-            setContentView(R.layout.background)
+            setContentView(backgroundLayout)
             viewModel.apply {
                 enableNetworkCapabilitiesCallbackOnStart = isNetworkStateAccessPermitted() and enableNetworkCapabilitiesCallbackOnStart
                 enableInternetAvailabilityCallbackOnStart = isInternetAccessPermitted() and enableInternetAvailabilityCallbackOnStart

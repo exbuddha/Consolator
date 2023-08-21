@@ -5,10 +5,10 @@ import android.util.*
 import android.view.GestureDetector.*
 import android.view.*
 import androidx.fragment.app.*
+import java.lang.ref.*
 import kotlin.reflect.*
 import kotlinx.coroutines.*
 import backgammon.module.Predicate
-import java.lang.ref.WeakReference
 
 object UI : (Context, ScreenEventInterceptor?) -> Pair<out Fragment, Int?> {
     override fun invoke(context: Context, interceptor: ScreenEventInterceptor?): Pair<out Fragment, Int?> =

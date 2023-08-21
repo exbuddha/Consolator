@@ -11,6 +11,7 @@ import backgammon.module.defer
 import backgammon.module.step
 
 open class MainActivity : BaseActivity() {
+    override val backgroundLayout = R.layout.background
     override val viewModel: VM by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
