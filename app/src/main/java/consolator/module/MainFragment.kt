@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.util.Pair
 import android.view.View
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.commit
 import kotlin.reflect.KFunction
 import backgammon.module.BaseFragment
 import backgammon.module.BaseImplementationRestriction
@@ -15,6 +16,9 @@ class MainFragment : BaseFragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // show animation or progress bar
+        parentFragmentManager.commit {
+            show(this@MainFragment)
+        }
     }
 
     override var navigate = fun(_: View, bundle: Bundle?): Pair<Fragment, Int?> {
