@@ -290,8 +290,11 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         private fun observe(work: LiveWork): Boolean? {
             val (step, _, async) = work
             try {
-                latestStep = step()?.apply { observeForever(observer) } ?:
-                return null
+                step().let { step ->
+                    latestStep = step
+                    step?.observeForever(observer) ?:
+                    return null
+                }
             } catch (ex: Throwable) {
                 hasError = true
                 this.ex = ex
