@@ -7,13 +7,13 @@ import backgammon.module.activity.*
 import backgammon.module.application.*
 
 abstract class BaseActivity : AppCompatActivity() {
-    abstract val backgroundLayout: Int
+    abstract val backgroundLayoutResId: Int
     abstract val viewModel: VM
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (savedInstanceState === null) {
-            setContentView(backgroundLayout)
+            setContentView(backgroundLayoutResId)
             viewModel.apply {
                 enableNetworkCapabilitiesCallbackOnStart = isNetworkStateAccessPermitted() and enableNetworkCapabilitiesCallbackOnStart
                 enableInternetAvailabilityCallbackOnStart = isInternetAccessPermitted() and enableInternetAvailabilityCallbackOnStart
