@@ -247,6 +247,8 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         constructor() : this(Scheduler)
         private var seq: MutableList<LiveWork> = mutableListOf()
         private var ln: Int = -1
+        private val work
+            get() = seq[ln]
         private var latestStep: LiveStep? = null
         private var latestCapture: Any? = null
 
@@ -282,7 +284,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         private fun advance() {
             prepare()
             while (jump() ?: return) {
-                (seq[ln].run(::observe) ?:
+                (work.run(::observe) ?:
                 capture()) || return
             }
             end()
@@ -304,7 +306,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             return async
         }
         private fun capture(): Boolean {
-            seq[ln].second.let { capture ->
+            work.second.let { capture ->
                 latestCapture = capture
                 capture?.invoke()?.let {
                     if (it is Boolean) return it
