@@ -10,7 +10,7 @@ open class BaseApplication : Application(), UniqueContext {
         Thread.setDefaultUncaughtExceptionHandler { th, ex ->
             reactToUncaughtExceptionThrown(th, ex)
         }
-        reactToUncaughtExceptionThrown = { th, ex ->
+        reactToUncaughtExceptionThrown = @Tag("uncaught-shared") { th, ex ->
             with(getSharedPreferences("uncaught", MODE_PRIVATE).edit()) {
                 putLong("start", startTime)
                 putLong("now", now())

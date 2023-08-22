@@ -8,6 +8,8 @@ import androidx.core.content.*
 import androidx.lifecycle.*
 import androidx.room.*
 import java.lang.*
+import kotlin.annotation.AnnotationRetention.*
+import kotlin.annotation.AnnotationTarget.*
 import kotlin.reflect.*
 import kotlinx.coroutines.*
 import backgammon.module.Scheduler.Event
@@ -44,7 +46,7 @@ fun Context.stageSessionCreated() {
 }
 
 fun Context.stageLogDbCreated() {
-    reactToUncaughtExceptionThrown += { th, ex ->
+    reactToUncaughtExceptionThrown += @Tag("uncaught-db") { th, ex ->
         // record in db
     }
 }
@@ -81,6 +83,16 @@ fun isTimeIntervalExceeded(interval: Long, last: Long) =
 
 interface UniqueContext { var startTime: Long }
 typealias ContextStep = suspend Context.() -> Unit
+
+@Retention(SOURCE)
+@Target(CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+annotation class Tag(val string: String)
+private val KCallable<*>.tag
+    get() = annotations.find { it is Tag } as? Tag
+fun trySafelyForAnnotatedTag(item: KCallable<*>) =
+    trySafelyForResult { annotatedEvent(item) }
+fun annotatedEvent(item: KCallable<*>) =
+    item.tag!!
 
 private typealias ExceptionHandler = (Thread, Throwable) -> Unit
 private operator fun ExceptionHandler.plus(other: ExceptionHandler): ExceptionHandler = this
