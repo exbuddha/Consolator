@@ -82,6 +82,13 @@ abstract class RuntimeDao {
     @Query("DELETE FROM ${RuntimeSessionEntity.TABLE}")
     abstract suspend fun dropSessions()
 }
+suspend fun buildSession() {
+    if (session === null)
+        session = runtimeDao {
+            getSession(
+                newSession(instance!!.startTime))
+        }
+}
 
 @Database(version = DB_VERSION, exportSchema = false, entities = [
     ThreadEntity::class,

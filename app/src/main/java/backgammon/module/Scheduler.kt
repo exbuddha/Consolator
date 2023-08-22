@@ -679,14 +679,37 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
 
     @Retention(SOURCE)
     @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+    annotation class Path(
+        val name: String = "",
+        val convertor: SchedulerPath = [],
+        val blacklist: SchedulerPath = [])
+    object FromLastCancellation : Throwable()
+
+    @Retention(SOURCE)
+    @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
     annotation class Event(val transit: Short = 0) {
         @Retention(SOURCE)
-        @Target(CONSTRUCTOR, FUNCTION, PROPERTY, EXPRESSION)
-        annotation class Listening(val timeout: Long = 0)
+        @Target(FUNCTION, EXPRESSION)
+        annotation class Listening(
+            val channel: Short = 0,
+            val timeout: Long = 0L,
+            val auto: Boolean = false)
 
         @Retention(SOURCE)
-        @Target(CONSTRUCTOR, FUNCTION, PROPERTY, EXPRESSION)
-        annotation class Remitting(val delay: Long = 0, val function: String = "")
+        @Target(FUNCTION, EXPRESSION)
+        annotation class Remitting(
+            val channel: Short = 0,
+            val delay: Long = 0L,
+            val timeout: Long = -1L,
+            val pathwise: SchedulerPath = [])
+
+        @Retention(SOURCE)
+        @Target(FUNCTION, EXPRESSION)
+        annotation class Repeating(
+            val channel: Short = 0,
+            val count: Int = 0,
+            val timeout: Long = -1L,
+            val pathwise: SchedulerPath = [])
     }
     private val KCallable<*>.event
         get() = annotations.find { it is Event } as? Event
@@ -799,6 +822,61 @@ fun SchedulerScope.keepAliveOrClose(node: SchedulerNode, job: Job) {
     keepAlive(node) && return
     job.close(node)
 }
+operator fun Job.set(tag: String, value: Any) {}
+infix fun Job.then(next: CoroutineStep): CoroutineStep = {}
+
+@Retention(SOURCE)
+@Target(CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+annotation class JobTreeRoot
+
+@Retention(SOURCE)
+@Target(CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+annotation class JobTree(val branch: String = "", val level: UByte = 0u)
+
+infix fun <R, S> (suspend () -> R).then(next: suspend () -> S): suspend () -> S = {
+    this@then()
+    next()
+}
+infix fun <R, S> (suspend () -> R).thru(next: suspend (R) -> S): suspend () -> S = {
+    next(this@thru())
+}
+fun <R> (suspend () -> R).given(predicate: Predicate, fallback: R): suspend () -> R = {
+    if (predicate()) this@given() else fallback
+}
+infix fun Step.given(predicate: Predicate): Step = given(predicate, Unit)
+infix fun <T, R, S> (suspend T.() -> R).then(next: suspend T.() -> S): suspend T.() -> S = {
+    this@then()
+    next()
+}
+infix fun <T, R, S> (suspend T.() -> R).thru(next: suspend (R) -> S): suspend T.() -> S = {
+    next(this@thru())
+}
+fun <T, R> (suspend T.() -> R).given(predicate: Predicate, fallback: R): suspend T.() -> R = {
+    if (predicate()) this@given() else fallback
+}
+
+infix fun <R, S> (() -> R).then(next: () -> S): () -> S = {
+    this@then()
+    next()
+}
+infix fun <R, S> (() -> R).thru(next: (R) -> S): () -> S = {
+    next(this@thru())
+}
+fun <R> (() -> R).given(predicate: Predicate, fallback: R): () -> R = {
+    if (predicate()) this@given() else fallback
+}
+infix fun AnyFunction.given(predicate: Predicate): AnyFunction = given(predicate, Unit)
+
+infix fun <T, R, S> ((T) -> R).thru(next: (R) -> S): (T) -> S = {
+    next(this@thru(it))
+}
+
+fun <R> KCallable<R>.with(vararg args: Any?): () -> R = {
+    this@with.call(args)
+}
+fun <R> with(vararg args: Any?): (KCallable<R>) -> R = {
+    it.call(args)
+}
 
 val mainThread = Thread.currentThread()
 fun Thread.isMainThread() = this === mainThread
@@ -857,62 +935,11 @@ abstract class ForgetfulStepResolver : StepRef(), Resolver {
     }
 }
 
-@Retention(SOURCE)
-@Target(CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
-annotation class JobTreeRoot
-
-@Retention(SOURCE)
-@Target(CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
-annotation class JobTree(val branch: String = "", val level: UByte = 0u)
-
-infix fun <R, S> (suspend () -> R).then(next: suspend () -> S): suspend () -> S = {
-    this@then()
-    next()
-}
-infix fun <R, S> (suspend () -> R).thru(next: suspend (R) -> S): suspend () -> S = {
-    next(this@thru())
-}
-fun <R> (suspend () -> R).given(predicate: Predicate, fallback: R): suspend () -> R = {
-    if (predicate()) this@given() else fallback
-}
-infix fun Step.given(predicate: Predicate): Step = given(predicate, Unit)
-infix fun <T, R, S> (suspend T.() -> R).then(next: suspend T.() -> S): suspend T.() -> S = {
-    this@then()
-    next()
-}
-infix fun <T, R, S> (suspend T.() -> R).thru(next: suspend (R) -> S): suspend T.() -> S = {
-    next(this@thru())
-}
-fun <T, R> (suspend T.() -> R).given(predicate: Predicate, fallback: R): suspend T.() -> R = {
-    if (predicate()) this@given() else fallback
-}
-
-infix fun <R, S> (() -> R).then(next: () -> S): () -> S = {
-    this@then()
-    next()
-}
-infix fun <R, S> (() -> R).thru(next: (R) -> S): () -> S = {
-    next(this@thru())
-}
-fun <R> (() -> R).given(predicate: Predicate, fallback: R): () -> R = {
-    if (predicate()) this@given() else fallback
-}
-infix fun AnyFunction.given(predicate: Predicate): AnyFunction = given(predicate, Unit)
-
-infix fun <T, R, S> ((T) -> R).thru(next: (R) -> S): (T) -> S = {
-    next(this@thru(it))
-}
-
-fun <R> KCallable<R>.with(vararg args: Any?): () -> R = {
-    this@with.call(args)
-}
-fun <R> with(vararg args: Any?): (KCallable<R>) -> R = {
-    it.call(args)
-}
-
 typealias JobFunction = suspend (Any?) -> Any?
 typealias CoroutineStep = suspend CoroutineScope.() -> Unit
 private typealias SchedulerNode = KClass<out Annotation>
+private typealias SchedulerPath = Array<KClass<out Throwable>>
+object Propagate : Throwable()
 private typealias SchedulerWork = Scheduler.() -> Unit
 private typealias DescriptiveStep = suspend SchedulerScope.(Job) -> Unit
 private typealias SequencerWork = Sequencer.() -> Unit

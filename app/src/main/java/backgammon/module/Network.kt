@@ -72,7 +72,7 @@ private fun clearInternetAvailabilityCallbackObjects() {
     internetAvailabilityJob = null
 }
 
-@JobTreeRoot @NetworkListener
+@JobTreeRoot @NetworkListener("inet-avail")
 var internetAvailabilityJob: Job? = null
     set(value) {
         // update addressable layer?
@@ -82,7 +82,7 @@ var internetAvailabilityJobFunction: JobFunction = @Tag("inet-avail") { scope ->
     if (repeatInternetAvailabilityRequest && isInternetAvailabilityTimeIntervalExceeded) {
         if (infoLogIsNotBypassed)
             info(INET_TAG, "Trying to send out http request for internet availability...")
-        tryCanceling({
+        tryCancelingForResult({
             sendInternetAvailabilityRequest { response ->
                 trySafelyCanceling { reactToInternetAvailabilityResponseReceived.invoke(scope, response) } }
         }, { ex ->
@@ -90,7 +90,7 @@ var internetAvailabilityJobFunction: JobFunction = @Tag("inet-avail") { scope ->
         })
     }
 }
-var reactToInternetAvailabilityResponseReceived: (Any?, Response) -> Any? = @Tag("inet-avail") { _, response ->
+var reactToInternetAvailabilityResponseReceived: (Any?, Response) -> Any? = @Tag("inet-avail.success") { _, response ->
     hasInternet = response.isSuccessful
     if (response.isSuccessful)
         lastInternetAvailabilityResponseTime = now()
@@ -98,11 +98,15 @@ var reactToInternetAvailabilityResponseReceived: (Any?, Response) -> Any? = @Tag
     if (infoLogIsNotBypassed)
         info(INET_TAG, "Received response for internet availability.")
 }
-var reactToInternetAvailabilityRequestFailed: (Any?, Throwable) -> Any? = @Tag("inet-avail") { _, _ ->
+var reactToInternetAvailabilityRequestFailed: (Any?, Throwable) -> Any? = @Tag("inet-avail.error") { _, _ ->
     if (warningLogIsNotBypassed)
         warning(INET_TAG, "Failed to send http request for internet availability.")
 }
+@Tag("inet-avail.delay")
+val internetAvailabilityDelayTime
+    get() = getDelayTime(internetAvailabilityTimeInterval, lastInternetAvailabilityResponseTime)
 private const val MIN_TIME_INTERVAL_INET_AVAIL = 5000L
+@Tag("inet-avail.interval")
 var internetAvailabilityTimeInterval = MIN_TIME_INTERVAL_INET_AVAIL
     set(value) {
         field = maxOf(value, MIN_TIME_INTERVAL_INET_AVAIL)
@@ -112,15 +116,13 @@ private var lastInternetAvailabilityResponseTime = 0L
         if (value == 0L || value > field)
             field = value
     }
-private val internetAvailabilityDelayTime
-    get() = getDelayTime(internetAvailabilityTimeInterval, lastInternetAvailabilityResponseTime)
 private val isInternetAvailabilityTimeIntervalExceeded
     get() = isTimeIntervalExceeded(internetAvailabilityTimeInterval, lastInternetAvailabilityResponseTime)
 private var repeatInternetAvailabilityRequest = true
 
 @Retention(SOURCE)
 @Target(FUNCTION, PROPERTY)
-annotation class NetworkListener
+annotation class NetworkListener(val tag: String)
 
 private val connectivityManager
     get() = instance!!.getSystemService(ConnectivityManager::class.java)!!

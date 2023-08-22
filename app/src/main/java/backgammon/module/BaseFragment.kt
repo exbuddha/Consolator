@@ -12,10 +12,12 @@ import kotlin.annotation.AnnotationRetention.*
 import kotlin.annotation.AnnotationTarget.*
 import kotlin.reflect.*
 import kotlinx.coroutines.*
+import backgammon.module.Scheduler.EventBus
+import backgammon.module.Scheduler.FromLastCancellation
+import backgammon.module.Scheduler.defer
 import backgammon.module.Scheduler.Event.Listening
 import backgammon.module.Scheduler.Event.Remitting
-import backgammon.module.Scheduler.EventBus
-import backgammon.module.Scheduler.defer
+import backgammon.module.Scheduler.Path
 import backgammon.module.BaseApplication.Companion.ACTION_MIGRATE_APP
 import backgammon.module.BaseApplication.Companion.ABORT_NAV_MAIN_UI
 import backgammon.module.BaseApplication.Companion.COMMIT_NAV_MAIN_UI
@@ -68,20 +70,16 @@ abstract class BaseFragment : Fragment() {
 
     override fun onAttach(context: Context) {
         super.onAttach(context)
-        launch(Dispatchers.IO) @JobTreeRoot @MainViewGroup @Remitting(100L) {
-            trySafelyCanceling {
-                with(context) {
-                    buildAppDatabase()
-                    event(Context::stageDbCreated)
-                    if (session === null)
-                        session = tryCancelingForResult {
-                            runtimeDao {
-                                getSession(
-                                    newSession(instance!!.startTime))
-                            }
-                        }
-                    event(Context::stageSessionCreated)
-                }
+        launch(Dispatchers.IO) @JobTreeRoot @MainViewGroup
+        @Remitting(delay = 100L, pathwise = [ FromLastCancellation::class ]) {
+            context.tryCanceling {
+                buildAppDatabase()
+                event(Context::stageDbCreated)
+            }
+        } then {
+            context.tryCanceling {
+                buildSession()
+                event(Context::stageSessionCreated)
             }
         }
     }
