@@ -10,8 +10,8 @@ abstract class BaseActivity : AppCompatActivity() {
     abstract val backgroundLayoutResId: Int
     abstract val viewModel: VM
 
-    lateinit var enableNetworkCallbacks: Work
-    lateinit var disableNetworkCallbacks: Work
+    var enableNetworkCallbacks: Work? = null
+    var disableNetworkCallbacks: Work? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -30,11 +30,11 @@ abstract class BaseActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
-        enableNetworkCallbacks.invoke()
+        enableNetworkCallbacks?.invoke()
     }
 
     override fun onStop() {
-        disableNetworkCallbacks.invoke()
+        disableNetworkCallbacks?.invoke()
         super.onStop()
     }
 
