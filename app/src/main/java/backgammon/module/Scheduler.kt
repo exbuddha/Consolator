@@ -224,7 +224,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             start()
         }
         fun ioStartAndReset(step: SequencerStep) {
-            io(false, _reset then step)
+            io(false, resetting(step))
             start()
         }
         fun ioResume(async: Boolean = false, step: SequencerStep) {
@@ -232,7 +232,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             resume()
         }
         fun ioResumeAndReset(async: Boolean = false, step: SequencerStep) {
-            io(async, _reset then step)
+            io(async, resetting(step))
             resume()
         }
         fun io(async: Boolean = false, step: SequencerStep) = attach(Dispatchers.IO, async, step)
@@ -244,7 +244,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             start()
         }
         fun unconfinedStartAndReset(step: SequencerStep) {
-            unconfined(false, _reset then step)
+            unconfined(false, resetting(step))
             start()
         }
         fun unconfinedResume(async: Boolean = false, step: SequencerStep) {
@@ -252,7 +252,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             resume()
         }
         fun unconfinedResumeAndRest(async: Boolean = false, step: SequencerStep) {
-            unconfined(async, _reset then step)
+            unconfined(async, resetting(step))
             resume()
         }
         fun unconfined(async: Boolean = false, step: SequencerStep) = attach(Dispatchers.Unconfined, async, step)
@@ -334,11 +334,12 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             step?.removeObserver(observer)
             isObserving = false
         }
-        private val _reset: SequencerStep = { reset() }
         fun end() {
             if (!isObserving)
                 isCompleted = true
         }
+        private val _reset: SequencerStep = { reset() }
+        private fun resetting(step: SequencerStep) = _reset then step
 
         var isActive = false
         var isObserving = false
