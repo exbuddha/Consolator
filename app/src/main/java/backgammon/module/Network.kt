@@ -100,7 +100,7 @@ var reactToInternetAvailabilityResponseReceived: (Any?, Response) -> Any? = @Tag
 }
 var reactToInternetAvailabilityRequestFailed: (Any?, Throwable) -> Any? = @Tag("inet-avail") { _, _ ->
     if (warningLogIsNotBypassed)
-        warning(INET_TAG, "Failed to send http request for internet availability..")
+        warning(INET_TAG, "Failed to send http request for internet availability.")
 }
 private const val MIN_TIME_INTERVAL_INET_AVAIL = 5000L
 var internetAvailabilityTimeInterval = MIN_TIME_INTERVAL_INET_AVAIL
