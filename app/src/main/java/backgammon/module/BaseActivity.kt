@@ -17,14 +17,14 @@ abstract class BaseActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         if (savedInstanceState === null) {
             setContentView(backgroundLayoutResId)
-            if (isNetworkStateAccessPermitted())
-                enableNetworkCallbacks =
-                    ::registerNetworkCapabilitiesCallback then
-                    ::registerInternetAvailabilityCallback
-            if (isInternetAccessPermitted())
-                disableNetworkCallbacks =
-                    ::unregisterNetworkCapabilitiesCallback then
-                    ::unregisterInternetAvailabilityCallback
+            if (isNetworkStateAccessPermitted()) {
+                enableNetworkCallbacks = ::registerNetworkCapabilitiesCallback
+                disableNetworkCallbacks = ::unregisterNetworkCapabilitiesCallback
+            }
+            if (isInternetAccessPermitted()) {
+                enableNetworkCallbacks = enableNetworkCallbacks?.then(::registerInternetAvailabilityCallback)
+                disableNetworkCallbacks = disableNetworkCallbacks?.then(::unregisterInternetAvailabilityCallback)
+            }
         }
     }
 
