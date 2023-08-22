@@ -631,18 +631,12 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     val retrySequencer = Runnable { sequencer?.retry() }
 
     var clock: Clock? = null
-        get() {
-            commitAsync(Scheduler, { field === null }) {
-                field = Clock()
-            }
-            return field
+        get() = commitAsyncForResult(Scheduler, { field === null }, field) {
+            Clock()
         }
     var sequencer: Sequencer? = null
-        get() {
-            commitAsync(Scheduler, { field === null }) {
-                field = Sequencer()
-            }
-            return field
+        get() = commitAsyncForResult(Scheduler, { field === null }, field) {
+            Sequencer()
         }
 
     fun windDown() {
@@ -759,6 +753,13 @@ inline fun <R> commitAsync(lock: Any, crossinline predicate: Predicate, crossinl
         synchronized(lock) {
             if (predicate()) block()
         }
+}
+inline fun <R> commitAsyncForResult(lock: Any, crossinline predicate: Predicate, fallback: R? = null, crossinline block: () -> R): R? {
+    if (predicate())
+        synchronized(lock) {
+            if (predicate()) return block()
+        }
+    return fallback
 }
 
 inline fun <R> sequencer(block: Sequencer.() -> R) = sequencer!!.block()
