@@ -681,8 +681,32 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
     annotation class Path(
         val name: String = "",
-        val convertor: SchedulerPath = [],
-        val blacklist: SchedulerPath = [])
+        val route: SchedulerPath = [],
+        val blacklist: SchedulerPath = []) {
+        @Retention(SOURCE)
+        @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+        annotation class Adjacent(val paths: Array<String> = [])
+
+        @Retention(SOURCE)
+        @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+        annotation class Parallel(val paths: Array<String> = [])
+
+        @Retention(SOURCE)
+        @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+        annotation class Proceeding(val paths: Array<String> = [])
+
+        @Retention(SOURCE)
+        @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+        annotation class Preceding(val paths: Array<String> = [])
+
+        @Retention(SOURCE)
+        @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+        annotation class Diverging(val paths: Array<String> = [])
+
+        @Retention(SOURCE)
+        @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+        annotation class Converging(val paths: Array<String> = [])
+    }
     object FromLastCancellation : Throwable()
 
     @Retention(SOURCE)
@@ -698,17 +722,19 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         @Retention(SOURCE)
         @Target(FUNCTION, EXPRESSION)
         annotation class Remitting(
-            val channel: Short = 0,
             val delay: Long = 0L,
+            val channel: Short = 0,
             val timeout: Long = -1L,
+            val auto: Boolean = false,
             val pathwise: SchedulerPath = [])
 
         @Retention(SOURCE)
         @Target(FUNCTION, EXPRESSION)
         annotation class Repeating(
-            val channel: Short = 0,
             val count: Int = 0,
+            val channel: Short = 0,
             val timeout: Long = -1L,
+            val auto: Boolean = false,
             val pathwise: SchedulerPath = [])
     }
     private val KCallable<*>.event
@@ -816,14 +842,19 @@ fun LifecycleOwner.relaunchJobIfNotActive(
     else launch(context, start, block).also { instance.setter.call(it) }
 fun LifecycleOwner.close(node: SchedulerNode) {}
 fun Job.close(node: SchedulerNode) {}
-infix fun Job.onCancel(action: DescriptiveStep) {}
+
+infix fun Job.then(next: DescriptiveStep): CoroutineStep = {}
+infix fun Job.onCancel(action: DescriptiveStep): CoroutineStep = {}
+infix fun Job.onError(action: DescriptiveStep) {}
+infix fun CoroutineStep.onError(action: DescriptiveStep): CoroutineStep = {}
+infix fun CoroutineStep.then(next: DescriptiveStep): CoroutineStep = {}
+
 fun SchedulerScope.keepAlive(node: SchedulerNode): Boolean = false
 fun SchedulerScope.keepAliveOrClose(node: SchedulerNode, job: Job) {
     keepAlive(node) && return
     job.close(node)
 }
-operator fun Job.set(tag: String, value: Any) {}
-infix fun Job.then(next: CoroutineStep): CoroutineStep = {}
+
 
 @Retention(SOURCE)
 @Target(CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
@@ -936,6 +967,7 @@ abstract class ForgetfulStepResolver : StepRef(), Resolver {
 }
 
 typealias JobFunction = suspend (Any?) -> Any?
+operator fun Job.set(tag: String, value: Any) {}
 typealias CoroutineStep = suspend CoroutineScope.() -> Unit
 private typealias SchedulerNode = KClass<out Annotation>
 private typealias SchedulerPath = Array<KClass<out Throwable>>
@@ -991,11 +1023,11 @@ private typealias ID = Short
 sealed interface State {
     object Failed : Resolved
     object Succeeded : Resolved
-    object Suspending : Resolved
     object Pending : Resolved, Ambiguous
     interface Resolved : State {
         companion object : Resolved
     }
+    object Suspending : Ambiguous
     interface Ambiguous : State {
         companion object : Ambiguous
     }

@@ -49,6 +49,7 @@ abstract class BaseFragment : Fragment() {
                     COMMIT_NAV_MAIN_UI -> {
                         transit(view, savedInstanceState) {
                             putShort(ACTION_KEY, COMMIT_NAV_MAIN_UI) }
+                        State[1] = State.Succeeded
                         close(MainViewGroup::class)
                     }
                     ACTION_MIGRATE_APP ->
@@ -78,6 +79,8 @@ abstract class BaseFragment : Fragment() {
                 buildSession()
                 event(Context::stageSessionCreated)
             }
+        } onError {
+            State[1] = State.Suspending
         }
     }
 
