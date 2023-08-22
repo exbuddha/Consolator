@@ -20,21 +20,19 @@ private open class OverlayFragment(
     private val interceptor: ScreenEventInterceptor?
 ) : Fragment(),
     OnContextClickListener {
-    override fun onContextClick(event: MotionEvent): Boolean {
+    override fun onContextClick(event: MotionEvent) =
         intercept(
             OnContextClickListener::onContextClick, event) {
                 // post-process event
             }
-        return true
-    }
 
-    private fun <R> intercept(member: KFunction<R>, vararg args: Any, postback: Runnable? = null): Boolean {
+    private fun <R> intercept(member: KFunction<R>, vararg args: Any, postback: Runnable? = null) =
         interceptor?.invoke(this, member, args, postback).let {
             fun postback(): Boolean {
                 postback?.run() ?: return false
                 return true
             }
-            return if (it === null)
+            if (it === null)
                 postback()
             else
                 with(it) {
@@ -44,7 +42,6 @@ private open class OverlayFragment(
                         first?.invoke() ?: postback()
                 }
         }
-    }
 }
 
 private typealias ScreenEventInterceptor = (Any, KFunction<*>, Array<*>, Runnable?) -> Pair<Predicate?, Boolean?>?
