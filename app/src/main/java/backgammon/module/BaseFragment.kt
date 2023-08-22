@@ -58,7 +58,7 @@ abstract class BaseFragment : Fragment() {
         } onCancel { job ->
             transit(view, savedInstanceState) {
                 putShort(ACTION_KEY, ABORT_NAV_MAIN_UI) }
-            State[1] = State.Failed
+            State[1] = State.Pending
             keepAliveOrClose(MainViewGroup::class, job)
         }
         if (infoLogIsNotBypassed)

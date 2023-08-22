@@ -991,6 +991,7 @@ private typealias ID = Short
 sealed interface State {
     object Failed : Resolved
     object Succeeded : Resolved
+    object Pending : Resolved, Ambiguous
     interface Resolved : State {
         companion object : Resolved
     }
