@@ -78,27 +78,30 @@ var internetAvailabilityJob: Job? = null
         // update addressable layer?
         field = value
     }
-var internetAvailabilityJobFunction: JobFunction = { scope ->
+var internetAvailabilityJobFunction: JobFunction = @Tag("inet-avail") { scope ->
     if (repeatInternetAvailabilityRequest && isInternetAvailabilityTimeIntervalExceeded) {
         if (infoLogIsNotBypassed)
             info(INET_TAG, "Trying to send out http request for internet availability...")
         tryCanceling({
             sendInternetAvailabilityRequest { response ->
-                hasInternet = response.isSuccessful
-                if (response.isSuccessful)
-                    lastInternetAvailabilityResponseTime = now()
-                trySafelyCanceling { reactToInternetAvailabilityResponseReceived.invoke(scope, response) }
-                response.close()
-                if (infoLogIsNotBypassed)
-                    info(INET_TAG, "Received response for internet availability.")
-            }
+                trySafelyCanceling { reactToInternetAvailabilityResponseReceived.invoke(scope, response) } }
         }, { ex ->
             trySafelyCanceling { reactToInternetAvailabilityRequestFailed.invoke(scope, ex) }
         })
     }
 }
-var reactToInternetAvailabilityResponseReceived: (Any?, Response) -> Any? = { _, _ -> }
-var reactToInternetAvailabilityRequestFailed: (Any?, Throwable) -> Any? = { _, _ -> }
+var reactToInternetAvailabilityResponseReceived: (Any?, Response) -> Any? = @Tag("inet-avail") { _, response ->
+    hasInternet = response.isSuccessful
+    if (response.isSuccessful)
+        lastInternetAvailabilityResponseTime = now()
+    response.close()
+    if (infoLogIsNotBypassed)
+        info(INET_TAG, "Received response for internet availability.")
+}
+var reactToInternetAvailabilityRequestFailed: (Any?, Throwable) -> Any? = @Tag("inet-avail") { _, _ ->
+    if (warningLogIsNotBypassed)
+        warning(INET_TAG, "Failed to send http request for internet availability..")
+}
 private const val MIN_TIME_INTERVAL_INET_AVAIL = 5000L
 var internetAvailabilityTimeInterval = MIN_TIME_INTERVAL_INET_AVAIL
     set(value) {

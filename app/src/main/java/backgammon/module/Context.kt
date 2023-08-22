@@ -47,7 +47,7 @@ fun Context.stageSessionCreated() {
 
 fun Context.stageLogDbCreated() {
     reactToUncaughtExceptionThrown[0] = @Tag("uncaught-db") { th, ex ->
-        // record in db
+        // record in db safely
     }
 }
 
@@ -189,6 +189,10 @@ private fun LogFunction.isBypassed() = this === _emptyLogger
 private fun LogFunction.isNotBypassed() = this !== _emptyLogger
 val infoLogIsNotBypassed
     get() = _infoLogger.isNotBypassed()
+val debugLogIsNotBypassed
+    get() = _debugLogger.isNotBypassed()
+val warningLogIsNotBypassed
+    get() = _warningLogger.isNotBypassed()
 
 const val START_TIME_KEY = "1"
 const val MODE_KEY = "2"

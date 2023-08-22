@@ -31,18 +31,16 @@ abstract class BaseFragment : Fragment() {
             EventBus.collectSafely {
                 when (it?.transit) {
                     ACTION_NAV_MAIN_UI -> {
-                        viewModel?.apply {
-                            schedule {
-                                parentFragmentManager.commit {
-                                    val (overlay, transition) =
-                                        navigate(view, savedInstanceState?.apply {
-                                            putShort(ACTION_KEY, ACTION_NAV_MAIN_UI)
-                                        })
-                                    setTransition(transition ?: TRANSIT_FRAGMENT_OPEN)
-                                    replace(
-                                        this@BaseFragment.id,
-                                        overlay)
-                                }
+                        schedule {
+                            parentFragmentManager.commit {
+                                val (overlay, transition) =
+                                    navigate(view, savedInstanceState?.apply {
+                                        putShort(ACTION_KEY, ACTION_NAV_MAIN_UI)
+                                    })
+                                setTransition(transition ?: TRANSIT_FRAGMENT_OPEN)
+                                replace(
+                                    this@BaseFragment.id,
+                                    overlay)
                             }
                         }
                         close(MainViewGroup::class)

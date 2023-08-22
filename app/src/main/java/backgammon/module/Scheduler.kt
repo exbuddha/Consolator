@@ -15,6 +15,8 @@ import backgammon.module.BaseService.*
 import backgammon.module.BaseActivity.*
 import backgammon.module.Scheduler.EventBus.Relay
 import backgammon.module.Scheduler.Lock
+import backgammon.module.Scheduler.Sequencer
+import backgammon.module.Scheduler.sequencer
 import backgammon.module.application.*
 
 inline fun <reified R : Deferral, T> Context.defer(member: KCallable<T>) =
@@ -629,7 +631,19 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     val retrySequencer = Runnable { sequencer?.retry() }
 
     var clock: Clock? = null
+        get() {
+            commitAsync(Scheduler, { field === null }) {
+                field = Clock()
+            }
+            return field
+        }
     var sequencer: Sequencer? = null
+        get() {
+            commitAsync(Scheduler, { field === null }) {
+                field = Sequencer()
+            }
+            return field
+        }
 
     fun windDown() {
         ignore()
@@ -746,6 +760,8 @@ inline fun <R> commitAsync(lock: Any, crossinline predicate: Predicate, crossinl
             if (predicate()) block()
         }
 }
+
+inline fun <R> sequencer(block: Sequencer.() -> R) = sequencer!!.block()
 
 fun LifecycleOwner.launch(context: CoroutineContext, start: CoroutineStart, step: CoroutineStep) =
     (Scheduler.trySafelyForAnnotatedScope(step) ?:
