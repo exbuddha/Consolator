@@ -45,6 +45,7 @@ open class BaseApplication : Application(), UniqueContext {
 
     companion object {
         const val ACTION_MIGRATE_APP: Short = 1
-        const val ACTION_NAV_MAIN_UI: Short = 2
+        const val COMMIT_NAV_MAIN_UI: Short = 2
+        const val ABORT_NAV_MAIN_UI: Short = 3
     }
 }

@@ -10,7 +10,7 @@ import backgammon.module.BaseFragment
 import backgammon.module.BaseImplementationRestriction
 import backgammon.module.Predicate
 import backgammon.module.ACTION_KEY
-import backgammon.module.BaseApplication.Companion.ACTION_NAV_MAIN_UI
+import backgammon.module.BaseApplication.Companion.COMMIT_NAV_MAIN_UI
 
 class MainFragment : BaseFragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -21,8 +21,8 @@ class MainFragment : BaseFragment() {
         }
     }
 
-    override var navigate = fun(_: View, bundle: Bundle?): Pair<Fragment, Int?> {
-        if (bundle?.getShort(ACTION_KEY, -1) == ACTION_NAV_MAIN_UI)
+    override var overlay = fun(_: View, bundle: Bundle?): Pair<Fragment, Int?> {
+        if (bundle?.getShort(ACTION_KEY, -1) == COMMIT_NAV_MAIN_UI)
             abstraction.module.UI(requireActivity(), ::screenEventInterceptor).apply {
                 // ...
             }

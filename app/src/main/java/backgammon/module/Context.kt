@@ -3,6 +3,7 @@ package backgammon.module
 import android.Manifest
 import android.content.*
 import android.content.pm.*
+import android.os.*
 import android.util.*
 import androidx.core.content.*
 import androidx.lifecycle.*
@@ -100,6 +101,8 @@ private operator fun ExceptionHandler.minusAssign(other: String) {}
 private operator fun ExceptionHandler.plus(other: String): ExceptionHandler = this
 private operator fun ExceptionHandler.minus(other: String): ExceptionHandler = this
 private operator fun ExceptionHandler.set(index: Int, other: ExceptionHandler) {}
+
+typealias BundleEditor = Bundle.() -> Unit
 
 typealias AnyArray = Array<out Any?>
 typealias AnyFunction = () -> Any?

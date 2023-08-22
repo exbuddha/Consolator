@@ -15,33 +15,37 @@ import kotlinx.coroutines.*
 import backgammon.module.Scheduler.Event.Listening
 import backgammon.module.Scheduler.EventBus
 import backgammon.module.Scheduler.defer
-import backgammon.module.BaseApplication.Companion.ACTION_NAV_MAIN_UI
 import backgammon.module.BaseApplication.Companion.ACTION_MIGRATE_APP
+import backgammon.module.BaseApplication.Companion.ABORT_NAV_MAIN_UI
+import backgammon.module.BaseApplication.Companion.COMMIT_NAV_MAIN_UI
 import backgammon.module.application.*
 
 abstract class BaseFragment : Fragment() {
     private val viewModel
         get() = activity?.asType<BaseActivity>()?.viewModel
 
-    protected abstract var navigate: (View, Bundle?) -> Pair<Fragment, Int?>
+    protected abstract var overlay: (View, Bundle?) -> Pair<Fragment, Int?>
+    private fun transit(view: View, savedInstanceState: Bundle?, editor: BundleEditor) {
+        schedule {
+            parentFragmentManager.commit {
+                val (overlay, transition) =
+                    overlay(view, (savedInstanceState ?: Bundle()).apply { editor() })
+                setTransition(transition ?: TRANSIT_FRAGMENT_OPEN)
+                replace(
+                    this@BaseFragment.id,
+                    overlay)
+            }
+        }
+    }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         launch @MainViewGroup @Listening {
             EventBus.collectSafely {
                 when (it?.transit) {
-                    ACTION_NAV_MAIN_UI -> {
-                        schedule {
-                            parentFragmentManager.commit {
-                                val (overlay, transition) =
-                                    navigate(view, savedInstanceState?.apply {
-                                        putShort(ACTION_KEY, ACTION_NAV_MAIN_UI)
-                                    })
-                                setTransition(transition ?: TRANSIT_FRAGMENT_OPEN)
-                                replace(
-                                    this@BaseFragment.id,
-                                    overlay)
-                            }
+                    COMMIT_NAV_MAIN_UI -> {
+                        transit(view, savedInstanceState) {
+                            putShort(ACTION_KEY, COMMIT_NAV_MAIN_UI)
                         }
                         close(MainViewGroup::class)
                     }
@@ -50,7 +54,9 @@ abstract class BaseFragment : Fragment() {
                 }
             }
         } onCancel {
-            // handle listening error
+            transit(view, savedInstanceState) {
+                putShort(ACTION_KEY, ABORT_NAV_MAIN_UI)
+            }
             State[1] = State.Failed
         }
         if (infoLogIsNotBypassed)
