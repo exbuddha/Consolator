@@ -16,7 +16,6 @@ import backgammon.module.BaseActivity.*
 import backgammon.module.Scheduler.EventBus.Relay
 import backgammon.module.Scheduler.Lock
 import backgammon.module.Scheduler.Sequencer
-import backgammon.module.Scheduler.sequencer
 import backgammon.module.application.*
 
 inline fun <reified R : Deferral, T> Context.defer(member: KCallable<T>) =
@@ -33,7 +32,7 @@ interface SchedulerScope : CoroutineScope {
         get() = Scheduler
 }
 
-object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, StepObserver {
+object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, StepObserver, (SchedulerWork) -> Unit {
     inline fun <reified R : Deferral, T> defer(member: KCallable<T>, resolver: KClass<out R>?, vararg value: Any?): Unit? =
         when (resolver) {
             Migration::class ->
@@ -218,9 +217,10 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             handler = null
             queue = null
         }
+        companion object
     }
 
-    class Sequencer(private var observer: StepObserver) {
+    class Sequencer {
         fun ioStart(step: SequencerStep) {
             io(false, step)
             start()
@@ -278,7 +278,10 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         fun unconfinedAfter(async: Boolean = false, step: SequencerStep) = attachAfter(Dispatchers.Unconfined, async, step)
         fun unconfinedBefore(async: Boolean = false, step: SequencerStep) = attachBefore(Dispatchers.Unconfined, async, step)
 
+        private constructor(observer: StepObserver) { this.observer = observer }
         constructor() : this(Scheduler)
+
+        private val observer: StepObserver
         private var seq: LiveSequence = mutableListOf()
         private var ln = -1
         private val work
@@ -378,6 +381,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             latestStep = null
             latestCapture = null
         }
+        companion object
 
         fun attach(work: LiveWork) {
             seq.add(work)
@@ -631,11 +635,11 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     val retrySequencer = Runnable { sequencer?.retry() }
 
     var clock: Clock? = null
-        get() = commitAsyncForResult(Scheduler, { field === null }, field) {
+        get() = commitAsyncForResult(Clock, { field === null }, field) {
             Clock()
         }
     var sequencer: Sequencer? = null
-        get() = commitAsyncForResult(Scheduler, { field === null }, field) {
+        get() = commitAsyncForResult(Sequencer, { field === null }, field) {
             Sequencer()
         }
 
@@ -728,6 +732,8 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     }
 
     enum class Lock : State { Closed, Open }
+
+    override fun invoke(work: SchedulerWork) = this.work()
 }
 
 val Step.transit
@@ -737,7 +743,6 @@ val ContextStep.transit
 private val Any.annotatedEvent
     get() = Scheduler.trySafelyForAnnotatedEvent(this as KFunction<*>)
 
-inline fun <R> scheduler(block: Scheduler.() -> R) = Scheduler.block()
 fun scheduleNow(step: Step) { Scheduler.value = step }
 fun schedule(step: Step) = Scheduler.postValue(step)
 fun Context.scheduleNow(ref: ContextStep) = scheduleNow(step = { ref() })
@@ -762,7 +767,7 @@ inline fun <R> commitAsyncForResult(lock: Any, crossinline predicate: Predicate,
     return fallback
 }
 
-inline fun <R> sequencer(block: Sequencer.() -> R) = sequencer!!.block()
+inline fun <R> sequencer(block: Sequencer.() -> R) = Scheduler.sequencer!!.block()
 
 fun LifecycleOwner.launch(context: CoroutineContext, start: CoroutineStart, step: CoroutineStep) =
     (Scheduler.trySafelyForAnnotatedScope(step) ?:
@@ -894,7 +899,9 @@ fun <R> with(vararg args: Any?): (KCallable<R>) -> R = {
 
 typealias JobFunction = suspend (Any?) -> Any?
 typealias CoroutineStep = suspend CoroutineScope.() -> Unit
+private typealias SchedulerWork = Scheduler.() -> Unit
 private typealias DescriptiveStep = suspend SchedulerScope.(Job) -> Unit
+private typealias SequencerWork = Sequencer.() -> Unit
 private typealias SequencerScope = LiveDataScope<Step?>
 suspend fun SequencerScope.reset() { emit { reset() } }
 private typealias SequencerStep = suspend SequencerScope.() -> Unit

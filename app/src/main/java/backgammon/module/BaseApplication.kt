@@ -20,7 +20,7 @@ open class BaseApplication : Application(), UniqueContext {
         }
         super.onCreate()
         instance = this
-        scheduler {
+        Scheduler {
             clock = Scheduler.Clock(priority = Thread.MAX_PRIORITY)
                 .alsoStart()
             observe()
