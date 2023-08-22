@@ -21,6 +21,10 @@ import backgammon.module.BaseApplication.Companion.ACTION_MIGRATE_APP
 
 var instance: BaseApplication? = null
 var service: BaseService? = null
+var receiver: BaseReceiver? = null
+    get() = commitAsyncForResult(BaseReceiver, { field === null }, field) {
+        BaseReceiver()
+    }
 var db: AppDatabase? = null
 var logDb: LogDatabase? = null
 var netDb: NetworkDatabase? = null
@@ -64,6 +68,8 @@ fun Context.isPermissionGranted(permission: String) =
     ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
 fun Context.intendFor(cls: Class<*>) = Intent(this, cls)
 fun Context.intendFor(cls: KClass<*>) = intendFor(cls.java)
+fun Context.registerReceiver(filter: IntentFilter) =
+    ContextCompat.registerReceiver(this, receiver, filter, null, Scheduler.clock?.handler, 0)
 
 inline fun <reified D : RoomDatabase> Context.buildDatabase() = with(D::class) {
     Room.databaseBuilder(

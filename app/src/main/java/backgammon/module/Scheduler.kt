@@ -172,7 +172,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             return this
         }
 
-        private var handler: Handler? = null
+        var handler: Handler? = null
         private var queue: RunnableList? = null
         override fun run() {
             handler = object : Handler(looper) {

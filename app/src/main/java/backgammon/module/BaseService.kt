@@ -21,27 +21,28 @@ open class BaseService : Service(), BaseServiceScope {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         mode = super.onStartCommand(intent, flags, startId)
         mode = getModeExtra(intent)
-        defer<StartCommandResolver, _>(::onStartCommand) ?:
-        work<StartCommandResolver> {
-            clockAhead {
-                startTime = getStartTimeExtra(intent)
-                sequencer {
-                    if (logDb === null)
-                        ioResumeResettingFirstly {
-                            logDb = trySafelyForResult(::buildDatabase)
-                            event(Context::stageLogDbCreated)
-                        }
-                    if (netDb === null)
-                        ioResumeResettingFirstly(true) {
-                            netDb = trySafelyForResult(::buildDatabase)
-                            // update net db records
-                            event(Context::stageNetDbInitialized)
-                        }
+        if (hasMoreInitWork())
+            defer<StartCommandResolver, _>(::onStartCommand) ?:
+            work<StartCommandResolver> {
+                clockAhead {
+                    startTime = getStartTimeExtra(intent)
+                    sequencer {
+                        if (logDb === null)
+                            ioResumeResettingFirstly {
+                                logDb = trySafelyForResult(::buildDatabase)
+                                event(Context::stageLogDbCreated)
+                            }
+                        if (netDb === null)
+                            ioResumeResettingFirstly(true) {
+                                netDb = trySafelyForResult(::buildDatabase)
+                                // update net db records
+                                event(Context::stageNetDbInitialized)
+                            }
+                    }
+                    if (infoLogIsNotBypassed)
+                        info(SVC_TAG, "Clock is detected.")
                 }
-                if (infoLogIsNotBypassed)
-                    info(SVC_TAG, "Clock is detected.")
             }
-        }
         return mode!!
     }
 
@@ -63,7 +64,13 @@ open class BaseService : Service(), BaseServiceScope {
             get() = if (onMainThread()) "SERVICE" else "CLOCK"
     }
 
-    inner class StartCommandResolver : ForgetfulWorkResolver()
+    inner class StartCommandResolver : ForgetfulWorkResolver() {
+        override fun commit() {
+            if (hasNoMoreInitWork())
+                work = null
+            super.commit()
+        }
+    }
     abstract inner class BindResolver : ForgetfulWorkResolver()
 }
 
@@ -74,6 +81,9 @@ interface BaseServiceScope : IBinder, SchedulerScope, UniqueContext {
     var mode: Int?
     fun getModeExtra(intent: Intent?) =
         intent?.getIntExtra(MODE_KEY, mode!!)!!
+
+    fun hasMoreInitWork() = logDb === null || netDb === null
+    fun hasNoMoreInitWork() = logDb !== null && netDb !== null
 
     override fun getInterfaceDescriptor(): String? {
         return null

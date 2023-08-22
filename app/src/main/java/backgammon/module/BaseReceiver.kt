@@ -2,6 +2,11 @@ package backgammon.module
 
 import android.content.*
 
-abstract class BaseReceiver : BroadcastReceiver() {
-    override fun onReceive(context: Context?, intent: Intent?) {}
+class BaseReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context?, intent: Intent?) {
+        when (intent?.action) {
+            else -> {}
+        }
+    }
+    companion object
 }
