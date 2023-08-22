@@ -45,7 +45,8 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
                     StartCommandResolver::class ->
                         setResolverThenCommit(
                             ::serviceOnStartCommandResolver,
-                            StartCommandResolver::class)
+                            StartCommandResolver::class,
+                            value[0])
                     BindResolver::class ->
                         setResolverThenCommit(
                             ::serviceOnBindResolver,
@@ -58,17 +59,17 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
                         setResolverThenResolve(
                             ::activityConfigurationChangeManager,
                             ConfigurationChangeManager::class,
-                            value)
+                            value[0])
                     NightModeChangeManager::class ->
                         setResolverThenResolve(
                             ::activityNightModeChangeManager,
                             NightModeChangeManager::class,
-                            value)
+                            value[0])
                     LocalesChangeManager::class ->
                         setResolverThenResolve(
                             ::activityLocalesChangeManager,
                             LocalesChangeManager::class,
-                            value)
+                            value[0])
                     else ->
                         throw BaseImplementationRestriction
                 }
@@ -152,10 +153,10 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         private set
     var applicationMigrationResolver: Migration? = null
         private set
-    fun setResolverThenCommit(instance: ResolverKProperty, type: ResolverKClass) =
-        (instance.reconstruct(type, relay = null) as? WorkRef)?.commit()
-    fun setResolverThenResolve(instance: ResolverKProperty, type: ResolverKClass, vararg value: Any?) =
-        (instance.reconstruct(type, value[0], null) as? Resolver)?.resolve(value)
+    fun setResolverThenCommit(instance: ResolverKProperty, type: ResolverKClass, provider: Any? = null) =
+        (instance.reconstruct(type, provider, null) as? WorkRef)?.commit()
+    fun setResolverThenResolve(instance: ResolverKProperty, type: ResolverKClass, provider: Any? = null) =
+        (instance.reconstruct(type, provider, null) as? Resolver)?.resolve(provider)
 
     open class Clock(
         name: String? = null,

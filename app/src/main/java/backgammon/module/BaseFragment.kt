@@ -57,6 +57,7 @@ abstract class BaseFragment : Fragment() {
             transit(view, savedInstanceState) {
                 putShort(ACTION_KEY, ABORT_NAV_MAIN_UI)
             }
+            close(MainViewGroup::class)
             State[1] = State.Failed
         }
         if (infoLogIsNotBypassed)

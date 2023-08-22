@@ -6,9 +6,10 @@ import android.os.*
 import android.util.*
 import java.io.*
 import kotlin.coroutines.*
+import kotlin.reflect.*
 import kotlinx.coroutines.*
 
-open class BaseService : Service(), BaseServiceScope {
+open class BaseService : Service(), BaseServiceScope, Provider {
     override var startTime = 0L
     override var mode: Int? = null
         get() = field ?: START_NOT_STICKY
@@ -72,6 +73,13 @@ open class BaseService : Service(), BaseServiceScope {
         }
     }
     abstract inner class BindResolver : ForgetfulWorkResolver()
+
+    override fun invoke(type: KClass<*>) = when (type) {
+        StartCommandResolver::class ->
+            StartCommandResolver()
+        else ->
+            throw BaseImplementationRestriction
+    }
 }
 
 interface BaseServiceScope : IBinder, SchedulerScope, UniqueContext {
