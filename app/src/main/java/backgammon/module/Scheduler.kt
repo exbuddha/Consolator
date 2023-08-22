@@ -785,8 +785,14 @@ fun LifecycleOwner.relaunchJobIfNotActive(
     block: CoroutineStep) =
     if (instance.getter.call()?.isActive == true) instance as Job
     else launch(context, start, block).also { instance.setter.call(it) }
-fun LifecycleOwner.close(node: KClass<out Annotation>) {}
+fun LifecycleOwner.close(node: SchedulerNode) {}
+fun Job.close(node: SchedulerNode) {}
 infix fun Job.onCancel(action: DescriptiveStep) {}
+fun SchedulerScope.keepAlive(node: SchedulerNode): Boolean = false
+fun SchedulerScope.keepAliveOrClose(node: SchedulerNode, job: Job) {
+    keepAlive(node) && return
+    job.close(node)
+}
 
 val mainThread = Thread.currentThread()
 fun Thread.isMainThread() = this === mainThread
@@ -900,6 +906,7 @@ fun <R> with(vararg args: Any?): (KCallable<R>) -> R = {
 
 typealias JobFunction = suspend (Any?) -> Any?
 typealias CoroutineStep = suspend CoroutineScope.() -> Unit
+private typealias SchedulerNode = KClass<out Annotation>
 private typealias SchedulerWork = Scheduler.() -> Unit
 private typealias DescriptiveStep = suspend SchedulerScope.(Job) -> Unit
 private typealias SequencerWork = Sequencer.() -> Unit

@@ -24,18 +24,19 @@ abstract class BaseFragment : Fragment() {
     private val viewModel
         get() = activity?.asType<BaseActivity>()?.viewModel
 
-    protected abstract var overlay: (View, Bundle?) -> Pair<Fragment, Int?>
+    protected abstract var overlay: (View, Bundle?) -> Pair<out Fragment?, Int?>
     private inline fun transit(view: View, savedInstanceState: Bundle?, crossinline editor: BundleEditor) {
-        schedule {
-            parentFragmentManager.commit {
-                val (overlay, transition) =
-                    overlay(view, (savedInstanceState ?: Bundle()).apply { editor() })
-                setTransition(transition ?: TRANSIT_FRAGMENT_OPEN)
-                replace(
-                    this@BaseFragment.id,
-                    overlay)
+        val (overlay, transition) =
+            overlay(view, (savedInstanceState ?: Bundle()).apply { editor() })
+        if (overlay !== null)
+            schedule {
+                parentFragmentManager.commit {
+                    setTransition(transition ?: TRANSIT_FRAGMENT_OPEN)
+                    replace(
+                        this@BaseFragment.id,
+                        overlay)
+                }
             }
-        }
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -53,11 +54,11 @@ abstract class BaseFragment : Fragment() {
                         defer(::onViewCreated, Migration::class)
                 }
             }
-        } onCancel {
+        } onCancel { job ->
             transit(view, savedInstanceState) {
                 putShort(ACTION_KEY, ABORT_NAV_MAIN_UI)
             }
-            close(MainViewGroup::class)
+            keepAliveOrClose(MainViewGroup::class, job)
             State[1] = State.Failed
         }
         if (infoLogIsNotBypassed)

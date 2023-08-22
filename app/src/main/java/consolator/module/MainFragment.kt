@@ -10,6 +10,7 @@ import backgammon.module.BaseFragment
 import backgammon.module.BaseImplementationRestriction
 import backgammon.module.Predicate
 import backgammon.module.ACTION_KEY
+import backgammon.module.BaseApplication.Companion.ABORT_NAV_MAIN_UI
 import backgammon.module.BaseApplication.Companion.COMMIT_NAV_MAIN_UI
 
 class MainFragment : BaseFragment() {
@@ -21,13 +22,18 @@ class MainFragment : BaseFragment() {
         }
     }
 
-    override var overlay = fun(_: View, bundle: Bundle?): Pair<Fragment, Int?> {
-        if (bundle?.getShort(ACTION_KEY, -1) == COMMIT_NAV_MAIN_UI)
-            abstraction.module.UI(requireActivity(), ::screenEventInterceptor).apply {
-                // ...
-            }
-        throw BaseImplementationRestriction
-    }
+    override var overlay = fun(_: View, bundle: Bundle?): Pair<out Fragment?, Int?> =
+        when (bundle?.getShort(ACTION_KEY, -1)) {
+            COMMIT_NAV_MAIN_UI ->
+                abstraction.module.UI(requireActivity(), ::screenEventInterceptor).apply {
+                    // ...
+                }
+            ABORT_NAV_MAIN_UI ->
+                Pair(null, null)
+            else ->
+                throw BaseImplementationRestriction
+        }
+
 
     private inline fun <reified R> screenEventInterceptor(
         listener: Any,
