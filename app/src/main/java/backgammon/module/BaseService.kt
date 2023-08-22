@@ -25,19 +25,20 @@ open class BaseService : Service(), BaseServiceScope {
         work<StartCommandResolver> {
             clockAhead {
                 startTime = getStartTimeExtra(intent)
-                if (netDb === null)
-                    scheduler {
-                        sequencer = Scheduler.Sequencer().apply {
-                            ioStartAndReset {
+                scheduler {
+                    sequencer = Scheduler.Sequencer().apply {
+                        if (logDb === null)
+                            ioResumeResettingFirstly {
                                 logDb = trySafelyForResult(::buildDatabase)
                                 event(Context::stageLogDbCreated)
                             }
-                            ioResumeAndReset(true) {
+                        if (netDb === null)
+                            ioResumeResettingFirstly(true) {
                                 netDb = trySafelyForResult(::buildDatabase)
                                 // update net db records
                                 event(Context::stageNetDbInitialized)
                             }
-                        }
+                    }
                 }
                 if (infoLogIsNotBypassed)
                     info(SVC_TAG, "Clock is detected.")

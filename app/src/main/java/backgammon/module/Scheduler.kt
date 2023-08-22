@@ -223,16 +223,24 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             io(false, step)
             start()
         }
-        fun ioStartAndReset(step: SequencerStep) {
-            io(false, resetting(step))
+        fun ioStartResettingFirstly(step: SequencerStep) {
+            io(false, resettingFirstly(step))
+            start()
+        }
+        fun ioStartResettingLastly(step: SequencerStep) {
+            io(false, resettingLastly(step))
             start()
         }
         fun ioResume(async: Boolean = false, step: SequencerStep) {
             io(async, step)
             resume()
         }
-        fun ioResumeAndReset(async: Boolean = false, step: SequencerStep) {
-            io(async, resetting(step))
+        fun ioResumeResettingFirstly(async: Boolean = false, step: SequencerStep) {
+            io(async, resettingFirstly(step))
+            resume()
+        }
+        fun ioResumeResettingLastly(async: Boolean = false, step: SequencerStep) {
+            io(async, resettingLastly(step))
             resume()
         }
         fun io(async: Boolean = false, step: SequencerStep) = attach(Dispatchers.IO, async, step)
@@ -243,16 +251,24 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             unconfined(false, step)
             start()
         }
-        fun unconfinedStartAndReset(step: SequencerStep) {
-            unconfined(false, resetting(step))
+        fun unconfinedStartResettingFirstly(step: SequencerStep) {
+            unconfined(false, resettingFirstly(step))
+            start()
+        }
+        fun unconfinedStartResettingLastly(step: SequencerStep) {
+            unconfined(false, resettingLastly(step))
             start()
         }
         fun unconfinedResume(async: Boolean = false, step: SequencerStep) {
             unconfined(async, step)
             resume()
         }
-        fun unconfinedResumeAndRest(async: Boolean = false, step: SequencerStep) {
-            unconfined(async, resetting(step))
+        fun unconfinedResumeResettingFirstly(async: Boolean = false, step: SequencerStep) {
+            unconfined(async, resettingFirstly(step))
+            resume()
+        }
+        fun unconfinedResumeResettingLastly(async: Boolean = false, step: SequencerStep) {
+            unconfined(async, resettingLastly(step))
             resume()
         }
         fun unconfined(async: Boolean = false, step: SequencerStep) = attach(Dispatchers.Unconfined, async, step)
@@ -338,8 +354,8 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             if (!isObserving)
                 isCompleted = true
         }
-        private val _reset: SequencerStep = { reset() }
-        private fun resetting(step: SequencerStep) = _reset then step
+        private fun resettingFirstly(step: SequencerStep) = SequencerScope::reset then step
+        private fun resettingLastly(step: SequencerStep) = step then SequencerScope::reset
 
         var isActive = false
         var isObserving = false
@@ -863,7 +879,7 @@ typealias JobFunction = suspend (Any?) -> Any?
 typealias CoroutineStep = suspend CoroutineScope.() -> Unit
 private typealias DescriptiveStep = suspend SchedulerScope.(Job) -> Unit
 private typealias SequencerScope = LiveDataScope<Step?>
-suspend fun SequencerScope.reset() { Scheduler.sequencer?.apply { emit { reset() } } }
+suspend fun SequencerScope.reset() { emit { reset() } }
 private typealias SequencerStep = suspend SequencerScope.() -> Unit
 private typealias StepObserver = Observer<Step?>
 private typealias LiveStep = LiveData<Step?>
