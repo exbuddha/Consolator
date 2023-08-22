@@ -17,7 +17,6 @@ import backgammon.module.Scheduler.FromLastCancellation
 import backgammon.module.Scheduler.defer
 import backgammon.module.Scheduler.Event.Listening
 import backgammon.module.Scheduler.Event.Remitting
-import backgammon.module.Scheduler.Path
 import backgammon.module.BaseApplication.Companion.ACTION_MIGRATE_APP
 import backgammon.module.BaseApplication.Companion.ABORT_NAV_MAIN_UI
 import backgammon.module.BaseApplication.Companion.COMMIT_NAV_MAIN_UI
@@ -49,8 +48,7 @@ abstract class BaseFragment : Fragment() {
                 when (it?.transit) {
                     COMMIT_NAV_MAIN_UI -> {
                         transit(view, savedInstanceState) {
-                            putShort(ACTION_KEY, COMMIT_NAV_MAIN_UI)
-                        }
+                            putShort(ACTION_KEY, COMMIT_NAV_MAIN_UI) }
                         close(MainViewGroup::class)
                     }
                     ACTION_MIGRATE_APP ->
@@ -59,8 +57,7 @@ abstract class BaseFragment : Fragment() {
             }
         } onCancel { job ->
             transit(view, savedInstanceState) {
-                putShort(ACTION_KEY, ABORT_NAV_MAIN_UI)
-            }
+                putShort(ACTION_KEY, ABORT_NAV_MAIN_UI) }
             State[1] = State.Failed
             keepAliveOrClose(MainViewGroup::class, job)
         }
