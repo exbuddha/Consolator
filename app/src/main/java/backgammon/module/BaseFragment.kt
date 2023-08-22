@@ -25,7 +25,7 @@ abstract class BaseFragment : Fragment() {
         get() = activity?.asType<BaseActivity>()?.viewModel
 
     protected abstract var overlay: (View, Bundle?) -> Pair<Fragment, Int?>
-    private fun transit(view: View, savedInstanceState: Bundle?, editor: BundleEditor) {
+    private inline fun transit(view: View, savedInstanceState: Bundle?, crossinline editor: BundleEditor) {
         schedule {
             parentFragmentManager.commit {
                 val (overlay, transition) =
