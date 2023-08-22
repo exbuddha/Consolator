@@ -86,7 +86,7 @@ typealias ContextStep = suspend Context.() -> Unit
 
 @Retention(SOURCE)
 @Target(CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
-annotation class Tag(val string: String)
+annotation class Tag(val string: String, val keep: Boolean = true)
 private val KCallable<*>.tag
     get() = annotations.find { it is Tag } as? Tag
 fun trySafelyForAnnotatedTag(item: KCallable<*>) =
@@ -95,8 +95,10 @@ fun annotatedEvent(item: KCallable<*>) =
     item.tag!!
 
 private typealias ExceptionHandler = (Thread, Throwable) -> Unit
-private operator fun ExceptionHandler.plus(other: ExceptionHandler): ExceptionHandler = this
-private operator fun ExceptionHandler.minus(other: ExceptionHandler): ExceptionHandler = this
+private operator fun ExceptionHandler.plusAssign(other: ExceptionHandler) {}
+private operator fun ExceptionHandler.minusAssign(other: String) {}
+private operator fun ExceptionHandler.plus(other: String): ExceptionHandler = this
+private operator fun ExceptionHandler.minus(other: String): ExceptionHandler = this
 
 typealias AnyArray = Array<out Any?>
 typealias AnyFunction = () -> Any?
