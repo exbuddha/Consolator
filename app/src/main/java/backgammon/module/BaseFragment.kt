@@ -13,6 +13,7 @@ import kotlin.annotation.AnnotationTarget.*
 import kotlin.reflect.*
 import kotlinx.coroutines.*
 import backgammon.module.Scheduler.Event.Listening
+import backgammon.module.Scheduler.Event.Remitting
 import backgammon.module.Scheduler.EventBus
 import backgammon.module.Scheduler.defer
 import backgammon.module.BaseApplication.Companion.ACTION_MIGRATE_APP
@@ -58,8 +59,8 @@ abstract class BaseFragment : Fragment() {
             transit(view, savedInstanceState) {
                 putShort(ACTION_KEY, ABORT_NAV_MAIN_UI)
             }
-            keepAliveOrClose(MainViewGroup::class, job)
             State[1] = State.Failed
+            keepAliveOrClose(MainViewGroup::class, job)
         }
         if (infoLogIsNotBypassed)
             info(UI_TAG, "Main fragment view is created.")
@@ -67,7 +68,7 @@ abstract class BaseFragment : Fragment() {
 
     override fun onAttach(context: Context) {
         super.onAttach(context)
-        launch(Dispatchers.IO) @JobTreeRoot @MainViewGroup {
+        launch(Dispatchers.IO) @JobTreeRoot @MainViewGroup @Remitting(100L) {
             trySafelyCanceling {
                 with(context) {
                     buildAppDatabase()

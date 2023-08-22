@@ -644,11 +644,13 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             Sequencer()
         }
 
-    fun windDown() {
-        ignore()
+    fun windDownClock() {
         clock?.apply {
             Process.setThreadPriority(threadId, Thread.NORM_PRIORITY)
         }
+    }
+    fun windDown() {
+        windDownClock()
         sequencer = null
     }
 
@@ -681,6 +683,10 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         @Retention(SOURCE)
         @Target(CONSTRUCTOR, FUNCTION, PROPERTY, EXPRESSION)
         annotation class Listening(val timeout: Long = 0)
+
+        @Retention(SOURCE)
+        @Target(CONSTRUCTOR, FUNCTION, PROPERTY, EXPRESSION)
+        annotation class Remitting(val delay: Long = 0, val function: String = "")
     }
     private val KCallable<*>.event
         get() = annotations.find { it is Event } as? Event
@@ -969,7 +975,7 @@ sealed interface State {
         operator fun get(id: ID): State = Lock.Open
         operator fun set(id: ID, lock: Any) {
             when (id.toInt()) {
-                1 -> if (lock is Resolved) Scheduler.windDown()
+                1 -> if (lock is Resolved) Scheduler.windDownClock()
             }
         }
         operator fun plus(lock: Any): State = Ambiguous
