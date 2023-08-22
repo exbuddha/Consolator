@@ -223,8 +223,16 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             io(false, step)
             start()
         }
+        fun ioStartAndReset(step: SequencerStep) {
+            io(false, _reset then step)
+            start()
+        }
         fun ioResume(async: Boolean = false, step: SequencerStep) {
             io(async, step)
+            resume()
+        }
+        fun ioResumeAndReset(async: Boolean = false, step: SequencerStep) {
+            io(async, _reset then step)
             resume()
         }
         fun io(async: Boolean = false, step: SequencerStep) = attach(Dispatchers.IO, async, step)
@@ -235,8 +243,16 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             unconfined(false, step)
             start()
         }
+        fun unconfinedStartAndReset(step: SequencerStep) {
+            unconfined(false, _reset then step)
+            start()
+        }
         fun unconfinedResume(async: Boolean = false, step: SequencerStep) {
             unconfined(async, step)
+            resume()
+        }
+        fun unconfinedResumeAndRest(async: Boolean = false, step: SequencerStep) {
+            unconfined(async, _reset then step)
             resume()
         }
         fun unconfined(async: Boolean = false, step: SequencerStep) = attach(Dispatchers.Unconfined, async, step)
@@ -318,6 +334,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             step?.removeObserver(observer)
             isObserving = false
         }
+        private val _reset: SequencerStep = { reset() }
         fun end() {
             if (!isObserving)
                 isCompleted = true

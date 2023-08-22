@@ -14,9 +14,10 @@ import kotlin.reflect.*
 import kotlinx.coroutines.*
 import backgammon.module.Scheduler.Event.Listening
 import backgammon.module.Scheduler.EventBus
+import backgammon.module.Scheduler.defer
 import backgammon.module.BaseApplication.Companion.ACTION_NAV_MAIN_UI
 import backgammon.module.BaseApplication.Companion.ACTION_MIGRATE_APP
-import backgammon.module.application.Migration
+import backgammon.module.application.*
 
 abstract class BaseFragment : Fragment() {
     private val viewModel
@@ -47,14 +48,15 @@ abstract class BaseFragment : Fragment() {
                         close(MainViewGroup::class)
                     }
                     ACTION_MIGRATE_APP ->
-                        Scheduler.defer(::onViewCreated, Migration::class)
+                        defer(::onViewCreated, Migration::class)
                 }
             }
         } onCancel {
             // handle listening error
             State[1] = State.Failed
         }
-        info(UI_TAG, "Main fragment view is created.")
+        if (infoLogIsNotBypassed)
+            info(UI_TAG, "Main fragment view is created.")
     }
 
     override fun onAttach(context: Context) {
@@ -80,6 +82,10 @@ abstract class BaseFragment : Fragment() {
     override fun onDestroyView() {
         close(MainViewGroup::class)
         super.onDestroyView()
+    }
+
+    override fun onLowMemory() {
+        defer(::onLowMemory, MemoryManager::class, { super.onLowMemory() })
     }
 
     @Retention(SOURCE)

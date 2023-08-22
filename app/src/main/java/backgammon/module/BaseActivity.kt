@@ -10,34 +10,31 @@ abstract class BaseActivity : AppCompatActivity() {
     abstract val backgroundLayoutResId: Int
     abstract val viewModel: VM
 
+    lateinit var enableNetworkCallbacks: Work
+    lateinit var disableNetworkCallbacks: Work
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (savedInstanceState === null) {
             setContentView(backgroundLayoutResId)
-            viewModel.apply {
-                enableNetworkCapabilitiesCallbackOnStart = isNetworkStateAccessPermitted() and enableNetworkCapabilitiesCallbackOnStart
-                enableInternetAvailabilityCallbackOnStart = isInternetAccessPermitted() and enableInternetAvailabilityCallbackOnStart
-            }
+            if (isNetworkStateAccessPermitted())
+                enableNetworkCallbacks =
+                    ::registerNetworkCapabilitiesCallback then
+                    ::registerInternetAvailabilityCallback
+            if (isInternetAccessPermitted())
+                disableNetworkCallbacks =
+                    ::unregisterNetworkCapabilitiesCallback then
+                    ::unregisterInternetAvailabilityCallback
         }
     }
 
     override fun onStart() {
         super.onStart()
-        viewModel.apply {
-            if (enableNetworkCapabilitiesCallbackOnStart)
-                registerNetworkCapabilitiesCallback()
-            if (enableInternetAvailabilityCallbackOnStart)
-                registerInternetAvailabilityCallback()
-        }
+        enableNetworkCallbacks.invoke()
     }
 
     override fun onStop() {
-        viewModel.apply {
-            if (disableNetworkCapabilityCallbackOnStop)
-                unregisterNetworkCapabilitiesCallback()
-            if (disableInternetAvailabilityCallbackOnStop)
-                unregisterInternetAvailabilityCallback()
-        }
+        disableNetworkCallbacks.invoke()
         super.onStop()
     }
 
@@ -45,12 +42,7 @@ abstract class BaseActivity : AppCompatActivity() {
         defer<MemoryManager>(::onLowMemory) { super.onLowMemory() }
     }
 
-    abstract class VM : ViewModel() {
-        var enableNetworkCapabilitiesCallbackOnStart = true
-        var enableInternetAvailabilityCallbackOnStart = true
-        var disableNetworkCapabilityCallbackOnStop = true
-        var disableInternetAvailabilityCallbackOnStop = true
-    }
+    abstract class VM : ViewModel()
 
     abstract inner class ConfigurationChangeManager : Reconfiguration()
     abstract inner class NightModeChangeManager : Reconfiguration()

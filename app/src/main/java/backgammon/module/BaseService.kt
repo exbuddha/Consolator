@@ -28,15 +28,19 @@ open class BaseService : Service(), BaseServiceScope {
                 if (netDb === null)
                     scheduler {
                         sequencer = Scheduler.Sequencer().apply {
-                            ioStart {
-                                reset()
+                            ioStartAndReset {
+                                logDb = trySafelyForResult(::buildDatabase)
+                                event(Context::stageLogDbCreated)
+                            }
+                            ioResumeAndReset(true) {
                                 netDb = trySafelyForResult(::buildDatabase)
                                 // update net db records
                                 event(Context::stageNetDbInitialized)
                             }
                         }
                 }
-                info(SVC_TAG, "Clock is detected.")
+                if (infoLogIsNotBypassed)
+                    info(SVC_TAG, "Clock is detected.")
             }
         }
         return mode!!

@@ -19,6 +19,7 @@ import backgammon.module.BaseApplication.Companion.ACTION_MIGRATE_APP
 var instance: BaseApplication? = null
 var service: BaseService? = null
 var db: AppDatabase? = null
+var logDb: LogDatabase? = null
 var netDb: NetworkDatabase? = null
 var session: RuntimeSessionEntity? = null
 lateinit var reactToUncaughtExceptionThrown: ExceptionHandler
@@ -33,15 +34,19 @@ fun Context.event(stage: ContextStep) =
 
 @Event(ACTION_MIGRATE_APP)
 fun Context.stageDbCreated() {
-    reactToUncaughtExceptionThrown += { th, ex ->
-        // record in db
-    }
+    // bootstrap
 }
 
 @Event(ACTION_MIGRATE_APP)
 fun Context.stageSessionCreated() {
     // update db records
     State[1] = Resolved
+}
+
+fun Context.stageLogDbCreated() {
+    reactToUncaughtExceptionThrown += { th, ex ->
+        // record in db
+    }
 }
 
 fun Context.stageNetDbInitialized() {
@@ -88,10 +93,6 @@ typealias LongFunction = () -> Long
 typealias Predicate = () -> Boolean
 typealias AnyPredicate = (Any?) -> Boolean
 typealias IntPredicate = (Int) -> Boolean
-
-const val START_TIME_KEY = "1"
-const val MODE_KEY = "2"
-const val ACTION_KEY = "3"
 
 suspend inline fun <T> T.repeatSuspended(predicate: Predicate, block: JobFunction, delayTime: LongFunction = { 0L }, scope: T = this) {
     while (predicate()) {
@@ -142,6 +143,9 @@ fun <T : Any> KMutableProperty<out T?>.reconstruct(type: KClass<out T>, provider
     } else this
 typealias Provider = (KClass<*>) -> Any
 
+fun Byte.asPercentage() =
+    (this * 100 / Byte.MAX_VALUE).toByte()
+
 open class BaseImplementationRestriction(
     msg: String = "Base implementation restricted",
     cause: Throwable? = null
@@ -154,9 +158,9 @@ fun debug(tag: String, msg: String) = _debugLogger(tag, msg)
 fun warning(tag: String, msg: String) = _warningLogger(tag, msg)
 
 private typealias LogFunction = (String, String) -> Any?
-fun bypassInfoLog() { _infoLogger = { _, _ -> } }
-fun bypassDebugLog() { _debugLogger = { _, _ -> } }
-fun bypassWarningLog() { _warningLogger = { _, _ -> } }
+fun bypassInfoLog() { _infoLogger = _emptyLogger }
+fun bypassDebugLog() { _debugLogger = _emptyLogger }
+fun bypassWarningLog() { _warningLogger = _emptyLogger }
 fun bypassAllLogs() {
     bypassInfoLog()
     bypassDebugLog()
@@ -165,3 +169,12 @@ fun bypassAllLogs() {
 private var _infoLogger: LogFunction = Log::i
 private var _debugLogger: LogFunction = Log::d
 private var _warningLogger: LogFunction = Log::w
+private val _emptyLogger: LogFunction = { _, _ -> }
+private fun LogFunction.isBypassed() = this === _emptyLogger
+private fun LogFunction.isNotBypassed() = this !== _emptyLogger
+val infoLogIsNotBypassed
+    get() = _infoLogger.isNotBypassed()
+
+const val START_TIME_KEY = "1"
+const val MODE_KEY = "2"
+const val ACTION_KEY = "3"

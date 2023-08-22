@@ -30,15 +30,6 @@ abstract class AppDatabase : RoomDatabase() {
     }
 }
 
-@Database(version = DB_VERSION, exportSchema = false, entities = [
-    NetworkCapabilitiesEntity::class,
-    NetworkStateEntity::class,
-])
-@File("net.db")
-abstract class NetworkDatabase : RoomDatabase() {
-    abstract fun networkDao(): NetworkDao
-}
-
 abstract class BaseEntity(
     @PrimaryKey
     open val id: Long,
@@ -73,6 +64,35 @@ open class TimeSensitiveSessionEntity(
     override val id: Long,
     override var sid: Long? = session?.startTime,
 ) : BaseSessionEntity(id, sid)
+
+@Dao
+abstract class RuntimeDao {
+    @Query("INSERT INTO ${RuntimeSessionEntity.TABLE}(${RuntimeSessionEntity.CTX_TIME},${ThreadEntity.RUNTIME_ID}) VALUES (:startTime)")
+    abstract suspend fun newSession(startTime: Long): Long
+
+    @Query("SELECT * FROM ${RuntimeSessionEntity.TABLE} WHERE id == :id")
+    abstract suspend fun getSession(id: Long): RuntimeSessionEntity
+
+    @Query("SELECT * FROM ${RuntimeSessionEntity.TABLE} ORDER BY id DESC LIMIT 1")
+    abstract suspend fun getFirstSession(): RuntimeSessionEntity
+
+    @Query("DELETE FROM ${RuntimeSessionEntity.TABLE} WHERE id NOT IN (SELECT id FROM ${RuntimeSessionEntity.TABLE} ORDER BY id DESC LIMIT :n)")
+    abstract suspend fun truncateSessions(n: Int = 1)
+
+    @Query("DELETE FROM ${RuntimeSessionEntity.TABLE}")
+    abstract suspend fun dropSessions()
+}
+
+@Database(version = DB_VERSION, exportSchema = false, entities = [
+    ThreadEntity::class,
+    ExceptionEntity::class,
+    ExceptionTypeEntity::class,
+    StackTraceElementEntity::class,
+])
+@File("log.db")
+abstract class LogDatabase : RoomDatabase() {
+    abstract fun logDao(): LogDao
+}
 
 @Entity(tableName = ThreadEntity.TABLE)
 data class ThreadEntity(
@@ -163,21 +183,15 @@ data class ExceptionTypeEntity(
 }
 
 @Dao
-abstract class RuntimeDao {
-    @Query("INSERT INTO ${RuntimeSessionEntity.TABLE}(${RuntimeSessionEntity.CTX_TIME},${ThreadEntity.RUNTIME_ID}) VALUES (:startTime)")
-    abstract suspend fun newSession(startTime: Long): Long
+abstract class LogDao
 
-    @Query("SELECT * FROM ${RuntimeSessionEntity.TABLE} WHERE id == :id")
-    abstract suspend fun getSession(id: Long): RuntimeSessionEntity
-
-    @Query("SELECT * FROM ${RuntimeSessionEntity.TABLE} ORDER BY id DESC LIMIT 1")
-    abstract suspend fun getFirstSession(): RuntimeSessionEntity
-
-    @Query("DELETE FROM ${RuntimeSessionEntity.TABLE} WHERE id NOT IN (SELECT id FROM ${RuntimeSessionEntity.TABLE} ORDER BY id DESC LIMIT :n)")
-    abstract suspend fun truncateSessions(n: Int = 1)
-
-    @Query("DELETE FROM ${RuntimeSessionEntity.TABLE}")
-    abstract suspend fun dropSessions()
+@Database(version = DB_VERSION, exportSchema = false, entities = [
+    NetworkCapabilitiesEntity::class,
+    NetworkStateEntity::class,
+])
+@File("net.db")
+abstract class NetworkDatabase : RoomDatabase() {
+    abstract fun networkDao(): NetworkDao
 }
 
 @Entity(tableName = NetworkStateEntity.TABLE)

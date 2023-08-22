@@ -14,6 +14,5 @@ class Migration : Deferral() {
     }
 
     var progress: Byte = 0
-        get() = (field * 100 / Byte.MAX_VALUE).toByte()
         private set
 }

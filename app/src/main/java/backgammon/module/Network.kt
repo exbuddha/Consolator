@@ -72,9 +72,16 @@ private fun clearInternetAvailabilityCallbackObjects() {
     internetAvailabilityJob = null
 }
 
+@JobTreeRoot @NetworkListener
+var internetAvailabilityJob: Job? = null
+    set(value) {
+        // update addressable layer?
+        field = value
+    }
 var internetAvailabilityJobFunction: JobFunction = { scope ->
     if (repeatInternetAvailabilityRequest && isInternetAvailabilityTimeIntervalExceeded) {
-        info(INET_TAG, "Trying to send out http request for internet availability...")
+        if (infoLogIsNotBypassed)
+            info(INET_TAG, "Trying to send out http request for internet availability...")
         tryCanceling({
             sendInternetAvailabilityRequest { response ->
                 hasInternet = response.isSuccessful
@@ -82,7 +89,8 @@ var internetAvailabilityJobFunction: JobFunction = { scope ->
                     lastInternetAvailabilityResponseTime = now()
                 trySafelyCanceling { reactToInternetAvailabilityResponseReceived.invoke(scope, response) }
                 response.close()
-                info(INET_TAG, "Received response for internet availability.")
+                if (infoLogIsNotBypassed)
+                    info(INET_TAG, "Received response for internet availability.")
             }
         }, { ex ->
             trySafelyCanceling { reactToInternetAvailabilityRequestFailed.invoke(scope, ex) }
@@ -106,12 +114,6 @@ private val internetAvailabilityDelayTime
 private val isInternetAvailabilityTimeIntervalExceeded
     get() = isTimeIntervalExceeded(internetAvailabilityTimeInterval, lastInternetAvailabilityResponseTime)
 private var repeatInternetAvailabilityRequest = true
-@JobTreeRoot @NetworkListener
-var internetAvailabilityJob: Job? = null
-    set(value) {
-        // update addressable layer?
-        field = value
-    }
 
 @Retention(SOURCE)
 @Target(FUNCTION, PROPERTY)
