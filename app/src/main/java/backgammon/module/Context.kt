@@ -46,7 +46,7 @@ fun Context.stageSessionCreated() {
 }
 
 fun Context.stageLogDbCreated() {
-    reactToUncaughtExceptionThrown += @Tag("uncaught-db") { th, ex ->
+    reactToUncaughtExceptionThrown[0] = @Tag("uncaught-db") { th, ex ->
         // record in db
     }
 }
@@ -99,6 +99,7 @@ private operator fun ExceptionHandler.plusAssign(other: ExceptionHandler) {}
 private operator fun ExceptionHandler.minusAssign(other: String) {}
 private operator fun ExceptionHandler.plus(other: String): ExceptionHandler = this
 private operator fun ExceptionHandler.minus(other: String): ExceptionHandler = this
+private operator fun ExceptionHandler.set(index: Int, other: ExceptionHandler) {}
 
 typealias AnyArray = Array<out Any?>
 typealias AnyFunction = () -> Any?
