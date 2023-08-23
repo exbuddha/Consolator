@@ -708,6 +708,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         annotation class Converging(val paths: Array<String> = [])
     }
     object FromLastCancellation : Throwable()
+    object Propagate : Throwable()
 
     @Retention(SOURCE)
     @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
@@ -974,7 +975,6 @@ abstract class ForgetfulStepResolver : StepRef(), Resolver {
 typealias JobFunction = suspend (Any?) -> Any?
 private typealias SchedulerNode = KClass<out Annotation>
 private typealias SchedulerPath = Array<KClass<out Throwable>>
-object Propagate : Throwable()
 private typealias SchedulerWork = Scheduler.() -> Unit
 private typealias DescriptiveStep = suspend SchedulerScope.(Job) -> Unit
 private typealias SequencerWork = Sequencer.() -> Unit
