@@ -846,7 +846,7 @@ fun Job.close(node: SchedulerNode) {}
 
 infix fun Job.then(next: DescriptiveStep): CoroutineStep = {}
 infix fun Job.onCancel(action: DescriptiveStep): CoroutineStep = {}
-infix fun Job.onError(action: DescriptiveStep) {}
+infix fun Job.onError(action: DescriptiveStep): CoroutineStep =  {}
 infix fun CoroutineStep.then(next: DescriptiveStep): CoroutineStep = {}
 infix fun CoroutineStep.onCancel(action: DescriptiveStep): CoroutineStep = {}
 infix fun CoroutineStep.onError(action: DescriptiveStep): CoroutineStep = {}
@@ -856,7 +856,8 @@ fun SchedulerScope.keepAliveOrClose(node: SchedulerNode, job: Job) {
     keepAlive(node) && return
     job.close(node)
 }
-fun SchedulerScope.retry(job: Job) {}
+fun SchedulerScope.enact(job: Job, exit: ThrowableFunction? = null) {}
+fun SchedulerScope.retry(job: Job, exit: ThrowableFunction? = null) {}
 
 
 @Retention(SOURCE)

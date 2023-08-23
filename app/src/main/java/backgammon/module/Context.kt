@@ -114,6 +114,7 @@ typealias AnyArray = Array<out Any?>
 typealias AnyFunction = () -> Any?
 typealias AnyToAnyFunction = (Any?) -> Any?
 typealias LongFunction = () -> Long
+typealias ThrowableFunction = (Throwable?) -> Unit
 typealias Predicate = () -> Boolean
 typealias AnyPredicate = (Any?) -> Boolean
 typealias IntPredicate = (Int) -> Boolean
