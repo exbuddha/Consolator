@@ -15,7 +15,6 @@ import backgammon.module.step
 
 open class MainActivity : BaseActivity(), Provider {
     override val backgroundLayoutResId = R.layout.background
-    override val viewModel: VM by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -50,8 +49,6 @@ open class MainActivity : BaseActivity(), Provider {
             // ...
         }
     }
-
-    class VM : BaseActivity.VM()
 
     inner class ConfigurationChangeManager : BaseActivity.ConfigurationChangeManager()
     inner class NightModeChangeManager : BaseActivity.NightModeChangeManager()

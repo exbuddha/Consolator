@@ -6,6 +6,7 @@ import backgammon.module.application.*
 
 open class BaseApplication : Application(), UniqueContext {
     override var startTime = now()
+
     override fun onCreate() {
         Thread.setDefaultUncaughtExceptionHandler { th, ex ->
             reactToUncaughtExceptionThrown(th, ex)

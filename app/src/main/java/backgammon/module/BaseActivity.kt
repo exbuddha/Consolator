@@ -8,7 +8,6 @@ import backgammon.module.application.*
 
 abstract class BaseActivity : AppCompatActivity() {
     abstract val backgroundLayoutResId: Int
-    abstract val viewModel: VM
 
     var enableNetworkCallbacks: Work? = null
     var disableNetworkCallbacks: Work? = null
@@ -41,8 +40,6 @@ abstract class BaseActivity : AppCompatActivity() {
     override fun onLowMemory() {
         defer<MemoryManager>(::onLowMemory) { super.onLowMemory() }
     }
-
-    abstract class VM : ViewModel()
 
     abstract inner class ConfigurationChangeManager : Reconfiguration()
     abstract inner class NightModeChangeManager : Reconfiguration()

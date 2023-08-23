@@ -23,9 +23,6 @@ import backgammon.module.BaseApplication.Companion.COMMIT_NAV_MAIN_UI
 import backgammon.module.application.*
 
 abstract class BaseFragment : Fragment() {
-    private val viewModel
-        get() = activity?.asType<BaseActivity>()?.viewModel
-
     protected abstract var overlay: (View, Bundle?) -> Pair<out Fragment?, Int?>
     private inline fun transit(view: View, savedInstanceState: Bundle?, crossinline editor: BundleEditor) {
         val (overlay, transition) =

@@ -14,14 +14,6 @@ import backgammon.module.BaseApplication.Companion.ABORT_NAV_MAIN_UI
 import backgammon.module.BaseApplication.Companion.COMMIT_NAV_MAIN_UI
 
 class MainFragment : BaseFragment() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        // show animation or progress bar
-        parentFragmentManager.commit {
-            show(this@MainFragment)
-        }
-    }
-
     override var overlay = fun(_: View, bundle: Bundle?): Pair<out Fragment?, Int?> =
         when (bundle?.getShort(ACTION_KEY, -1)) {
             COMMIT_NAV_MAIN_UI ->
@@ -34,6 +26,13 @@ class MainFragment : BaseFragment() {
                 throw BaseImplementationRestriction
         }
 
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        // show animation or progress bar
+        parentFragmentManager.commit {
+            show(this@MainFragment)
+        }
+    }
 
     private inline fun <reified R> screenEventInterceptor(
         listener: Any,
