@@ -858,6 +858,9 @@ fun SchedulerScope.keepAliveOrClose(node: SchedulerNode, job: Job) {
 fun SchedulerScope.enact(job: Job, exit: ThrowableFunction? = null) {}
 fun SchedulerScope.retry(job: Job, exit: ThrowableFunction? = null) {}
 
+operator fun Job.set(tag: String, value: Any) {}
+fun CoroutineScope.saveFunctionTags(vararg function: Any?) {}
+
 @Retention(SOURCE)
 @Target(CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
 annotation class JobTreeRoot
@@ -969,8 +972,6 @@ abstract class ForgetfulStepResolver : StepRef(), Resolver {
 }
 
 typealias JobFunction = suspend (Any?) -> Any?
-operator fun Job.set(tag: String, value: Any) {}
-typealias CoroutineStep = suspend CoroutineScope.() -> Unit
 private typealias SchedulerNode = KClass<out Annotation>
 private typealias SchedulerPath = Array<KClass<out Throwable>>
 object Propagate : Throwable()
@@ -1018,6 +1019,7 @@ private typealias RunnableList = MutableList<Runnable>
 private typealias MessageFunction = (Message) -> Any?
 typealias Work = () -> Unit
 typealias Step = suspend () -> Unit
+typealias CoroutineStep = suspend CoroutineScope.() -> Unit
 
 private typealias ResolverKClass = KClass<out Deferral>
 private typealias ResolverKProperty = KMutableProperty<out Deferral?>

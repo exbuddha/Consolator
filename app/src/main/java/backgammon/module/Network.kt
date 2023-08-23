@@ -78,7 +78,7 @@ var internetAvailabilityJob: Job? = null
         // update addressable layer?
         field = value
     }
-var internetAvailabilityJobFunction: JobFunction = @Tag("inet-avail") { scope ->
+var internetAvailabilityJobFunction: JobFunction = @Tag("inet-avail.function") { scope ->
     if (repeatInternetAvailabilityRequest && isInternetAvailabilityTimeIntervalExceeded) {
         if (infoLogIsNotBypassed)
             info(INET_TAG, "Trying to send out http request for internet availability...")

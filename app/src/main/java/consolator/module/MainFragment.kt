@@ -21,7 +21,7 @@ class MainFragment : BaseFragment() {
                     // ...
                 }
             ABORT_NAV_MAIN_UI ->
-                Pair(null, null)
+                Pair(null, null) // continue animation or alternatives
             else ->
                 throw BaseImplementationRestriction
         }
