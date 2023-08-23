@@ -136,11 +136,6 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         }
         throw BaseImplementationRestriction
     }
-    fun service(step: CoroutineStep) = runBlocking {
-        step(
-            trySafelyForAnnotatedScope(step) ?:
-            service!!)
-    }
 
     var serviceOnStartCommandResolver: StartCommandResolver? = null
         private set
@@ -801,6 +796,11 @@ fun schedule(step: Step) = Scheduler.postValue(step)
 fun Context.scheduleNow(ref: ContextStep) = scheduleNow(step = { ref() })
 fun Context.schedule(ref: ContextStep) = schedule(step = { ref() })
 
+fun service(step: CoroutineStep) = runBlocking {
+    step(
+        Scheduler.trySafelyForAnnotatedScope(step) ?:
+        service!!)
+}
 fun clock(callback: Runnable) = Scheduler.clock!!.post(callback)
 fun clockAhead(callback: Runnable) = Scheduler.clock!!.postAhead(callback)
 fun <T> clock(step: suspend CoroutineScope.() -> T) = clock(blockingRunnableOf(step))
