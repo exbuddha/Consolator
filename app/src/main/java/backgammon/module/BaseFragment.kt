@@ -58,9 +58,7 @@ abstract class BaseFragment : Fragment() {
                 putShort(ACTION_KEY, ABORT_NAV_MAIN_UI) }
             State[1] += State.Pending
             keepAliveOrClose(MainViewGroup::class, job)
-        } then {
-            enact(it)
-        }
+        } then(SchedulerScope::enact)
         if (infoLogIsNotBypassed)
             info(UI_TAG, "Main fragment view is created.")
     }
@@ -83,7 +81,13 @@ abstract class BaseFragment : Fragment() {
         } onCancel {
             retry(it)
         } then {
-            enact(it)
+            enact(it) { err ->
+                // catch cancellation and/or error
+                when (err) {
+                    CancellationException::class -> {}
+                    else -> {}
+                }
+            }
         }
     }
 
