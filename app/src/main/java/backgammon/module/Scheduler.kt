@@ -841,19 +841,22 @@ fun LifecycleOwner.relaunchJobIfNotActive(
     if (instance.getter.call()?.isActive == true) instance as Job
     else launch(context, start, block).also { instance.setter.call(it) }
 fun LifecycleOwner.close(node: SchedulerNode) {}
+fun LifecycleOwner.reattach(node: SchedulerNode) {}
 fun Job.close(node: SchedulerNode) {}
 
 infix fun Job.then(next: DescriptiveStep): CoroutineStep = {}
 infix fun Job.onCancel(action: DescriptiveStep): CoroutineStep = {}
 infix fun Job.onError(action: DescriptiveStep) {}
-infix fun CoroutineStep.onError(action: DescriptiveStep): CoroutineStep = {}
 infix fun CoroutineStep.then(next: DescriptiveStep): CoroutineStep = {}
+infix fun CoroutineStep.onCancel(action: DescriptiveStep): CoroutineStep = {}
+infix fun CoroutineStep.onError(action: DescriptiveStep): CoroutineStep = {}
 
 fun SchedulerScope.keepAlive(node: SchedulerNode): Boolean = false
 fun SchedulerScope.keepAliveOrClose(node: SchedulerNode, job: Job) {
     keepAlive(node) && return
     job.close(node)
 }
+fun SchedulerScope.retry(job: Job) {}
 
 
 @Retention(SOURCE)
@@ -1062,15 +1065,10 @@ sealed interface State {
     operator fun get(id: ID) = this
     operator fun set(id: ID, state: Any) {}
     operator fun plus(state: Any) = this
-    operator fun plusAssign(state: Any) {}
     operator fun minus(state: Any) = this
-    operator fun minusAssign(state: Any) {}
     operator fun times(state: Any) = this
-    operator fun timesAssign(state: Any) {}
     operator fun div(state: Any) = this
-    operator fun divAssign(state: Any) {}
     operator fun rem(state: Any) = this
-    operator fun remAssign(state: Any) {}
     operator fun unaryPlus() = this
     operator fun unaryMinus() = this
     operator fun rangeTo(state: Any) = this

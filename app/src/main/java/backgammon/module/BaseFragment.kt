@@ -56,10 +56,10 @@ abstract class BaseFragment : Fragment() {
                         defer(::onViewCreated, Migration::class)
                 }
             }
-        } onCancel { job ->
+        } onError { job ->
             transit(view, savedInstanceState) {
                 putShort(ACTION_KEY, ABORT_NAV_MAIN_UI) }
-            State[1] = State.Pending
+            State[1] += State.Pending
             keepAliveOrClose(MainViewGroup::class, job)
         }
         if (infoLogIsNotBypassed)
@@ -81,7 +81,14 @@ abstract class BaseFragment : Fragment() {
             }
         } onError {
             State[1] = State.Suspending
+        } onCancel {
+            retry(it)
         }
+    }
+
+    override fun onResume() {
+        reattach(MainViewGroup::class)
+        super.onResume()
     }
 
     override fun onDestroyView() {
