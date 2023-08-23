@@ -764,7 +764,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         if (step !== null) runBlocking { step() }
     }
 
-    @OptIn(FlowPreview::class)
+    @OptIn(ExperimentalCoroutinesApi::class)
     object EventBus : AbstractFlow<Step?>() {
         override suspend fun collectSafely(collector: FlowCollector<Step?>) {
             // emit signalled events to collector
