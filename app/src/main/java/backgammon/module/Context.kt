@@ -106,10 +106,10 @@ typealias ContextStep = suspend Context.() -> Unit
 annotation class Tag(val string: String, val keep: Boolean = true)
 private val KCallable<*>.tag
     get() = annotations.find { it is Tag } as? Tag
-fun trySafelyForAnnotatedTag(item: KCallable<*>) =
+fun trySafelyForAnnotatedTag(item: Any?) =
     trySafelyForResult { annotatedTag(item) }
-fun annotatedTag(item: KCallable<*>) =
-    item.tag!!
+fun annotatedTag(item: Any?) =
+    (item as? KCallable<*>)?.tag
 
 private typealias ExceptionHandler = (Thread, Throwable) -> Unit
 private operator fun ExceptionHandler.plusAssign(other: ExceptionHandler) {}
