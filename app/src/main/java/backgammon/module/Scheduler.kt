@@ -845,9 +845,11 @@ fun LifecycleOwner.reattach(node: SchedulerNode) {}
 fun Job.close(node: SchedulerNode) {}
 
 infix fun Job.then(next: DescriptiveStep): CoroutineStep = {}
+infix fun Job.from(next: DescriptiveStep): CoroutineStep = {}
 infix fun Job.onCancel(action: DescriptiveStep): CoroutineStep = {}
 infix fun Job.onError(action: DescriptiveStep): CoroutineStep =  {}
 infix fun CoroutineStep.then(next: DescriptiveStep): CoroutineStep = {}
+infix fun CoroutineStep.from(next: DescriptiveStep): CoroutineStep = {}
 infix fun CoroutineStep.onCancel(action: DescriptiveStep): CoroutineStep = {}
 infix fun CoroutineStep.onError(action: DescriptiveStep): CoroutineStep = {}
 
