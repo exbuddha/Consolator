@@ -23,7 +23,9 @@ private open class OverlayFragment(
     override fun onContextClick(event: MotionEvent) =
         intercept(
             OnContextClickListener::onContextClick, event) {
-                // post-process event
+                // process event internal to overlay view.
+                // translation for finding the event receiver view may be required sometimes.
+                // optionally, other/all event listener functionality can be given to this class.
             }
 
     private fun <R> intercept(member: KFunction<R>, vararg args: Any, postback: Runnable? = null) =

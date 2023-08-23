@@ -714,10 +714,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     annotation class Event(val transit: Short = 0) {
         @Retention(SOURCE)
         @Target(FUNCTION, EXPRESSION)
-        annotation class Listening(
-            val channel: Short = 0,
-            val timeout: Long = 0L,
-            val auto: Boolean = false)
+        annotation class Listening(val channel: Short = 0, val timeout: Long = 0L)
 
         @Retention(SOURCE)
         @Target(FUNCTION, EXPRESSION)
@@ -725,7 +722,6 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             val delay: Long = 0L,
             val channel: Short = 0,
             val timeout: Long = -1L,
-            val auto: Boolean = false,
             val pathwise: SchedulerPath = [])
 
         @Retention(SOURCE)
@@ -734,7 +730,6 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             val count: Int = 0,
             val channel: Short = 0,
             val timeout: Long = -1L,
-            val auto: Boolean = false,
             val pathwise: SchedulerPath = [])
     }
     private val KCallable<*>.event
@@ -831,6 +826,8 @@ fun LifecycleOwner.launch(context: CoroutineContext, start: CoroutineStart, step
 fun LifecycleOwner.launch(context: CoroutineContext, step: CoroutineStep) =
     (Scheduler.trySafelyForAnnotatedScope(step) ?:
     lifecycleScope).launch(context, block = step)
+fun LifecycleOwner.launch(start: CoroutineStart, step: CoroutineStep) =
+    launch(Scheduler, start, step)
 fun LifecycleOwner.launch(step: CoroutineStep) =
     launch(Scheduler, step)
 fun LifecycleOwner.relaunchJobIfNotActive(
@@ -981,6 +978,7 @@ private typealias SchedulerWork = Scheduler.() -> Unit
 private typealias DescriptiveStep = suspend SchedulerScope.(Job) -> Unit
 private typealias SequencerWork = Sequencer.() -> Unit
 private typealias SequencerScope = LiveDataScope<Step?>
+suspend fun SequencerScope.event(stage: ContextStep) { emit { Scheduler.EventBus.event(stage) } }
 suspend fun SequencerScope.reset() { emit { reset() } }
 private typealias SequencerStep = suspend SequencerScope.() -> Unit
 private typealias StepObserver = Observer<Step?>

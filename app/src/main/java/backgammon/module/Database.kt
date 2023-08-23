@@ -82,13 +82,6 @@ abstract class RuntimeDao {
     @Query("DELETE FROM ${RuntimeSessionEntity.TABLE}")
     abstract suspend fun dropSessions()
 }
-suspend fun buildSession() {
-    if (session === null)
-        session = runtimeDao {
-            getSession(
-                newSession(instance!!.startTime))
-        }
-}
 
 @Database(version = DB_VERSION, exportSchema = false, entities = [
     ThreadEntity::class,
@@ -316,8 +309,8 @@ abstract class NetworkDao {
     abstract suspend fun dropNetworkCapabilities()
 }
 
-inline fun <R> runtimeDao(block: RuntimeDao.() -> R) = db!!.runtimeDao().block()
-inline fun <R> networkDao(block: NetworkDao.() -> R) = netDb!!.networkDao().block()
+suspend fun <R> runtimeDao(block: suspend RuntimeDao.() -> R) = db!!.runtimeDao().block()
+suspend fun <R> networkDao(block: suspend NetworkDao.() -> R) = netDb!!.networkDao().block()
 
 private val buildInfo
     get() = "${BuildConfig.APPLICATION_ID} ${BuildConfig.BUILD_TYPE} ${BuildConfig.VERSION_NAME}"

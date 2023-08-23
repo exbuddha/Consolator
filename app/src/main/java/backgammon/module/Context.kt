@@ -60,17 +60,8 @@ fun Context.stageNetDbInitialized() {
     // update net function pointers
 }
 
-fun Context.isNetworkStateAccessPermitted() =
-    isPermissionGranted(Manifest.permission.ACCESS_NETWORK_STATE)
-fun Context.isInternetAccessPermitted() =
-    isNetworkStateAccessPermitted() and isPermissionGranted(Manifest.permission.INTERNET)
-fun Context.isPermissionGranted(permission: String) =
-    ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
-fun Context.intendFor(cls: Class<*>) = Intent(this, cls)
-fun Context.intendFor(cls: KClass<*>) = intendFor(cls.java)
 fun Context.registerReceiver(filter: IntentFilter) =
     ContextCompat.registerReceiver(this, receiver, filter, null, Scheduler.clock?.handler, 0)
-
 inline fun <reified D : RoomDatabase> Context.buildDatabase() = with(D::class) {
     Room.databaseBuilder(
         this@buildDatabase,
@@ -81,6 +72,25 @@ inline fun <reified D : RoomDatabase> Context.buildDatabase() = with(D::class) {
 fun Context.buildAppDatabase() = commitAsync(AppDatabase, { db === null }) {
     db = buildDatabase()
 }
+suspend fun buildSession() {
+    if (session === null)
+        buildNewSession()
+}
+suspend fun buildNewSession() {
+    runtimeDao {
+        session = getSession(
+            newSession(instance!!.startTime))
+    }
+}
+
+fun Context.isNetworkStateAccessPermitted() =
+    isPermissionGranted(Manifest.permission.ACCESS_NETWORK_STATE)
+fun Context.isInternetAccessPermitted() =
+    isNetworkStateAccessPermitted() and isPermissionGranted(Manifest.permission.INTERNET)
+fun Context.isPermissionGranted(permission: String) =
+    ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
+fun Context.intendFor(cls: Class<*>) = Intent(this, cls)
+fun Context.intendFor(cls: KClass<*>) = intendFor(cls.java)
 
 fun now() = java.util.Calendar.getInstance().timeInMillis
 fun getDelayTime(interval: Long, last: Long) =
@@ -97,8 +107,8 @@ annotation class Tag(val string: String, val keep: Boolean = true)
 private val KCallable<*>.tag
     get() = annotations.find { it is Tag } as? Tag
 fun trySafelyForAnnotatedTag(item: KCallable<*>) =
-    trySafelyForResult { annotatedEvent(item) }
-fun annotatedEvent(item: KCallable<*>) =
+    trySafelyForResult { annotatedTag(item) }
+fun annotatedTag(item: KCallable<*>) =
     item.tag!!
 
 private typealias ExceptionHandler = (Thread, Throwable) -> Unit

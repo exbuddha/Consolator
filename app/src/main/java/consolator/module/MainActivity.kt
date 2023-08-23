@@ -2,7 +2,6 @@ package consolator.module
 
 import android.content.res.Configuration
 import android.os.Bundle
-import androidx.activity.viewModels
 import androidx.core.os.LocaleListCompat
 import androidx.fragment.app.add
 import androidx.fragment.app.commit
