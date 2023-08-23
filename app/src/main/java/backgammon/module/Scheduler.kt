@@ -865,6 +865,16 @@ fun CoroutineScope.saveFunctionTags(vararg function: Any?) {}
 
 @Retention(SOURCE)
 @Target(CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+annotation class Tag(val string: String, val keep: Boolean = true)
+private val KCallable<*>.tag
+    get() = annotations.find { it is Tag } as? Tag
+fun trySafelyForAnnotatedTag(item: Any?) =
+    trySafelyForResult { annotatedTag(item) }
+fun annotatedTag(item: Any?) =
+    (item as? KCallable<*>)?.tag
+
+@Retention(SOURCE)
+@Target(CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
 annotation class JobTreeRoot
 
 @Retention(SOURCE)
