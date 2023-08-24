@@ -18,7 +18,6 @@ import backgammon.module.Scheduler.EventBus.Relay
 import backgammon.module.Scheduler.Lock
 import backgammon.module.Scheduler.Sequencer
 import backgammon.module.application.*
-import okhttp3.Response
 
 inline fun <reified R : Deferral, T> Context.defer(member: KCallable<T>) =
     Scheduler.defer(member, R::class, this)
@@ -1009,7 +1008,7 @@ abstract class ForgetfulStepResolver : StepRef(), Resolver {
 
 private typealias JobFunctionSet = MutableSet<Pair<String, Job>>
 typealias JobFunction = suspend (Any?) -> Unit
-typealias JobResponseFunction = (Any?, Response) -> Unit
+typealias JobResponseFunction = (Any?, okhttp3.Response) -> Unit
 typealias JobThrowableFunction = (Any?, Throwable) -> Unit
 private typealias SchedulerNode = KClass<out Annotation>
 private typealias SchedulerPath = Array<KClass<out Throwable>>
