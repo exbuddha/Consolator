@@ -44,8 +44,7 @@ private var networkCapabilitiesListener: NetworkCallback? = null
 fun LifecycleOwner.registerInternetAvailabilityCallback(context: CoroutineContext = Dispatchers.IO) {
     relaunchJobIfNotActive(
         ::internetAvailabilityJob, context) {
-        repeatSuspended(
-            ::isActive,
+        repeatSuspended(::isActive,
             internetAvailabilityJobFunction,
             ::internetAvailabilityDelayTime)
     }
@@ -90,7 +89,7 @@ var internetAvailabilityJobFunction: JobFunction = @Tag("inet-avail.function") {
         })
     }
 }
-var reactToInternetAvailabilityResponseReceived: (Any?, Response) -> Any? = @Tag("inet-avail.success") { _, response ->
+var reactToInternetAvailabilityResponseReceived: JobResponseFunction = @Tag("inet-avail.success") { _, response ->
     hasInternet = response.isSuccessful
     if (response.isSuccessful)
         lastInternetAvailabilityResponseTime = now()
@@ -98,7 +97,7 @@ var reactToInternetAvailabilityResponseReceived: (Any?, Response) -> Any? = @Tag
     if (infoLogIsNotBypassed)
         info(INET_TAG, "Received response for internet availability.")
 }
-var reactToInternetAvailabilityRequestFailed: (Any?, Throwable) -> Any? = @Tag("inet-avail.error") { _, _ ->
+var reactToInternetAvailabilityRequestFailed: JobThrowableFunction = @Tag("inet-avail.error") { _, _ ->
     if (warningLogIsNotBypassed)
         warning(INET_TAG, "Failed to send http request for internet availability.")
 }
