@@ -119,10 +119,14 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
                     when (context[1]) {
                         ConfigurationChangeManager::class ->
                             activityConfigurationChangeManager!!.assignStepThenResolve(step)
-                        NightModeChangeManager::class ->
-                            activityNightModeChangeManager!!.assignStepThenResolveAndUnset(step)
-                        LocalesChangeManager::class ->
-                            activityLocalesChangeManager!!.assignStepThenResolveAndUnset(step)
+                        NightModeChangeManager::class -> {
+                            activityNightModeChangeManager!!.assignStepThenResolve(step)
+                            activityNightModeChangeManager = null
+                        }
+                        LocalesChangeManager::class -> {
+                            activityLocalesChangeManager!!.assignStepThenResolve(step)
+                            activityLocalesChangeManager = null
+                        }
                         else ->
                             throw BaseImplementationRestriction
                     }
@@ -870,10 +874,10 @@ fun CoroutineScope.saveFunctionTags(vararg function: Any?) {}
 annotation class Tag(val string: String, val keep: Boolean = true)
 private val KCallable<*>.tag
     get() = annotations.find { it is Tag } as? Tag
-fun trySafelyForAnnotatedTag(item: Any?) =
+fun trySafelyForAnnotatedTag(item: KCallable<*>) =
     trySafelyForResult { annotatedTag(item) }
-fun annotatedTag(item: Any?) =
-    (item as? KCallable<*>)?.tag
+fun annotatedTag(item: KCallable<*>) =
+    item.tag
 
 @Retention(SOURCE)
 @Target(CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
@@ -964,10 +968,6 @@ private fun Resolver.assignStepThenResolve(step: CoroutineStep?) {
     assignStep(step)
     (this as StepResolver).resolve()
 }
-private fun Resolver.assignStepThenResolveAndUnset(step: CoroutineStep?) {
-    assignStepThenResolve(step)
-    asMutableProperty()?.expire()
-}
 abstract class WorkResolver : WorkRef(), Resolver
 abstract class ForgetfulWorkResolver : WorkRef(), Resolver {
     override fun commit() {
@@ -1004,32 +1004,6 @@ private typealias CaptureFunction = AnyFunction
 private typealias LiveWork = Triple<() -> LiveStep?, CaptureFunction?, Boolean>
 private typealias LiveSequence = MutableList<LiveWork>
 private typealias LiveWorkPredicate = (LiveWork) -> Boolean
-
-interface Expiry : MutableSet<Lifetime> {
-    fun unsetAll(property: KMutableProperty<*>) {
-        forEach { alive ->
-            if (alive(property) == false)
-                property.expire()
-        }
-    }
-    companion object : Expiry {
-        override fun add(element: Lifetime) = false
-        override fun addAll(elements: Collection<Lifetime>) = false
-        override fun clear() {}
-        override fun iterator(): MutableIterator<Lifetime> = TODO()
-        override fun remove(element: Lifetime): Boolean = false
-        override fun removeAll(elements: Collection<Lifetime>) = false
-        override fun retainAll(elements: Collection<Lifetime>) = false
-        override val size: Int
-            get() = 0
-        override fun contains(element: Lifetime) = false
-        override fun containsAll(elements: Collection<Lifetime>) = false
-        override fun isEmpty() = true
-    }
-}
-typealias Lifetime = (KMutableProperty<*>) -> Boolean?
-private fun KMutableProperty<*>.expire() = setter.call(null)
-private fun Any?.asMutableProperty() = this as? KMutableProperty<*>
 
 private typealias RunnableList = MutableList<Runnable>
 private typealias MessageFunction = (Message) -> Any?
