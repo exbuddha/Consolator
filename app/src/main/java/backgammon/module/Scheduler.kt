@@ -685,15 +685,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
 
         @Retention(SOURCE)
         @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
-        annotation class Parallel(val paths: Array<String> = [])
-
-        @Retention(SOURCE)
-        @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
-        annotation class Proceeding(val paths: Array<String> = [])
-
-        @Retention(SOURCE)
-        @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
-        annotation class Preceding(val paths: Array<String> = [])
+        annotation class Converging(val paths: Array<String> = [])
 
         @Retention(SOURCE)
         @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
@@ -701,7 +693,15 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
 
         @Retention(SOURCE)
         @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
-        annotation class Converging(val paths: Array<String> = [])
+        annotation class Parallel(val paths: Array<String> = [])
+
+        @Retention(SOURCE)
+        @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+        annotation class Preceding(val paths: Array<String> = [])
+
+        @Retention(SOURCE)
+        @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+        annotation class Proceeding(val paths: Array<String> = [])
     }
     object FromLastCancellation : Throwable()
     object Propagate : Throwable()
