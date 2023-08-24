@@ -1025,6 +1025,32 @@ typealias Work = () -> Unit
 typealias Step = suspend () -> Unit
 typealias CoroutineStep = suspend CoroutineScope.() -> Unit
 
+interface Expiry : MutableSet<Lifetime> {
+    fun unsetAll(property: KMutableProperty<*>) {
+        // must be strengthen by connecting to other expiry sets
+        forEach { alive ->
+            if (alive(property) == false)
+                property.expire()
+        }
+    }
+    companion object : Expiry {
+        override fun add(element: Lifetime) = false
+        override fun addAll(elements: Collection<Lifetime>) = false
+        override fun clear() {}
+        override fun iterator(): MutableIterator<Lifetime> = TODO()
+        override fun remove(element: Lifetime): Boolean = false
+        override fun removeAll(elements: Collection<Lifetime>) = false
+        override fun retainAll(elements: Collection<Lifetime>) = false
+        override val size: Int
+            get() = 0
+        override fun contains(element: Lifetime) = false
+        override fun containsAll(elements: Collection<Lifetime>) = false
+        override fun isEmpty() = true
+    }
+}
+typealias Lifetime = (KMutableProperty<*>) -> Boolean?
+private fun KMutableProperty<*>.expire() = setter.call(null)
+
 private typealias ResolverKClass = KClass<out Deferral>
 private typealias ResolverKProperty = KMutableProperty<out Deferral?>
 
