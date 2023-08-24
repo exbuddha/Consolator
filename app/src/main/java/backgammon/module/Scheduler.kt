@@ -842,8 +842,12 @@ fun LifecycleOwner.relaunchJobIfNotActive(
     if (instance.getter.call()?.isActive == true) instance as Job
     else launch(context, start, block).also { instance.setter.call(it) }
 fun LifecycleOwner.close(node: SchedulerNode) {}
+fun LifecycleOwner.detach(node: SchedulerNode) {}
 fun LifecycleOwner.reattach(node: SchedulerNode) {}
 fun Job.close(node: SchedulerNode) {}
+fun Job.close() {}
+val Job.node: SchedulerNode
+    get() = TODO()
 
 infix fun Job.then(next: DescriptiveStep): CoroutineStep = {}
 infix fun Job.from(next: DescriptiveStep): CoroutineStep = {}
@@ -861,6 +865,13 @@ fun SchedulerScope.keepAliveOrClose(node: SchedulerNode, job: Job) {
     keepAlive(node) && return
     job.close(node)
 }
+fun SchedulerScope.keepAliveOrClose(job: Job) {
+    job.node.let {
+        keepAlive(it) && return
+        job.close(it)
+    }
+}
+fun SchedulerScope.close(job: Job, exit: ThrowableFunction? = null) {}
 fun SchedulerScope.enact(job: Job, exit: ThrowableFunction? = null) {}
 fun SchedulerScope.error(job: Job, exit: ThrowableFunction? = null) {}
 fun SchedulerScope.retry(job: Job, exit: ThrowableFunction? = null) {}

@@ -65,7 +65,7 @@ abstract class BaseFragment : Fragment() {
             transit(view, savedInstanceState) {
                 putShort(ACTION_KEY, ABORT_NAV_MAIN_UI) }
             State[1] += Pending
-            keepAliveOrClose(MainViewGroup::class, job)
+            keepAliveOrClose(job)
         } onTimeout {
             State[1] = Unresolved
             error(it)
