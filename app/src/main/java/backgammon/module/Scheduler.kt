@@ -867,8 +867,20 @@ fun SchedulerScope.enact(job: Job, exit: ThrowableFunction? = null) {}
 fun SchedulerScope.error(job: Job, exit: ThrowableFunction? = null) {}
 fun SchedulerScope.retry(job: Job, exit: ThrowableFunction? = null) {}
 
-operator fun Job.set(tag: String, value: Any) {}
-fun CoroutineScope.saveFunctionTags(vararg function: Any?) {}
+private var jobs: JobFunctionSet? = null
+private fun JobFunctionSet.save(tag: String, keep: Boolean, function: KCallable<*>) {}
+private fun JobFunctionSet.save(tag: String, function: KCallable<*>) =
+    save(tag, trySafelyForAnnotatedTag(function)?.keep ?: true, function)
+private fun JobFunctionSet.save(tag: Tag?, function: KCallable<*>) {}
+operator fun Job.set(tag: String, value: Any) {
+    jobs?.save(tag, value as KFunction<*>)
+}
+fun CoroutineScope.saveFunctionTags(vararg function: Any?) {
+    function.forEach {
+        if (it is KCallable<*>)
+            jobs?.save(trySafelyForAnnotatedTag(it), it)
+    }
+}
 
 @Retention(SOURCE)
 @Target(CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
@@ -986,6 +998,7 @@ abstract class ForgetfulStepResolver : StepRef(), Resolver {
     }
 }
 
+private typealias JobFunctionSet = MutableSet<Pair<String, Job>>
 typealias JobFunction = suspend (Any?) -> Unit
 typealias JobResponseFunction = (Any?, Response) -> Unit
 typealias JobThrowableFunction = (Any?, Throwable) -> Unit
