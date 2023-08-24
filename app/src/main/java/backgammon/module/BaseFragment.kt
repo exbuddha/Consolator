@@ -105,8 +105,7 @@ abstract class BaseFragment : Fragment() {
             enact(it) { err ->
                 // catch cancellation and/or error
                 when (err) {
-                    is CancellationException -> {}
-                    else -> {}
+                    is CancellationException -> State[1] += Suspending
                 }
             }
         }
