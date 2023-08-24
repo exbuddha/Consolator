@@ -19,6 +19,7 @@ import backgammon.module.Scheduler.FromLastCancellation
 import backgammon.module.Scheduler.defer
 import backgammon.module.Scheduler.Event.Listening
 import backgammon.module.Scheduler.Event.Remitting
+import backgammon.module.Scheduler.Path
 import backgammon.module.State.Pending
 import backgammon.module.State.Resolved
 import backgammon.module.State.Succeeded
@@ -85,7 +86,7 @@ abstract class BaseFragment : Fragment() {
                 buildAppDatabase()
                 event(Context::stageDbCreated)
             }
-        } then {
+        } then @Path {
             context.tryCanceling {
                 buildSession()
                 event(Context::stageSessionCreated)
