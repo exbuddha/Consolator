@@ -63,8 +63,6 @@ fun Context.stageNetDbInitialized() {
     State[2] += Pending
 }
 
-fun Context.registerReceiver(filter: IntentFilter) =
-    ContextCompat.registerReceiver(this, receiver, filter, null, Scheduler.clock?.handler, 0)
 inline fun <reified D : RoomDatabase> Context.buildDatabase() = with(D::class) {
     Room.databaseBuilder(
         this@buildDatabase,
@@ -106,6 +104,9 @@ suspend fun updateNetworkCapabilities(networkCapabilities: NetworkCapabilities) 
         }
     }
 }
+
+fun Context.registerReceiver(filter: IntentFilter) =
+    ContextCompat.registerReceiver(this, receiver, filter, null, Scheduler.clock?.handler, 0)
 
 fun Context.isNetworkStateAccessPermitted() =
     isPermissionGranted(Manifest.permission.ACCESS_NETWORK_STATE)
@@ -166,6 +167,8 @@ inline fun <R> trySafelyCancelingForResult(block: () -> R) =
 inline fun <R> tryCancelingForResult(block: () -> R, exit: (Throwable) -> R? = { null }) =
     try { block() } catch (ex: CancellationException) { throw ex } catch (ex: Throwable) { exit(ex) }
 inline fun <R> tryCanceling(block: () -> R) =
+    try { block() } catch (ex: Throwable) { throw CancellationException(null, ex) }
+suspend inline fun <R> tryCancelingSuspended(block: suspend () -> R) =
     try { block() } catch (ex: Throwable) { throw CancellationException(null, ex) }
 inline fun <R> Context.trySafelyCanceling(block: Context.() -> R) =
     try { block() } catch (ex: CancellationException) { throw ex } catch (_: Throwable) {}

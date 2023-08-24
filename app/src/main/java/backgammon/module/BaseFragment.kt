@@ -81,16 +81,22 @@ abstract class BaseFragment : Fragment() {
         launch(IO, LAZY) @JobTreeRoot @MainViewGroup @Remitting(
             delay = 100L,
             pathwise = [ FromLastCancellation::class ]
-        ) {
-            context.tryCanceling {
-                buildAppDatabase()
-                change(Context::stageDbCreated)
-            }
+        ) @Path {
+            context.tryCanceling(Context::buildAppDatabase)
+        } then {
+            context.change(Context::stageDbCreated)
+        } given {
+            db !== null
+        } otherwise {
+            retry(it)
         } then @Path {
-            context.tryCanceling {
-                buildSession()
-                change(Context::stageSessionCreated)
-            }
+            tryCancelingSuspended(::buildSession)
+        } then {
+            context.change(Context::stageSessionCreated)
+        } given {
+            session !== null
+        } otherwise {
+            retry(it)
         } onError {
             State[1] = Suspending
         } onCancel(

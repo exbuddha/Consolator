@@ -849,11 +849,15 @@ val Job.node: SchedulerNode
     get() = TODO()
 
 infix fun Job.then(next: DescriptiveStep): CoroutineStep = {}
+infix fun Job.given(predicate: JobPredicate): CoroutineStep = {}
 infix fun Job.from(next: DescriptiveStep): CoroutineStep = {}
 infix fun Job.onCancel(action: DescriptiveStep): CoroutineStep = {}
 infix fun Job.onError(action: DescriptiveStep): CoroutineStep =  {}
 infix fun Job.onTimeout(action: DescriptiveStep): CoroutineStep =  {}
 infix fun CoroutineStep.then(next: DescriptiveStep): CoroutineStep = {}
+infix fun CoroutineStep.given(predicate: JobPredicate): CoroutineStep = {}
+infix fun CoroutineStep.or(next: DescriptiveStep): CoroutineStep = {}
+infix fun CoroutineStep.otherwise(next: DescriptiveStep): CoroutineStep = {}
 infix fun CoroutineStep.from(next: DescriptiveStep): CoroutineStep = {}
 infix fun CoroutineStep.onCancel(action: DescriptiveStep): CoroutineStep = {}
 infix fun CoroutineStep.onError(action: DescriptiveStep): CoroutineStep = {}
@@ -1010,6 +1014,7 @@ private typealias JobFunctionSet = MutableSet<Pair<String, Job>>
 typealias JobFunction = suspend (Any?) -> Unit
 typealias JobResponseFunction = (Any?, okhttp3.Response) -> Unit
 typealias JobThrowableFunction = (Any?, Throwable) -> Unit
+private typealias JobPredicate = (Job) -> Boolean
 private typealias SchedulerNode = KClass<out Annotation>
 private typealias SchedulerPath = Array<KClass<out Throwable>>
 private typealias SchedulerWork = Scheduler.() -> Unit
