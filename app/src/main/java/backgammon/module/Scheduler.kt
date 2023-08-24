@@ -643,7 +643,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
 
     fun windDownClock() {
         clock?.apply {
-            Process.setThreadPriority(threadId, Thread.NORM_PRIORITY)
+            Process.setThreadPriority(threadId, Process.THREAD_PRIORITY_DEFAULT)
         }
     }
     fun windDown() {
