@@ -87,17 +87,17 @@ abstract class BaseFragment : Fragment() {
             context.change(Context::stageDbCreated)
         } given {
             db !== null
-        } otherwise {
-            retry(it)
-        } then @Path {
+        } otherwise(
+            SchedulerScope::retry
+        ) then @Path {
             tryCancelingSuspended(::buildSession)
         } then {
             context.change(Context::stageSessionCreated)
         } given {
             session !== null
-        } otherwise {
-            retry(it)
-        } onError {
+        } otherwise(
+            SchedulerScope::retry
+        ) onError {
             State[1] = Suspending
         } onCancel(
             SchedulerScope::retry
