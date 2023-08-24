@@ -1020,6 +1020,9 @@ sealed interface State {
     interface Resolved : State {
         companion object : Resolved
     }
+    interface Unresolved : State {
+        companion object : Unresolved
+    }
     object Suspending : Ambiguous
     interface Ambiguous : State {
         companion object : Ambiguous
