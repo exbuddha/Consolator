@@ -35,7 +35,7 @@ val foregroundLifecycleOwner: LifecycleOwner
 val foregroundContext: Context
     get() = instance!!
 
-fun Context.event(stage: ContextStep) =
+fun Context.change(stage: ContextStep) =
     EventBus.event(stage)
 
 @Event(ACTION_MIGRATE_APP)

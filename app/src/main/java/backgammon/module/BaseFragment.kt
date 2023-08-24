@@ -84,12 +84,12 @@ abstract class BaseFragment : Fragment() {
         ) {
             context.tryCanceling {
                 buildAppDatabase()
-                event(Context::stageDbCreated)
+                change(Context::stageDbCreated)
             }
         } then @Path {
             context.tryCanceling {
                 buildSession()
-                event(Context::stageSessionCreated)
+                change(Context::stageSessionCreated)
             }
         } onError {
             State[1] = Suspending

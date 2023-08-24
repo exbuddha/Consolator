@@ -31,13 +31,13 @@ open class BaseService : Service(), BaseServiceScope, Provider {
                         if (logDb === null)
                             ioResume {
                                 logDb = tryCanceling(::buildDatabase)
-                                event(Context::stageLogDbCreated)
+                                change(Context::stageLogDbCreated)
                             }
                         if (netDb === null)
                             ioResume(true) {
                                 netDb = tryCanceling(::buildDatabase)
                                 // update net db records
-                                event(Context::stageNetDbInitialized)
+                                change(Context::stageNetDbInitialized)
                             }
                     }
                     if (infoLogIsNotBypassed)

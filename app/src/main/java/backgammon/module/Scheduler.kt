@@ -1017,8 +1017,8 @@ private typealias SchedulerWork = Scheduler.() -> Unit
 private typealias DescriptiveStep = suspend SchedulerScope.(Job) -> Unit
 private typealias SequencerWork = Sequencer.() -> Unit
 private typealias SequencerScope = LiveDataScope<Step?>
-suspend fun SequencerScope.event(stage: ContextStep) { emit { EventBus.event(stage) } }
-suspend fun SequencerScope.signal(transit: Short) { emit { EventBus.signal(transit) } }
+suspend fun SequencerScope.change(stage: ContextStep) { emit { EventBus.event(stage) } }
+suspend fun SequencerScope.change(transit: Short) { emit { EventBus.signal(transit) } }
 suspend fun SequencerScope.reset() { emit { reset() } }
 private typealias SequencerStep = suspend SequencerScope.() -> Unit
 private typealias StepObserver = Observer<Step?>
