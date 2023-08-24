@@ -2,7 +2,6 @@ package backgammon.module
 
 import android.os.*
 import androidx.appcompat.app.*
-import androidx.lifecycle.*
 import backgammon.module.activity.*
 import backgammon.module.application.*
 
