@@ -320,10 +320,8 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             }
         private fun advance() {
             prepare()
-            while (jump() ?: return) {
-                (work.run(::observe) ?:
-                capture()) || return
-            }
+            while (jump() ?: return)
+                (observe(work) ?: capture()) || return
             end()
         }
         private fun observe(work: LiveWork): Boolean? {
