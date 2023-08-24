@@ -711,22 +711,23 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     annotation class Event(val transit: Short = 0) {
         @Retention(SOURCE)
         @Target(FUNCTION, EXPRESSION)
-        annotation class Listening(val channel: Short = 0, val timeout: Long = 0L)
+        annotation class Listening(val timeout: Long = 0L, val channel: Short = 0)
 
         @Retention(SOURCE)
         @Target(FUNCTION, EXPRESSION)
         annotation class Remitting(
             val delay: Long = 0L,
-            val channel: Short = 0,
             val timeout: Long = -1L,
+            val channel: Short = 0,
             val pathwise: SchedulerPath = [])
 
         @Retention(SOURCE)
         @Target(FUNCTION, EXPRESSION)
         annotation class Repeating(
             val count: Int = 0,
-            val channel: Short = 0,
+            val delay: Long = 0L,
             val timeout: Long = -1L,
+            val channel: Short = 0,
             val pathwise: SchedulerPath = [])
     }
     private val KCallable<*>.event
