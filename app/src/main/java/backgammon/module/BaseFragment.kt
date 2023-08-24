@@ -19,7 +19,9 @@ import backgammon.module.Scheduler.FromLastCancellation
 import backgammon.module.Scheduler.defer
 import backgammon.module.Scheduler.Event.Listening
 import backgammon.module.Scheduler.Event.Remitting
+import backgammon.module.State.Pending
 import backgammon.module.State.Suspending
+import backgammon.module.State.Unresolved
 import backgammon.module.BaseApplication.Companion.ACTION_MIGRATE_APP
 import backgammon.module.BaseApplication.Companion.ABORT_NAV_MAIN_UI
 import backgammon.module.BaseApplication.Companion.COMMIT_NAV_MAIN_UI
@@ -59,8 +61,11 @@ abstract class BaseFragment : Fragment() {
         } onError { job ->
             transit(view, savedInstanceState) {
                 putShort(ACTION_KEY, ABORT_NAV_MAIN_UI) }
-            State[1] += State.Pending
+            State[1] += Pending
             keepAliveOrClose(MainViewGroup::class, job)
+        } onTimeout {
+            State[1] = Unresolved
+            error(it)
         } then
             Job::join
 

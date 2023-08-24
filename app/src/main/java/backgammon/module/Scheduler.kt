@@ -851,10 +851,12 @@ infix fun Job.then(next: DescriptiveStep): CoroutineStep = {}
 infix fun Job.from(next: DescriptiveStep): CoroutineStep = {}
 infix fun Job.onCancel(action: DescriptiveStep): CoroutineStep = {}
 infix fun Job.onError(action: DescriptiveStep): CoroutineStep =  {}
+infix fun Job.onTimeout(action: DescriptiveStep): CoroutineStep =  {}
 infix fun CoroutineStep.then(next: DescriptiveStep): CoroutineStep = {}
 infix fun CoroutineStep.from(next: DescriptiveStep): CoroutineStep = {}
 infix fun CoroutineStep.onCancel(action: DescriptiveStep): CoroutineStep = {}
 infix fun CoroutineStep.onError(action: DescriptiveStep): CoroutineStep = {}
+infix fun CoroutineStep.onTimeout(action: DescriptiveStep): CoroutineStep = {}
 
 fun SchedulerScope.keepAlive(node: SchedulerNode): Boolean = false
 fun SchedulerScope.keepAliveOrClose(node: SchedulerNode, job: Job) {
@@ -862,6 +864,7 @@ fun SchedulerScope.keepAliveOrClose(node: SchedulerNode, job: Job) {
     job.close(node)
 }
 fun SchedulerScope.enact(job: Job, exit: ThrowableFunction? = null) {}
+fun SchedulerScope.error(job: Job, exit: ThrowableFunction? = null) {}
 fun SchedulerScope.retry(job: Job, exit: ThrowableFunction? = null) {}
 
 operator fun Job.set(tag: String, value: Any) {}
