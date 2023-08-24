@@ -242,12 +242,6 @@ data class NetworkCapabilitiesEntity(
 
 @Dao
 abstract class NetworkDao {
-    suspend fun updateNetworkState() = updateNetworkState(
-        isConnected,
-        hasInternet,
-        hasMobile,
-        hasWifi)
-
     @Query("INSERT INTO ${NetworkStateEntity.TABLE}(${NetworkStateEntity.IS_CONNECTED},${NetworkStateEntity.HAS_INTERNET},${NetworkStateEntity.HAS_MOBILE},${NetworkStateEntity.HAS_WIFI},sid) VALUES (:isConnected,:hasInternet,:hasMobile,:hasWifi,:sid)")
     abstract suspend fun updateNetworkState(isConnected: Boolean, hasInternet: Boolean, hasMobile: Boolean, hasWifi: Boolean, sid: Long = session!!.id)
 
@@ -274,12 +268,6 @@ abstract class NetworkDao {
 
     @Query("DELETE FROM ${NetworkStateEntity.TABLE}")
     abstract suspend fun dropNetworkStates()
-
-    suspend fun updateNetworkCapabilities(networkCapabilities: NetworkCapabilities) = updateNetworkCapabilities(
-        networkCapabilities.capabilities.toJson(),
-        networkCapabilities.linkDownstreamBandwidthKbps,
-        networkCapabilities.linkUpstreamBandwidthKbps,
-        networkCapabilities.signalStrength)
 
     @Query("INSERT INTO ${NetworkCapabilitiesEntity.TABLE}(${NetworkCapabilitiesEntity.CAPABILITIES},${NetworkCapabilitiesEntity.DOWNSTREAM},${NetworkCapabilitiesEntity.UPSTREAM},${NetworkCapabilitiesEntity.STRENGTH},sid) VALUES (:capabilities,:downstream,:upstream,:strength,:sid)")
     abstract suspend fun updateNetworkCapabilities(capabilities: String, downstream: Int, upstream: Int, strength: Int, sid: Long = session!!.id)
@@ -314,10 +302,6 @@ suspend fun <R> networkDao(block: suspend NetworkDao.() -> R) = netDb!!.networkD
 
 private val buildInfo
     get() = "${BuildConfig.APPLICATION_ID} ${BuildConfig.BUILD_TYPE} ${BuildConfig.VERSION_NAME}"
-
-private val jsonConverter = Gson()
-private fun IntArray.toJson() = jsonConverter.toJson(this, IntArray::class.java)
-private fun String.toIntArray() = jsonConverter.fromJson(this, IntArray::class.java)
 
 private val dateTimeFormat by lazy { SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US) }
 private fun String.toLocalTime() = dateTimeFormat.parse(this)!!.time

@@ -3,6 +3,7 @@ package backgammon.module
 import android.Manifest
 import android.content.*
 import android.content.pm.*
+import android.net.*
 import android.os.*
 import android.util.*
 import androidx.core.content.*
@@ -11,6 +12,7 @@ import androidx.room.*
 import java.lang.*
 import kotlin.reflect.*
 import kotlinx.coroutines.*
+import com.google.gson.Gson
 import backgammon.module.Scheduler.Event
 import backgammon.module.Scheduler.EventBus
 import backgammon.module.State.Pending
@@ -81,6 +83,27 @@ suspend fun buildNewSession() {
     runtimeDao {
         session = getSession(
             newSession(instance!!.startTime))
+    }
+}
+suspend fun updateNetworkState() {
+    networkDao {
+        updateNetworkState(
+            isConnected,
+            hasInternet,
+            hasMobile,
+            hasWifi)
+    }
+}
+suspend fun updateNetworkCapabilities(networkCapabilities: NetworkCapabilities) {
+    networkDao {
+        with(networkCapabilities) {
+            updateNetworkCapabilities(
+                capabilities.toJson(),
+                linkDownstreamBandwidthKbps,
+                linkUpstreamBandwidthKbps,
+                signalStrength
+            )
+        }
     }
 }
 
@@ -169,6 +192,11 @@ fun <T : Any> KMutableProperty<out T?>.reconstruct(type: KClass<out T>, provider
         relay
     } else this
 typealias Provider = (KClass<*>) -> Any
+
+var jsonConverter: Gson? = null
+    get() = field ?: Gson()
+fun IntArray.toJson() = jsonConverter!!.toJson(this, IntArray::class.java)
+fun String.toIntArray() = jsonConverter!!.fromJson(this, IntArray::class.java)
 
 fun Byte.asPercentage() =
     (this * 100 / Byte.MAX_VALUE).toByte()
