@@ -19,14 +19,14 @@ import backgammon.module.Scheduler.Lock
 import backgammon.module.Scheduler.Sequencer
 import backgammon.module.application.*
 
-inline fun <reified R : Deferral, T> Context.defer(member: KCallable<T>) =
-    Scheduler.defer(member, R::class, this)
-inline fun <reified R : Deferral> Context.defer(member: KFunction<Unit>, vararg value: Any?, noinline `super`: Work) =
-    Scheduler.defer(member, R::class, this, *value, `super`)
-inline fun <reified R : Deferral> Context.work(vararg id: Any?, noinline work: Work) =
-    Scheduler.work(this, R::class, *id, work = work)
-inline fun <reified R : Deferral> Context.step(vararg id: Any?, noinline step: CoroutineStep? = null) =
-    work<R>(*id) { Scheduler.step(this, R::class, *id, step = step) }
+inline fun <reified T : Deferral, R> Context.defer(member: KCallable<R>) =
+    Scheduler.defer(member, T::class, this)
+inline fun <reified T : Deferral> Context.defer(member: KFunction<Unit>, vararg value: Any?, noinline `super`: Work) =
+    Scheduler.defer(member, T::class, this, *value, `super`)
+inline fun <reified T : Deferral> Context.work(vararg id: Any?, noinline work: Work) =
+    Scheduler.work(this, T::class, *id, work = work)
+inline fun <reified T : Deferral> Context.step(vararg id: Any?, noinline step: CoroutineStep? = null) =
+    work<T>(*id) { Scheduler.step(this, T::class, *id, step = step) }
 
 interface SchedulerScope : CoroutineScope {
     override val coroutineContext
@@ -34,7 +34,7 @@ interface SchedulerScope : CoroutineScope {
 }
 
 object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, StepObserver, (SchedulerWork) -> Unit {
-    inline fun <reified R : Deferral, T> defer(member: KCallable<T>, resolver: KClass<out R>?, vararg value: Any?): Unit? =
+    inline fun <reified T : Deferral, R> defer(member: KCallable<R>, resolver: KClass<out T>?, vararg value: Any?): Unit? =
         when (resolver) {
             Migration::class ->
                 setResolverThenCommit(
