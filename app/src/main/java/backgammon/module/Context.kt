@@ -9,12 +9,11 @@ import androidx.core.content.*
 import androidx.lifecycle.*
 import androidx.room.*
 import java.lang.*
-import kotlin.annotation.AnnotationRetention.*
-import kotlin.annotation.AnnotationTarget.*
 import kotlin.reflect.*
 import kotlinx.coroutines.*
 import backgammon.module.Scheduler.Event
 import backgammon.module.Scheduler.EventBus
+import backgammon.module.State.Pending
 import backgammon.module.State.Resolved
 import backgammon.module.AppDatabase.Companion.File
 import backgammon.module.BaseApplication.Companion.ACTION_MIGRATE_APP
@@ -54,10 +53,12 @@ fun Context.stageLogDbCreated() {
     reactToUncaughtExceptionThrown[0] = @Tag("uncaught-db") { th, ex ->
         // record in db safely
     }
+    State[2] += Pending
 }
 
 fun Context.stageNetDbInitialized() {
     // update net function pointers
+    State[2] += Pending
 }
 
 fun Context.registerReceiver(filter: IntentFilter) =

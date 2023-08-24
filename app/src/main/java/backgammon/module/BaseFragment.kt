@@ -19,6 +19,7 @@ import backgammon.module.Scheduler.FromLastCancellation
 import backgammon.module.Scheduler.defer
 import backgammon.module.Scheduler.Event.Listening
 import backgammon.module.Scheduler.Event.Remitting
+import backgammon.module.State.Suspending
 import backgammon.module.BaseApplication.Companion.ACTION_MIGRATE_APP
 import backgammon.module.BaseApplication.Companion.ABORT_NAV_MAIN_UI
 import backgammon.module.BaseApplication.Companion.COMMIT_NAV_MAIN_UI
@@ -83,7 +84,7 @@ abstract class BaseFragment : Fragment() {
                 event(Context::stageSessionCreated)
             }
         } onError {
-            State[1] = State.Suspending
+            State[1] = Suspending
         } onCancel(
             SchedulerScope::retry
         ) then {

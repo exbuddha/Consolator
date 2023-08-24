@@ -11,6 +11,7 @@ class Migration : Deferral() {
         // reset function pointers
         // repeat until stable
         signal(@JobTreeRoot COMMIT_NAV_MAIN_UI)
+        Scheduler.applicationMigrationResolver = null
     }
 
     var progress: Byte = 0

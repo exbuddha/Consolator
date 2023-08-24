@@ -143,7 +143,6 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     }
 
     var serviceOnStartCommandResolver: StartCommandResolver? = null
-        private set
     var serviceOnBindResolver: BindResolver? = null
         private set
     var activityConfigurationChangeManager: ConfigurationChangeManager? = null
@@ -153,7 +152,6 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     var activityLocalesChangeManager: LocalesChangeManager? = null
         private set
     var applicationMigrationResolver: Migration? = null
-        private set
     fun setResolverThenCommit(instance: ResolverKProperty, type: ResolverKClass, provider: Any? = null) =
         (instance.reconstruct(type, provider, null) as? WorkRef)?.commit()
     fun setResolverThenResolve(instance: ResolverKProperty, type: ResolverKClass, provider: Any? = null) =
@@ -1032,6 +1030,7 @@ sealed interface State {
         operator fun set(id: ID, lock: Any) {
             when (id.toInt()) {
                 1 -> if (lock is Resolved) Scheduler.windDownClock()
+                2 -> if (lock is Resolved) Scheduler.serviceOnStartCommandResolver = null
             }
         }
         operator fun plus(lock: Any): State = Ambiguous
@@ -1056,7 +1055,14 @@ sealed interface State {
     operator fun dec() = this
     operator fun get(id: ID) = this
     operator fun set(id: ID, state: Any) {}
-    operator fun plus(state: Any) = this
+    operator fun plus(state: Any): State {
+        when {
+            this === State[2] && state is Pending ->
+                if (service?.hasNoMoreInitWork() == true)
+                    State[2] = Succeeded
+        }
+        return this
+    }
     operator fun minus(state: Any) = this
     operator fun times(state: Any) = this
     operator fun div(state: Any) = this

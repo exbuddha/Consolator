@@ -44,6 +44,8 @@ open class BaseService : Service(), BaseServiceScope, Provider {
                         info(SVC_TAG, "Clock is detected.")
                 }
             }
+        else
+            Scheduler.serviceOnStartCommandResolver = null
         return mode!!
     }
 
