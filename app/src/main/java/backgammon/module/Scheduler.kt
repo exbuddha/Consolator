@@ -1036,7 +1036,7 @@ typealias CoroutineStep = suspend CoroutineScope.() -> Unit
 
 interface Expiry : MutableSet<Lifetime> {
     fun unsetAll(property: KMutableProperty<*>) {
-        // must be strengthen by connecting to other expiry sets
+        // must be strengthened by connecting to other expiry sets
         forEach { alive ->
             if (alive(property) == false)
                 property.expire()
