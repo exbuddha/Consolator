@@ -99,7 +99,7 @@ abstract class BaseFragment : Fragment() {
             enact(it) { err ->
                 // catch cancellation and/or error
                 when (err) {
-                    CancellationException::class -> {}
+                    is CancellationException -> {}
                     else -> {}
                 }
             }
