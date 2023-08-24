@@ -20,6 +20,7 @@ import backgammon.module.Scheduler.defer
 import backgammon.module.Scheduler.Event.Listening
 import backgammon.module.Scheduler.Event.Remitting
 import backgammon.module.State.Pending
+import backgammon.module.State.Resolved
 import backgammon.module.State.Suspending
 import backgammon.module.State.Unresolved
 import backgammon.module.BaseApplication.Companion.ACTION_MIGRATE_APP
@@ -104,7 +105,8 @@ abstract class BaseFragment : Fragment() {
     }
 
     override fun onResume() {
-        reattach(MainViewGroup::class)
+        if (State[1] !is Resolved)
+            reattach(MainViewGroup::class)
         super.onResume()
     }
 
