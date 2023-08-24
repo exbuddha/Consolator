@@ -21,6 +21,7 @@ import backgammon.module.Scheduler.Event.Listening
 import backgammon.module.Scheduler.Event.Remitting
 import backgammon.module.State.Pending
 import backgammon.module.State.Resolved
+import backgammon.module.State.Succeeded
 import backgammon.module.State.Suspending
 import backgammon.module.State.Unresolved
 import backgammon.module.BaseApplication.Companion.ACTION_MIGRATE_APP
@@ -52,7 +53,7 @@ abstract class BaseFragment : Fragment() {
                     COMMIT_NAV_MAIN_UI -> {
                         transit(view, savedInstanceState) {
                             putShort(ACTION_KEY, COMMIT_NAV_MAIN_UI) }
-                        State[1] = State.Succeeded
+                        State[1] = Succeeded
                         close(MainViewGroup::class)
                     }
                     ACTION_MIGRATE_APP ->
