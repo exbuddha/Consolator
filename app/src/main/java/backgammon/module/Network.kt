@@ -3,12 +3,15 @@ package backgammon.module
 import android.net.*
 import android.net.ConnectivityManager.*
 import android.net.NetworkCapabilities.*
+import android.os.*
 import android.util.*
 import androidx.lifecycle.*
 import kotlin.annotation.AnnotationRetention.*
 import kotlin.annotation.AnnotationTarget.*
 import kotlin.coroutines.*
+import kotlin.reflect.*
 import kotlinx.coroutines.*
+import kotlinx.coroutines.Dispatchers.IO
 import okhttp3.*
 
 val isConnected
@@ -41,87 +44,141 @@ private var networkCapabilitiesListener: NetworkCallback? = null
         }
     }.also { field = it }
 
-fun LifecycleOwner.registerInternetAvailabilityCallback(context: CoroutineContext = Dispatchers.IO) {
-    relaunchJobIfNotActive(
-        ::internetAvailabilityJob, context) {
+fun LifecycleOwner.registerInternetAvailabilityCallback() {
+    relaunchJobIfNotActive(::networkCaller, IO) {
         repeatSuspended(::isActive,
-            internetAvailabilityJobFunction,
-            ::internetAvailabilityDelayTime)
+            networkCallFunction,
+            ::netCallDelayTime)
     }
 }
-fun sendInternetAvailabilityRequest(block: (Response) -> Unit) = block(
-    OkHttpClient.Builder()
-        .retryOnConnectionFailure(false)
-        .build()
-        .newCall(Request.Builder()
-            .url("https://httpbin.org/delay/1")
-            .build())
-        .execute())
+fun registerInternetAvailabilityCallback() {
+    Scheduler.relaunchJobIfNotActive(::networkCaller, IO) {
+        repeatSuspended(::isActive,
+            networkCallFunction,
+            ::netCallDelayTime)
+    }
+}
 fun pauseInternetAvailabilityCallback() {
-    repeatInternetAvailabilityRequest = false
+    repeatNetCallback = false
 }
 fun resumeInternetAvailabilityCallback() {
-    repeatInternetAvailabilityRequest = true
+    repeatNetCallback = true
 }
 fun unregisterInternetAvailabilityCallback() {
-    internetAvailabilityJob?.cancel()
+    networkCaller?.cancel()
     clearInternetAvailabilityCallbackObjects()
 }
 private fun clearInternetAvailabilityCallbackObjects() {
-    internetAvailabilityJob = null
+    networkCaller = null
 }
 
-@JobTreeRoot @NetworkListener("inet-avail")
-var internetAvailabilityJob: Job? = null
+@JobTreeRoot @NetworkListener @Tag(NET)
+var networkCaller: Job? = null
     set(value) {
         // update addressable layer?
         field = value
     }
-var internetAvailabilityJobFunction: JobFunction = @Tag("inet-avail.function") { scope ->
-    if (repeatInternetAvailabilityRequest && isInternetAvailabilityTimeIntervalExceeded) {
+private var networkCallFunction: JobFunction = @Tag(NET_FUNCTION) { scope ->
+    if (repeatNetCallback && isNetCallTimeIntervalExceeded) {
         if (infoLogIsNotBypassed)
-            info(INET_TAG, "Trying to send out http request for internet availability...")
-        tryCancelingForResult({
-            sendInternetAvailabilityRequest { response ->
-                trySafelyCanceling { reactToInternetAvailabilityResponseReceived.invoke(scope, response) } }
-        }, { ex ->
-            trySafelyCanceling { reactToInternetAvailabilityRequestFailed.invoke(scope, ex) }
-        })
+            info(INET_TAG, "Trying to send out http request for network caller...")
+        synchronized(netCall) {
+            tryCancelingForResult({
+                netCall.asType<NetCall>()!!.commit { response ->
+                    trySafelyCanceling { reactToNetCallResponseReceived.commit(scope, response) }
+                }
+            }, { ex ->
+                trySafelyCanceling { reactToNetCallRequestFailed.commit(scope, ex) }
+            })
+        }
     }
 }
-var reactToInternetAvailabilityResponseReceived: JobResponseFunction = @Tag("inet-avail.success") { _, response ->
+
+@Tag(NET_CALL)
+var netCall = with<Call>("https://httpbin.org/delay/1")(::buildNetworkRequest)
+private var reactToNetCallResponseReceived: JobResponseFunction = @Tag(NET_SUCCESS) { _, response ->
     hasInternet = response.isSuccessful
     if (response.isSuccessful)
-        lastInternetAvailabilityResponseTime = now()
+        lastNetCallResponseTime = now()
     response.close()
     if (infoLogIsNotBypassed)
         info(INET_TAG, "Received response for internet availability.")
 }
-var reactToInternetAvailabilityRequestFailed: JobThrowableFunction = @Tag("inet-avail.error") { _, _ ->
+private var reactToNetCallRequestFailed: JobThrowableFunction = @Tag(NET_ERROR) { _, _ ->
     if (warningLogIsNotBypassed)
         warning(INET_TAG, "Failed to send http request for internet availability.")
 }
-@Tag("inet-avail.delay")
-val internetAvailabilityDelayTime
-    get() = getDelayTime(internetAvailabilityTimeInterval, lastInternetAvailabilityResponseTime)
-private const val MIN_TIME_INTERVAL_INET_AVAIL = 5000L
-@Tag("inet-avail.interval")
-var internetAvailabilityTimeInterval = MIN_TIME_INTERVAL_INET_AVAIL
+
+@Tag(NET_DELAY)
+private var netCallDelayTime = -1L
+    get() = if (field < 0) getDelayTime(netCallTimeInterval, lastNetCallResponseTime) else field
+@Tag(NET_MIN_INTERVAL)
+private var minNetCallTimeInterval = 5000L
+@Tag(NET_INTERVAL)
+private var netCallTimeInterval = minNetCallTimeInterval
     set(value) {
-        field = maxOf(value, MIN_TIME_INTERVAL_INET_AVAIL)
+        field = maxOf(value, minNetCallTimeInterval)
     }
-private var lastInternetAvailabilityResponseTime = 0L
+private var lastNetCallResponseTime = 0L
     set(value) {
         if (value == 0L || value > field)
             field = value
     }
-private val isInternetAvailabilityTimeIntervalExceeded
-    get() = isTimeIntervalExceeded(internetAvailabilityTimeInterval, lastInternetAvailabilityResponseTime)
-private var repeatInternetAvailabilityRequest = true
+private val isNetCallTimeIntervalExceeded
+    get() = isTimeIntervalExceeded(netCallTimeInterval, lastNetCallResponseTime)
+private var repeatNetCallback = true
+
+fun buildNetworkRequest(
+    command: String,
+    method: String = "GET",
+    headers: Headers? = null,
+    body: RequestBody? = null,
+    retry: Boolean = false
+) = OkHttpClient.Builder()
+    .retryOnConnectionFailure(retry)
+    .build()
+    .newCall(
+        Request.Builder()
+            .url(command)
+            .apply { if (headers !== null) headers(headers) }
+            .method(method, body)
+            .build())
+operator fun NetCall.set(param: String, value: Any?) {
+    // keep old value
+    synchronized(this) {
+        when (param) {
+            NET_CALL -> netCall = take(value)
+            NET_FUNCTION -> networkCallFunction = take(value)
+            NET_SUCCESS -> reactToNetCallResponseReceived = take(value)
+            NET_ERROR -> reactToNetCallRequestFailed = take(value)
+            NET_DELAY -> netCallDelayTime = take(value)
+            NET_INTERVAL -> netCallTimeInterval = take(value)
+            NET_MIN_INTERVAL -> minNetCallTimeInterval = take(value)
+        }
+    }
+}
+
+private typealias NetCall = KCallable<Call>
+private inline fun <reified T : Any> take(value: Any?): T = value.asType()!!
+private typealias Respond = (Response) -> Unit
+private fun KCallable<Call>.commit(respond: Respond) {
+    markTagAsFunction()
+    respond(call().asType()!!)
+}
+private typealias JobResponseFunction = (Any?, Response) -> Unit
+private fun JobResponseFunction.commit(scope: Any?, response: Response) {
+    markTagAsFunction()
+    invoke(scope, response)
+}
+private typealias JobThrowableFunction = (Any?, Throwable) -> Unit
+private fun JobThrowableFunction.commit(scope: Any?, ex: Throwable) {
+    markTagAsFunction()
+    invoke(scope, ex)
+}
 
 @Retention(SOURCE)
 @Target(FUNCTION, PROPERTY)
-annotation class NetworkListener(val tag: String)
+private annotation class NetworkListener
 
 private val connectivityManager
     get() = instance!!.getSystemService(ConnectivityManager::class.java)!!
@@ -136,4 +193,12 @@ private var connectivityRequest: NetworkRequest? = null
 private inline fun buildNetworkRequest(block: NetworkRequest.Builder.() -> Unit) =
     NetworkRequest.Builder().apply(block).build()
 
+const val NET = "net"
+const val NET_CALL = "$NET.call"
+const val NET_FUNCTION = "$NET.function"
+const val NET_SUCCESS = "$NET.success"
+const val NET_ERROR = "$NET.error"
+const val NET_DELAY = "$NET.delay"
+const val NET_INTERVAL = "$NET.interval"
+const val NET_MIN_INTERVAL = "$NET.min-interval"
 const val INET_TAG = "INTERNET"

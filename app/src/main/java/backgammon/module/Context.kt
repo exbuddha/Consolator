@@ -32,7 +32,7 @@ var netDb: NetworkDatabase? = null
 var session: RuntimeSessionEntity? = null
 lateinit var reactToUncaughtExceptionThrown: ExceptionHandler
 
-val foregroundLifecycleOwner: LifecycleOwner
+val foregroundLifecycleOwner: LifecycleOwner?
     get() = TODO()
 val foregroundContext: Context
     get() = instance!!
@@ -67,7 +67,7 @@ inline fun <reified D : RoomDatabase> Context.buildDatabase() = with(D::class) {
     Room.databaseBuilder(
         this@buildDatabase,
         java,
-        (annotations.last { it is File } as File).name
+        lastAnnotatedFilename()
     ).build()
 }
 fun Context.buildAppDatabase() = commitAsync(AppDatabase, { db === null }) {
@@ -146,7 +146,7 @@ typealias IntPredicate = (Int) -> Boolean
 
 suspend fun <T> T.repeatSuspended(predicate: Predicate, block: JobFunction, delayTime: LongFunction = { 0L }, scope: T = this) {
     if (scope is CoroutineScope)
-        scope.saveFunctionTags(predicate, block, delayTime)
+        scope.markFunctionTags(predicate, block, delayTime)
     while (predicate()) {
         block(scope)
         delayOrYield(delayTime())
@@ -184,6 +184,8 @@ fun <T : Any> KClass<out T>.reconstruct(vararg args: Any?): T = when {
 }
 fun <T : Any> KClass<out T>.emptyConstructor() = constructors.first { it.parameters.isEmpty() }
 fun <T : Any> KClass<out T>.firstConstructor() = constructors.first()
+fun <T : Any> KClass<out T>.lastAnnotatedFile() = annotations.last { it is File } as File
+fun <T : Any> KClass<out T>.lastAnnotatedFilename() = lastAnnotatedFile().name
 fun <T : Any> KMutableProperty<out T?>.reconstruct(type: KClass<out T>, provider: Any? = null, relay: KMutableProperty<out T?>? = this) =
     if (getter.call() === null) {
         setter.call(when {

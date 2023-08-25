@@ -11,6 +11,7 @@ import kotlin.coroutines.*
 import kotlin.reflect.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
+import okhttp3.*
 import backgammon.module.BaseService.*
 import backgammon.module.BaseActivity.*
 import backgammon.module.Scheduler.EventBus
@@ -668,10 +669,10 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     annotation class Scope(val type: KClass<out CoroutineScope>)
     private val KCallable<*>.schedulerScope
         get() = annotations.find { it is Scope } as? Scope
-    fun trySafelyForAnnotatedScope(step: CoroutineStep?) =
-        trySafelyForResult { annotatedScope(step) }
     private fun annotatedScope(step: CoroutineStep?) =
         (step as KCallable<*>).schedulerScope!!.type.reconstruct(step)
+    fun trySafelyForAnnotatedScope(step: CoroutineStep?) =
+        trySafelyForResult { annotatedScope(step) }
 
     @Retention(SOURCE)
     @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
@@ -732,10 +733,10 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     }
     private val KCallable<*>.event
         get() = annotations.find { it is Event } as? Event
-    fun trySafelyForAnnotatedEvent(step: KFunction<*>) =
-        trySafelyForResult { annotatedEvent(step) }
     fun annotatedEvent(step: KFunction<*>) =
         step.event!!
+    fun trySafelyForAnnotatedEvent(step: KFunction<*>) =
+        trySafelyForResult { annotatedEvent(step) }
 
     private lateinit var _key: CoroutineContext.Key<*>
     private val _element by lazy {
@@ -831,15 +832,24 @@ fun LifecycleOwner.launch(context: CoroutineContext, step: CoroutineStep) =
     lifecycleScope).launch(context, block = step)
 fun LifecycleOwner.launch(start: CoroutineStart, step: CoroutineStep) =
     launch(Scheduler, start, step)
-fun LifecycleOwner.launch(step: CoroutineStep) =
-    launch(Scheduler, step)
 fun LifecycleOwner.relaunchJobIfNotActive(
     instance: KMutableProperty<Job?>,
     context: CoroutineContext = Scheduler,
     start: CoroutineStart = CoroutineStart.DEFAULT,
     block: CoroutineStep) =
-    if (instance.getter.call()?.isActive == true) instance as Job
-    else launch(context, start, block).also { instance.setter.call(it) }
+    instance.mark(
+        if (instance.getter.call()?.isActive == true)
+            instance as Job
+        else launch(context, start, block))
+fun Scheduler.relaunchJobIfNotActive(
+    instance: KMutableProperty<Job?>,
+    context: CoroutineContext = Scheduler,
+    start: CoroutineStart = CoroutineStart.DEFAULT,
+    block: CoroutineStep) =
+    instance.mark(
+        if (instance.getter.call()?.isActive == true)
+            instance as Job
+        else launch(context, start, block))
 fun LifecycleOwner.close(node: SchedulerNode) {}
 fun LifecycleOwner.detach(node: SchedulerNode) {}
 fun LifecycleOwner.reattach(node: SchedulerNode) {}
@@ -887,22 +897,34 @@ private fun JobFunctionSet.save(tag: Tag?, function: KCallable<*>) {}
 operator fun Job.set(tag: String, value: Any) {
     jobs?.save(tag, value as KFunction<*>)
 }
-fun CoroutineScope.saveFunctionTags(vararg function: Any?) {
+fun CoroutineScope.markFunctionTags(vararg function: Any?) {
     function.forEach {
         if (it is KCallable<*>)
             jobs?.save(trySafelyForAnnotatedTag(it), it)
     }
 }
+fun KCallable<*>.markTag() {
+    Scheduler.markFunctionTags(this)
+}
+fun KMutableProperty<Job?>.mark(job: Job): KMutableProperty<Job?> {
+    setter.call(job)
+    markTag()
+    return this
+}
+
+private typealias JobFunctionSet = MutableSet<Pair<String, Job>>
+typealias JobFunction = suspend (Any?) -> Unit
+fun Any.markTagAsFunction() = (this as KFunction<*>).markTag()
 
 @Retention(SOURCE)
 @Target(CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
 annotation class Tag(val string: String, val keep: Boolean = true)
 private val KCallable<*>.tag
     get() = annotations.find { it is Tag } as? Tag
-fun trySafelyForAnnotatedTag(item: KCallable<*>) =
-    trySafelyForResult { annotatedTag(item) }
 fun annotatedTag(item: KCallable<*>) =
     item.tag
+fun trySafelyForAnnotatedTag(item: KCallable<*>) =
+    trySafelyForResult { annotatedTag(item) }
 
 @Retention(SOURCE)
 @Target(CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
@@ -1010,10 +1032,6 @@ abstract class ForgetfulStepResolver : StepRef(), Resolver {
     }
 }
 
-private typealias JobFunctionSet = MutableSet<Pair<String, Job>>
-typealias JobFunction = suspend (Any?) -> Unit
-typealias JobResponseFunction = (Any?, okhttp3.Response) -> Unit
-typealias JobThrowableFunction = (Any?, Throwable) -> Unit
 private typealias JobPredicate = (Job) -> Boolean
 private typealias SchedulerNode = KClass<out Annotation>
 private typealias SchedulerPath = Array<KClass<out Throwable>>
