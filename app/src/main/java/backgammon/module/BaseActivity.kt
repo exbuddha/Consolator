@@ -20,8 +20,8 @@ abstract class BaseActivity : AppCompatActivity() {
                 disableNetworkCallbacks = ::unregisterNetworkCapabilitiesCallback
             }
             if (isInternetAccessPermitted()) {
-                enableNetworkCallbacks = enableNetworkCallbacks?.then(::registerInternetAvailabilityCallback)
-                disableNetworkCallbacks = disableNetworkCallbacks?.then(::unregisterInternetAvailabilityCallback)
+                enableNetworkCallbacks = enableNetworkCallbacks?.then(::registerInternetCallback)
+                disableNetworkCallbacks = disableNetworkCallbacks?.then(::unregisterInternetCallback)
             }
         }
     }

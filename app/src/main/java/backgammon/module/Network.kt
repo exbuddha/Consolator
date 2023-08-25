@@ -44,31 +44,31 @@ private var networkCapabilitiesListener: NetworkCallback? = null
         }
     }.also { field = it }
 
-fun LifecycleOwner.registerInternetAvailabilityCallback() {
+fun LifecycleOwner.registerInternetCallback() {
     relaunchJobIfNotActive(::networkCaller, IO) {
         repeatSuspended(::isActive,
             networkCallFunction,
             ::netCallDelayTime)
     }
 }
-fun registerInternetAvailabilityCallback() {
+fun registerInternetCallback() {
     Scheduler.relaunchJobIfNotActive(::networkCaller, IO) {
         repeatSuspended(::isActive,
             networkCallFunction,
             ::netCallDelayTime)
     }
 }
-fun pauseInternetAvailabilityCallback() {
+fun pauseInternetCallback() {
     repeatNetCallback = false
 }
-fun resumeInternetAvailabilityCallback() {
+fun resumeInternetCallback() {
     repeatNetCallback = true
 }
-fun unregisterInternetAvailabilityCallback() {
+fun unregisterInternetCallback() {
     networkCaller?.cancel()
-    clearInternetAvailabilityCallbackObjects()
+    clearInternetCallbackObjects()
 }
-private fun clearInternetAvailabilityCallbackObjects() {
+private fun clearInternetCallbackObjects() {
     networkCaller = null
 }
 
