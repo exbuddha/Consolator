@@ -72,13 +72,13 @@ private fun clearInternetCallbackObjects() {
     networkCaller = null
 }
 
-@JobTreeRoot @NetworkListener @Tag(NET)
+@JobTreeRoot @NetworkListener @Tag(INET)
 var networkCaller: Job? = null
     set(value) {
         // update addressable layer?
         field = value
     }
-private var networkCallFunction: JobFunction = @Tag(NET_FUNCTION) { scope ->
+private var networkCallFunction: JobFunction = @Tag(INET_FUNCTION) { scope ->
     if (repeatNetCallback && isNetCallTimeIntervalExceeded) {
         if (infoLogIsNotBypassed)
             info(INET_TAG, "Trying to send out http request for network caller...")
@@ -94,9 +94,9 @@ private var networkCallFunction: JobFunction = @Tag(NET_FUNCTION) { scope ->
     }
 }
 
-@Tag(NET_CALL)
+@Tag(INET_CALL)
 var netCall = with<Call>("https://httpbin.org/delay/1")(::buildNetworkRequest)
-private var reactToNetCallResponseReceived: JobResponseFunction = @Tag(NET_SUCCESS) { _, response ->
+private var reactToNetCallResponseReceived: JobResponseFunction = @Tag(INET_SUCCESS) { _, response ->
     hasInternet = response.isSuccessful
     if (response.isSuccessful)
         lastNetCallResponseTime = now()
@@ -104,17 +104,17 @@ private var reactToNetCallResponseReceived: JobResponseFunction = @Tag(NET_SUCCE
     if (infoLogIsNotBypassed)
         info(INET_TAG, "Received response for internet availability.")
 }
-private var reactToNetCallRequestFailed: JobThrowableFunction = @Tag(NET_ERROR) { _, _ ->
+private var reactToNetCallRequestFailed: JobThrowableFunction = @Tag(INET_ERROR) { _, _ ->
     if (warningLogIsNotBypassed)
         warning(INET_TAG, "Failed to send http request for internet availability.")
 }
 
-@Tag(NET_DELAY)
+@Tag(INET_DELAY)
 private var netCallDelayTime = -1L
     get() = if (field < 0) getDelayTime(netCallTimeInterval, lastNetCallResponseTime) else field
-@Tag(NET_MIN_INTERVAL)
+@Tag(INET_MIN_INTERVAL)
 private var minNetCallTimeInterval = 5000L
-@Tag(NET_INTERVAL)
+@Tag(INET_INTERVAL)
 private var netCallTimeInterval = minNetCallTimeInterval
     set(value) {
         field = maxOf(value, minNetCallTimeInterval)
@@ -139,7 +139,7 @@ fun buildNetworkRequest(
     .build()
     .newCall(
         Request.Builder()
-            .url(cmd)
+            .url(cmd.asUrl())
             .apply { if (headers !== null) headers(headers) }
             .method(method, body)
             .build())
@@ -147,16 +147,17 @@ operator fun NetCall.set(cmd: String, value: Any?) {
     // keep old value
     synchronized(this) {
         when (cmd) {
-            NET_CALL -> netCall = take(value)
-            NET_FUNCTION -> networkCallFunction = take(value)
-            NET_SUCCESS -> reactToNetCallResponseReceived = take(value)
-            NET_ERROR -> reactToNetCallRequestFailed = take(value)
-            NET_DELAY -> netCallDelayTime = take(value)
-            NET_INTERVAL -> netCallTimeInterval = take(value)
-            NET_MIN_INTERVAL -> minNetCallTimeInterval = take(value)
+            INET_CALL -> netCall = take(value)
+            INET_FUNCTION -> networkCallFunction = take(value)
+            INET_SUCCESS -> reactToNetCallResponseReceived = take(value)
+            INET_ERROR -> reactToNetCallRequestFailed = take(value)
+            INET_DELAY -> netCallDelayTime = take(value)
+            INET_INTERVAL -> netCallTimeInterval = take(value)
+            INET_MIN_INTERVAL -> minNetCallTimeInterval = take(value)
         }
     }
 }
+private fun String.asUrl() = this
 
 private typealias NetCall = KCallable<Call>
 private inline fun <reified T : Any> take(value: Any?): T = value.asType()!!
@@ -193,12 +194,12 @@ private var connectivityRequest: NetworkRequest? = null
 private inline fun buildNetworkRequest(block: NetworkRequest.Builder.() -> Unit) =
     NetworkRequest.Builder().apply(block).build()
 
-const val NET = "net"
-const val NET_CALL = "$NET.call"
-const val NET_FUNCTION = "$NET.function"
-const val NET_SUCCESS = "$NET.success"
-const val NET_ERROR = "$NET.error"
-const val NET_DELAY = "$NET.delay"
-const val NET_INTERVAL = "$NET.interval"
-const val NET_MIN_INTERVAL = "$NET.min-interval"
+const val INET = "inet"
+const val INET_CALL = "$INET.call"
+const val INET_FUNCTION = "$INET.function"
+const val INET_SUCCESS = "$INET.success"
+const val INET_ERROR = "$INET.error"
+const val INET_DELAY = "$INET.delay"
+const val INET_INTERVAL = "$INET.interval"
+const val INET_MIN_INTERVAL = "$INET.min-interval"
 const val INET_TAG = "INTERNET"
