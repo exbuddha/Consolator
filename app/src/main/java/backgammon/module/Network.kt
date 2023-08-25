@@ -23,20 +23,20 @@ val hasMobile
 val hasWifi
     get() = networkCapabilities?.hasTransport(TRANSPORT_WIFI) ?: false
 
-fun registerNetworkCapabilitiesCallback() {
-    connectivityManager.registerDefaultNetworkCallback(networkCapabilitiesListener!!)
+fun registerNetworkCallback() {
+    connectivityManager.registerDefaultNetworkCallback(networkCallback!!)
 }
-fun unregisterNetworkCapabilitiesCallback() {
-    connectivityManager.unregisterNetworkCallback(networkCapabilitiesListener!!)
-    clearNetworkCapabilitiesCallbackObjects()
+fun unregisterNetworkCallback() {
+    connectivityManager.unregisterNetworkCallback(networkCallback!!)
+    clearNetworkCallbackObjects()
 }
-private fun clearNetworkCapabilitiesCallbackObjects() {
-    networkCapabilitiesListener = null
+private fun clearNetworkCallbackObjects() {
+    networkCallback = null
     connectivityRequest = null
 }
 
 var reactToNetworkCapabilitiesChanged: (Network, NetworkCapabilities) -> Unit = { _, _ -> }
-private var networkCapabilitiesListener: NetworkCallback? = null
+private var networkCallback: NetworkCallback? = null
     get() = field ?: object : NetworkCallback() {
         override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
             super.onCapabilitiesChanged(network, networkCapabilities)

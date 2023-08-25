@@ -16,8 +16,8 @@ abstract class BaseActivity : AppCompatActivity() {
         if (savedInstanceState === null) {
             setContentView(backgroundLayoutResId)
             if (isNetworkStateAccessPermitted()) {
-                enableNetworkCallbacks = ::registerNetworkCapabilitiesCallback
-                disableNetworkCallbacks = ::unregisterNetworkCapabilitiesCallback
+                enableNetworkCallbacks = ::registerNetworkCallback
+                disableNetworkCallbacks = ::unregisterNetworkCallback
             }
             if (isInternetAccessPermitted()) {
                 enableNetworkCallbacks = enableNetworkCallbacks?.then(::registerInternetCallback)
