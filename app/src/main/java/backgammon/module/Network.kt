@@ -129,7 +129,7 @@ private val isNetCallTimeIntervalExceeded
 private var repeatNetCallback = true
 
 fun buildNetworkRequest(
-    command: String,
+    cmd: String,
     method: String = "GET",
     headers: Headers? = null,
     body: RequestBody? = null,
@@ -139,14 +139,14 @@ fun buildNetworkRequest(
     .build()
     .newCall(
         Request.Builder()
-            .url(command)
+            .url(cmd)
             .apply { if (headers !== null) headers(headers) }
             .method(method, body)
             .build())
-operator fun NetCall.set(param: String, value: Any?) {
+operator fun NetCall.set(cmd: String, value: Any?) {
     // keep old value
     synchronized(this) {
-        when (param) {
+        when (cmd) {
             NET_CALL -> netCall = take(value)
             NET_FUNCTION -> networkCallFunction = take(value)
             NET_SUCCESS -> reactToNetCallResponseReceived = take(value)
