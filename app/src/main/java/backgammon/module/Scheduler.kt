@@ -1082,6 +1082,8 @@ interface Expiry : MutableSet<Lifetime> {
 typealias Lifetime = (KMutableProperty<*>) -> Boolean?
 private fun KMutableProperty<*>.expire() = setter.call(null)
 
+fun Any.asProperty() = this as KProperty<*>
+fun Any.asMutableProperty() = this as KMutableProperty<*>
 private typealias ResolverKClass = KClass<out Deferral>
 private typealias ResolverKProperty = KMutableProperty<out Deferral?>
 

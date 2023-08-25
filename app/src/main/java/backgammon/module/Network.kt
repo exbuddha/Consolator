@@ -145,7 +145,7 @@ fun buildNetworkRequest(
             .build())
 operator fun NetCall.set(cmd: String, value: Any?) {
     // keep old value
-    synchronized(this) {
+    synchronized(asProperty()) {
         when (cmd) {
             INET_CALL -> netCall = take(value)
             INET_FUNCTION -> networkCallFunction = take(value)
@@ -157,6 +157,7 @@ operator fun NetCall.set(cmd: String, value: Any?) {
         }
     }
 }
+operator fun NetCall.get(cmd: String): Result<Response> = TODO()
 private fun String.asUrl() = this
 
 private typealias NetCall = KCallable<Call>
