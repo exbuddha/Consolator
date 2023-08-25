@@ -96,6 +96,7 @@ private var networkCallFunction: JobFunction = @Tag(INET_FUNCTION) { scope ->
 
 @Tag(INET_CALL)
 var netCall = with<Call>("https://httpbin.org/delay/1")(::buildNetworkRequest)
+    private set
 private var reactToNetCallResponseReceived: JobResponseFunction = @Tag(INET_SUCCESS) { _, response ->
     hasInternet = response.isSuccessful
     if (response.isSuccessful)
