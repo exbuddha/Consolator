@@ -2,8 +2,8 @@ package abstraction.module
 
 import android.content.Context
 import android.util.*
-import android.view.GestureDetector.*
 import android.view.*
+import android.view.GestureDetector.*
 import androidx.fragment.app.*
 import java.lang.ref.*
 import kotlin.reflect.*
