@@ -666,11 +666,21 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
 
     @Retention(SOURCE)
     @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+    annotation class LaunchScope
+    private val KCallable<*>.launchScope
+        get() = annotations.find { it is LaunchScope } as? LaunchScope
+    private fun annotatedLaunchScope(step: CoroutineStep?) =
+        step!!.asCallable().launchScope!!
+    fun trySafelyForAnnotatedLaunchScope(step: CoroutineStep?) =
+        trySafelyForResult { annotatedLaunchScope(step) }
+
+    @Retention(SOURCE)
+    @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
     annotation class Scope(val type: KClass<out CoroutineScope>)
     private val KCallable<*>.schedulerScope
         get() = annotations.find { it is Scope } as? Scope
     private fun annotatedScope(step: CoroutineStep?) =
-        (step as KCallable<*>).schedulerScope!!.type.reconstruct(step)
+        step!!.asCallable().schedulerScope!!.type.reconstruct(step)
     fun trySafelyForAnnotatedScope(step: CoroutineStep?) =
         trySafelyForResult { annotatedScope(step) }
 
@@ -1055,6 +1065,7 @@ private typealias MessageFunction = (Message) -> Any?
 typealias Work = () -> Unit
 typealias Step = suspend () -> Unit
 typealias CoroutineStep = suspend CoroutineScope.() -> Unit
+private fun CoroutineStep.asCallable() = this as KCallable<*>
 
 interface Expiry : MutableSet<Lifetime> {
     fun unsetAll(property: KMutableProperty<*>) {

@@ -19,7 +19,9 @@ import backgammon.module.Scheduler.FromLastCancellation
 import backgammon.module.Scheduler.defer
 import backgammon.module.Scheduler.Event.Listening
 import backgammon.module.Scheduler.Event.Remitting
+import backgammon.module.Scheduler.LaunchScope
 import backgammon.module.Scheduler.Path
+import backgammon.module.Scheduler.Scope
 import backgammon.module.State.Pending
 import backgammon.module.State.Resolved
 import backgammon.module.State.Succeeded
@@ -81,17 +83,17 @@ abstract class BaseFragment : Fragment() {
         launch(IO, LAZY) @JobTreeRoot @MainViewGroup @Remitting(
             delay = 100L,
             pathwise = [ FromLastCancellation::class ]
-        ) @Path {
+        ) @LaunchScope @Path {
             context.tryCanceling(Context::buildAppDatabase)
-        } then {
+        } then @Scope(SchedulerScope::class) {
             context.change(Context::stageDbCreated)
         } given {
             db !== null
         } otherwise(
             SchedulerScope::retry
-        ) then @Path {
+        ) then @LaunchScope @Path {
             tryCancelingSuspended(::buildSession)
-        } then {
+        } then @Scope(SchedulerScope::class) {
             context.change(Context::stageSessionCreated)
         } given {
             session !== null
