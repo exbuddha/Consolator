@@ -801,7 +801,7 @@ val Step.transit
 val ContextStep.transit
     get() = annotatedEvent?.transit
 private val Any.annotatedEvent
-    get() = Scheduler.trySafelyForAnnotatedEvent(this as KFunction<*>)
+    get() = Scheduler.trySafelyForAnnotatedEvent(asFunction())
 
 fun scheduleNow(step: Step) { Scheduler.value = step }
 fun schedule(step: Step) = Scheduler.postValue(step)
@@ -905,7 +905,7 @@ private fun JobFunctionSet.save(tag: String, function: KCallable<*>) =
     save(tag, trySafelyForAnnotatedTag(function)?.keep ?: true, function)
 private fun JobFunctionSet.save(tag: Tag?, function: KCallable<*>) {}
 operator fun Job.set(tag: String, value: Any) {
-    jobs?.save(tag, value as KFunction<*>)
+    jobs?.save(tag, value.asFunction())
 }
 fun CoroutineScope.markFunctionTags(vararg function: Any?) {
     function.forEach {
@@ -924,7 +924,7 @@ fun KMutableProperty<Job?>.mark(job: Job): KMutableProperty<Job?> {
 
 private typealias JobFunctionSet = MutableSet<Pair<String, Job>>
 typealias JobFunction = suspend (Any?) -> Unit
-fun Any.markTagAsFunction() = (this as KFunction<*>).markTag()
+fun Any.markTagAsFunction() = asFunction().markTag()
 
 @Retention(SOURCE)
 @Target(CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
@@ -1093,6 +1093,7 @@ interface Expiry : MutableSet<Lifetime> {
 typealias Lifetime = (KMutableProperty<*>) -> Boolean?
 private fun KMutableProperty<*>.expire() = setter.call(null)
 
+fun Any.asFunction() = this as KFunction<*>
 fun Any.asProperty() = this as KProperty<*>
 fun Any.asMutableProperty() = this as KMutableProperty<*>
 private typealias ResolverKClass = KClass<out Deferral>

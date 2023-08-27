@@ -82,11 +82,10 @@ private var networkCallFunction: JobFunction = @Tag(INET_FUNCTION) { scope ->
     if (repeatNetCallback && isNetCallTimeIntervalExceeded) {
         if (infoLogIsNotBypassed)
             info(INET_TAG, "Trying to send out http request for network caller...")
-        synchronized(netCall) {
+        synchronized(::netCall) {
             tryCancelingForResult({
                 netCall.asType<NetCall>()!!.commit { response ->
-                    trySafelyCanceling { reactToNetCallResponseReceived.commit(scope, response) }
-                }
+                    trySafelyCanceling { reactToNetCallResponseReceived.commit(scope, response) } }
             }, { ex ->
                 trySafelyCanceling { reactToNetCallRequestFailed.commit(scope, ex) }
             })
