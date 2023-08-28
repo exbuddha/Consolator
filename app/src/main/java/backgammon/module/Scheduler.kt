@@ -818,6 +818,11 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     override fun invoke(work: SchedulerWork) = this.work()
 }
 
+fun Step.relay(transit: Short? = this.transit) = Relay(transit)
+fun Step.reevaluate(transit: Short? = this.transit) = object : Relay(transit) {
+    override suspend fun invoke() = this@reevaluate.invoke()
+}
+
 val Step.transit
     get() = if (this is Relay) transit else annotatedEvent?.transit
 val ContextStep.transit
