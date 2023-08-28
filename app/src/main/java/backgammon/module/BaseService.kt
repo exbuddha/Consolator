@@ -29,12 +29,12 @@ open class BaseService : Service(), BaseServiceScope, Provider {
                     startTime = getStartTimeExtra(intent)
                     sequencer {
                         if (logDb === null)
-                            ioResume {
+                            ioResume @Tag("log-db.build") {
                                 logDb = tryCanceling(::buildDatabase)
                                 change(Context::stageLogDbCreated)
                             }
                         if (netDb === null)
-                            ioResume(true) {
+                            ioResume(true) @Tag("net-db.build") {
                                 netDb = tryCanceling(::buildDatabase)
                                 // update net db records
                                 change(Context::stageNetDbInitialized)
