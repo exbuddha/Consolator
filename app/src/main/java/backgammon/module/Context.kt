@@ -170,6 +170,10 @@ inline fun <R> tryCanceling(block: () -> R) =
     try { block() } catch (ex: Throwable) { throw CancellationException(null, ex) }
 suspend inline fun <R> tryCancelingSuspended(block: suspend () -> R) =
     try { block() } catch (ex: Throwable) { throw CancellationException(null, ex) }
+inline fun <R> trySafelyInterrupting(block: () -> R) =
+    try { block() } catch (ex: InterruptedException) { throw ex } catch (_: Throwable) {}
+inline fun <R> tryInterrupting(block: () -> R) =
+    try { block() } catch (ex: Throwable) { throw InterruptedException() }
 inline fun <R> Context.trySafelyCanceling(block: Context.() -> R) =
     try { block() } catch (ex: CancellationException) { throw ex } catch (_: Throwable) {}
 inline fun <R> Context.tryCanceling(block: Context.() -> R) =

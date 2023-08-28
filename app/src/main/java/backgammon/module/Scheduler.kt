@@ -844,7 +844,16 @@ fun clock(callback: Runnable) = Scheduler.clock!!.post(callback)
 fun clockAhead(callback: Runnable) = Scheduler.clock!!.postAhead(callback)
 fun <T> clock(step: suspend CoroutineScope.() -> T) = clock(blockingRunnableOf(step))
 fun <T> clockAhead(step: suspend CoroutineScope.() -> T) = clockAhead(blockingRunnableOf(step))
+fun <T> clockSafely(step: suspend CoroutineScope.() -> T) = clock(safeRunnableOf(step))
+fun <T> clockAheadSafely(step: suspend CoroutineScope.() -> T) = clockAhead(safeRunnableOf(step))
+fun <T> clockSafelyInterrupting(step: suspend CoroutineScope.() -> T) = clock(safeInterruptingRunnableOf(step))
+fun <T> clockAheadSafelyInterrupting(step: suspend CoroutineScope.() -> T) = clockAhead(safeInterruptingRunnableOf(step))
+fun <T> clockInterrupting(step: suspend CoroutineScope.() -> T) = clock(interruptingRunnableOf(step))
+fun <T> clockAheadInterrupting(step: suspend CoroutineScope.() -> T) = clockAhead(interruptingRunnableOf(step))
 fun <T> blockingRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { runBlocking(block = step) }
+fun <T> safeRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { trySafely { runBlocking(block = step) } }
+fun <T> safeInterruptingRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { trySafelyInterrupting { runBlocking(block = step) } }
+fun <T> interruptingRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { tryInterrupting { runBlocking(block = step) } }
 inline fun <R> commitAsync(lock: Any, crossinline predicate: Predicate, crossinline block: () -> R) {
     if (predicate())
         synchronized(lock) {
