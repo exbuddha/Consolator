@@ -879,15 +879,15 @@ fun <T, R> defaultCapture(step: suspend LiveDataScope<T>.() -> Unit, capture: (T
     capture(Default, step, capture)
 fun <T, R> unconfinedCapture(step: suspend LiveDataScope<T>.() -> Unit, capture: (T) -> R) =
     capture(Unconfined, step, capture)
-fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(owner: LifecycleOwner, observer: Observer<T> = captureOf()) =
+fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(owner: LifecycleOwner, observer: Observer<T> = captureOf(this)) =
     first.observe(owner, observer)
-fun <T, R> Pair<LiveData<T>, (T) -> R>.observeForever(observer: Observer<T> = captureOf()) =
+fun <T, R> Pair<LiveData<T>, (T) -> R>.observeForever(observer: Observer<T> = captureOf(this)) =
     first.observeForever(observer)
 fun <T, R> Pair<LiveData<T>, (T) -> R>.removeObserver(observer: Observer<T>) =
     first.removeObserver(observer)
 fun <T, R> Pair<LiveData<T>, (T) -> R>.removeObservers(owner: LifecycleOwner) =
     first.removeObservers(owner)
-private fun <T, R> Pair<LiveData<T>, (T) -> R>.captureOf() = Observer<T> { second(it) }
+private fun <T, R> captureOf(liveStep: Pair<LiveData<T>, (T) -> R>) = Observer<T> { liveStep.second(it) }
 
 fun LifecycleOwner.launch(context: CoroutineContext, start: CoroutineStart, step: CoroutineStep) =
     (Scheduler.trySafelyForAnnotatedScope(step) ?:
