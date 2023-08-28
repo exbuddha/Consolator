@@ -869,6 +869,25 @@ inline fun <R> commitAsyncForResult(lock: Any, crossinline predicate: Predicate,
 }
 
 inline fun <R> sequencer(block: Sequencer.() -> R) = Scheduler.sequencer!!.block()
+fun <T, R> capture(context: CoroutineContext, step: suspend LiveDataScope<T>.() -> Unit, capture: (T) -> R) =
+    liveData(context, block = step) to capture
+fun <T, R> ioCapture(step: suspend LiveDataScope<T>.() -> Unit, capture: (T) -> R) =
+    capture(IO, step, capture)
+fun <T, R> mainCapture(step: suspend LiveDataScope<T>.() -> Unit, capture: (T) -> R) =
+    capture(Main, step, capture)
+fun <T, R> defaultCapture(step: suspend LiveDataScope<T>.() -> Unit, capture: (T) -> R) =
+    capture(Default, step, capture)
+fun <T, R> unconfinedCapture(step: suspend LiveDataScope<T>.() -> Unit, capture: (T) -> R) =
+    capture(Unconfined, step, capture)
+fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(owner: LifecycleOwner, observer: Observer<T> = captureOf()) =
+    first.observe(owner, observer)
+fun <T, R> Pair<LiveData<T>, (T) -> R>.observeForever(observer: Observer<T> = captureOf()) =
+    first.observeForever(observer)
+fun <T, R> Pair<LiveData<T>, (T) -> R>.removeObserver(observer: Observer<T>) =
+    first.removeObserver(observer)
+fun <T, R> Pair<LiveData<T>, (T) -> R>.removeObservers(owner: LifecycleOwner) =
+    first.removeObservers(owner)
+private fun <T, R> Pair<LiveData<T>, (T) -> R>.captureOf() = Observer<T> { second(it) }
 
 fun LifecycleOwner.launch(context: CoroutineContext, start: CoroutineStart, step: CoroutineStep) =
     (Scheduler.trySafelyForAnnotatedScope(step) ?:
