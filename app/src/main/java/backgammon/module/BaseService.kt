@@ -29,7 +29,7 @@ open class BaseService : Service(), BaseServiceScope, Provider {
                     startTime = getStartTimeExtra(intent)
                     sequencer {
                         if (logDb === null)
-                            ioResume @Tag("log-db.build") {
+                            ioResume(true) @Tag("log-db.build") {
                                 logDb = tryCanceling(::buildDatabase)
                                 change(Context::stageLogDbCreated)
                             }
