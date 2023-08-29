@@ -525,8 +525,8 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             captureOnce(before, block)
         }
         private fun nullStepTo(block: CaptureFunction) = Triple(nullStep, block, false)
-        private fun stepToNull(async: Boolean = false, step: () -> LiveStep?) = Triple(step, nullBlock, async)
-        private val nullStep: () -> LiveStep? = { null }
+        private fun stepToNull(async: Boolean = false, step: LiveStepFunction) = Triple(step, nullBlock, async)
+        private val nullStep: LiveStepFunction = { null }
         private val nullBlock: CaptureFunction? = null
 
         private fun LiveWork.isSameWork(work: LiveWork) =
@@ -883,14 +883,14 @@ fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(owner: LifecycleOwner, observer: 
     first.observe(owner, observer)
     return observer
 }
-fun <T, R> Pair<LiveData<T>, (T) -> R>.observeForever(observer: Observer<T> = disposerOf(this)): Observer<T> {
+fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(observer: Observer<T> = disposerOf(this)): Observer<T> {
     first.observeForever(observer)
     return observer
 }
 fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(owner: LifecycleOwner, observerOf: (Pair<LiveData<T>, (T) -> R>) -> Observer<T> = ::disposerOf) =
     observe(owner, observerOf(this))
-fun <T, R> Pair<LiveData<T>, (T) -> R>.observeForever(observerOf: (Pair<LiveData<T>, (T) -> R>) -> Observer<T> = ::disposerOf) =
-    observeForever(observerOf(this))
+fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(observerOf: (Pair<LiveData<T>, (T) -> R>) -> Observer<T> = ::disposerOf) =
+    this@observe.observe(observerOf(this))
 fun <T, R> Pair<LiveData<T>, (T) -> R>.removeObserver(observer: Observer<T>) =
     first.removeObserver(observer)
 fun <T, R> Pair<LiveData<T>, (T) -> R>.removeObservers(owner: LifecycleOwner) =
@@ -1125,8 +1125,9 @@ suspend fun SequencerScope.reset() { emit { Scheduler.sequencer!!.reset() } }
 private typealias SequencerStep = suspend SequencerScope.() -> Unit
 private typealias StepObserver = Observer<Step?>
 private typealias LiveStep = LiveData<Step?>
+private typealias LiveStepFunction = () -> LiveStep?
 private typealias CaptureFunction = AnyFunction
-private typealias LiveWork = Triple<() -> LiveStep?, CaptureFunction?, Boolean>
+private typealias LiveWork = Triple<LiveStepFunction, CaptureFunction?, Boolean>
 private typealias LiveSequence = MutableList<LiveWork>
 private typealias LiveWorkPredicate = (LiveWork) -> Boolean
 
