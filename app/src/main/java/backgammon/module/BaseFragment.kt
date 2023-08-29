@@ -83,7 +83,7 @@ abstract class BaseFragment : Fragment() {
         launch(IO, LAZY) @JobTreeRoot @MainViewGroup @Remitting(
             delay = 100L,
             pathwise = [ FromLastCancellation::class ]
-        ) @LaunchScope @Path {
+        ) @LaunchScope @Path("app-db.build") {
             context.tryCanceling(Context::buildAppDatabase)
         } then @Scope(SchedulerScope::class) {
             context.change(Context::stageDbCreated)
@@ -91,7 +91,7 @@ abstract class BaseFragment : Fragment() {
             db !== null
         } otherwise(
             SchedulerScope::retry
-        ) then @LaunchScope @Path {
+        ) then @LaunchScope @Path("session.build") {
             tryCancelingSuspended(::buildSession)
         } then @Scope(SchedulerScope::class) {
             context.change(Context::stageSessionCreated)
