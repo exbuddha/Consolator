@@ -928,7 +928,7 @@ fun LifecycleOwner.relaunchJobIfNotActive(
         if (instance.getter.call()?.isActive == true)
             instance as Job
         else launch(workerGroupOf(context), start, block))
-fun Scheduler.relaunchJobIfNotActive(
+fun SchedulerScope.relaunchJobIfNotActive(
     instance: KMutableProperty<Job?>,
     context: CoroutineContext = Scheduler,
     start: CoroutineStart = CoroutineStart.DEFAULT,
