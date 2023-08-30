@@ -10,17 +10,11 @@ android {
     buildFeatures.buildConfig = true
 
     defaultConfig {
-        applicationId = "app.consolator".also {
-            buildConfigField("String", "APP_ID", "\"$it\"")
-            resValue("string", "app_id", it)
-        }
+        applicationId = "app.consolator"
         minSdk = 31
         targetSdk = 34
         versionCode = 1
-        versionName = "1.0".also {
-            buildConfigField("String", "VER_NAME", "\"$it\"")
-            resValue("string", "ver_name", it)
-        }
+        versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -32,8 +26,6 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            buildConfigField("String", "BUILD_TYPE", "\"release\"")
-            resValue("string", "build_type", "release")
         }
     }
     compileOptions {

@@ -1,7 +1,6 @@
 package net.consolator
 
 import android.content.Context
-import android.util.*
 import android.view.*
 import android.view.GestureDetector.*
 import androidx.fragment.app.*
@@ -9,8 +8,8 @@ import java.lang.ref.*
 import kotlin.reflect.*
 import kotlinx.coroutines.*
 
-object UI : (Context, ScreenEventInterceptor?) -> Pair<out Fragment, Int?> {
-    override fun invoke(context: Context, interceptor: ScreenEventInterceptor?): Pair<out Fragment, Int?> =
+object UI : (Context, ScreenEventInterceptor?) -> Pair<Fragment, Int?> {
+    override fun invoke(context: Context, interceptor: ScreenEventInterceptor?): Pair<Fragment, Int?> =
         Pair(OverlayFragment(WeakReference(context), interceptor), null)
 }
 

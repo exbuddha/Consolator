@@ -4,8 +4,7 @@ import android.content.Context
 import android.os.*
 import android.util.*
 import android.view.*
-import androidx.core.util.component1
-import androidx.core.util.component2
+import androidx.core.util.*
 import androidx.fragment.app.*
 import androidx.fragment.app.FragmentTransaction.*
 import kotlin.annotation.AnnotationRetention.*
@@ -33,7 +32,7 @@ import net.consolator.BaseApplication.Companion.COMMIT_NAV_MAIN_UI
 import net.consolator.application.*
 
 abstract class BaseFragment : Fragment() {
-    protected abstract var overlay: (View, Bundle?) -> Pair<out Fragment?, Int?>
+    protected abstract var overlay: (View, Bundle?) -> Pair<Fragment?, Int?>
     private inline fun transit(view: View, savedInstanceState: Bundle?, crossinline editor: BundleEditor) {
         val (overlay, transition) =
             overlay(view, (savedInstanceState ?: Bundle()).apply { editor() })

@@ -40,7 +40,7 @@ data class RuntimeSessionEntity(
     override var startTime: Long,
     @ColumnInfo(name = DB_TIME, defaultValue = CURRENT_TIMESTAMP)
     var dbTime: String,
-    @ColumnInfo(name = BUILD_INFO)
+    @ColumnInfo(name = BUILD_INFO, defaultValue = net.consolator.BUILD_INFO)
     val build: String?,
     override val id: Long,
 ) : BaseEntity(id), UniqueContext {
@@ -299,12 +299,11 @@ abstract class NetworkDao {
 suspend fun <R> runtimeDao(block: suspend RuntimeDao.() -> R) = db!!.runtimeDao().block()
 suspend fun <R> networkDao(block: suspend NetworkDao.() -> R) = netDb!!.networkDao().block()
 
-private val buildInfo
-    get() = "${BuildConfig.APP_ID} ${BuildConfig.BUILD_TYPE} ${BuildConfig.VER_NAME}"
-
 private val dateTimeFormat by lazy { SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US) }
 private fun String.toLocalTime() = dateTimeFormat.parse(this)!!.time
 private fun Long.toLocalTimestamp() = dateTimeFormat.format(Date(this))
 private val dbTimeDiff by lazy { with(session!!) { dbTime.toLocalTime() - startTime } }
 private fun String.toAppTime() = toLocalTime() - dbTimeDiff
 private fun Long.toDbTime() = plus(dbTimeDiff)
+
+private const val BUILD_INFO= "${BuildConfig.APPLICATION_ID} ${BuildConfig.BUILD_TYPE} ${BuildConfig.VERSION_NAME}"

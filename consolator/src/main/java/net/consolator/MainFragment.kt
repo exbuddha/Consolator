@@ -1,7 +1,6 @@
 package net.consolator
 
 import android.os.Bundle
-import android.util.Pair
 import android.view.View
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.commit
@@ -10,7 +9,7 @@ import net.consolator.BaseApplication.Companion.ABORT_NAV_MAIN_UI
 import net.consolator.BaseApplication.Companion.COMMIT_NAV_MAIN_UI
 
 class MainFragment : BaseFragment() {
-    override var overlay = fun(_: View, bundle: Bundle?): Pair<out Fragment?, Int?> =
+    override var overlay = fun(_: View, bundle: Bundle?): Pair<Fragment?, Int?> =
         when (bundle?.getShort(ACTION_KEY, -1)) {
             COMMIT_NAV_MAIN_UI ->
                 UI(requireActivity(), ::screenEventInterceptor).apply {
