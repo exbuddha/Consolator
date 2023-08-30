@@ -912,14 +912,15 @@ private fun CoroutineContext.isSchedulerContext() =
 private fun workerGroupOf(context: CoroutineContext) =
     if (context.isSchedulerContext()) context
     else Scheduler + context
+private fun LifecycleOwner.trySafelyForAnnotatedScope(step: CoroutineStep) =
+    Scheduler.trySafelyForAnnotatedScope(step) ?:
+    lifecycleScope
 fun LifecycleOwner.launch(context: CoroutineContext, start: CoroutineStart, step: CoroutineStep) =
-    (Scheduler.trySafelyForAnnotatedScope(step) ?:
-    lifecycleScope).launch(workerGroupOf(context), start, step)
+    trySafelyForAnnotatedScope(step).launch(workerGroupOf(context), start, step)
 fun LifecycleOwner.launch(context: CoroutineContext, step: CoroutineStep) =
-    (Scheduler.trySafelyForAnnotatedScope(step) ?:
-    lifecycleScope).launch(workerGroupOf(context), block = step)
+    trySafelyForAnnotatedScope(step).launch(workerGroupOf(context), block = step)
 fun LifecycleOwner.launch(start: CoroutineStart, step: CoroutineStep) =
-    Scheduler.launch(start, step)
+    trySafelyForAnnotatedScope(step).launch(Scheduler, start, step)
 fun LifecycleOwner.relaunchJobIfNotActive(
     instance: KMutableProperty<Job?>,
     context: CoroutineContext = Scheduler,
@@ -928,19 +929,7 @@ fun LifecycleOwner.relaunchJobIfNotActive(
     instance.mark(
         if (instance.getter.call()?.isActive == true)
             instance as Job
-        else launch(workerGroupOf(context), start, block))
-fun SchedulerScope.launch(context: CoroutineContext, start: CoroutineStart, step: CoroutineStep) =
-    (Scheduler.trySafelyForAnnotatedScope(step) ?:
-    Scheduler).launch(workerGroupOf(context), start, step)
-fun SchedulerScope.launch(context: CoroutineContext, step: CoroutineStep) =
-    (Scheduler.trySafelyForAnnotatedScope(step) ?:
-    Scheduler).launch(workerGroupOf(context), block = step)
-fun SchedulerScope.launch(start: CoroutineStart, step: CoroutineStep) =
-    (Scheduler.trySafelyForAnnotatedScope(step) ?:
-    Scheduler).launch(Scheduler, start, step)
-fun SchedulerScope.launch(step: CoroutineStep) =
-    (Scheduler.trySafelyForAnnotatedScope(step) ?:
-    Scheduler).launch(Scheduler, block = step)
+        else launch(context, start, block))
 fun SchedulerScope.relaunchJobIfNotActive(
     instance: KMutableProperty<Job?>,
     context: CoroutineContext = Scheduler,
