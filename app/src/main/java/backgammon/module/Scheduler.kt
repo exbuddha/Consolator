@@ -770,9 +770,11 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     fun trySafelyForAnnotatedEvent(step: KFunction<*>) =
         trySafelyForResult { annotatedEvent(step) }
 
-    private lateinit var _key: CoroutineContext.Key<*>
+    private interface SchedulerKey : CoroutineContext.Key<SchedulerElement>
+    private interface SchedulerElement : CoroutineContext.Element
+    private lateinit var _key: SchedulerKey
     private val _element by lazy {
-        object : CoroutineContext.Element {
+        object : SchedulerElement{
             override val key
                 get() = _key
         }
@@ -904,12 +906,17 @@ private fun <T, R> disposerOf(liveStep: Pair<LiveData<T>, (T) -> R>) = object : 
     }
 }
 
+private fun CoroutineContext.isSchedulerContext() =
+    this is Scheduler
+private fun workerGroupOf(context: CoroutineContext) =
+    if (context.isSchedulerContext()) context
+    else Scheduler + context
 fun LifecycleOwner.launch(context: CoroutineContext, start: CoroutineStart, step: CoroutineStep) =
     (Scheduler.trySafelyForAnnotatedScope(step) ?:
-    lifecycleScope).launch(context, start, step)
+    lifecycleScope).launch(workerGroupOf(context), start, step)
 fun LifecycleOwner.launch(context: CoroutineContext, step: CoroutineStep) =
     (Scheduler.trySafelyForAnnotatedScope(step) ?:
-    lifecycleScope).launch(context, block = step)
+    lifecycleScope).launch(workerGroupOf(context), block = step)
 fun LifecycleOwner.launch(start: CoroutineStart, step: CoroutineStep) =
     launch(Scheduler, start, step)
 fun LifecycleOwner.relaunchJobIfNotActive(
@@ -920,7 +927,7 @@ fun LifecycleOwner.relaunchJobIfNotActive(
     instance.mark(
         if (instance.getter.call()?.isActive == true)
             instance as Job
-        else launch(context, start, block))
+        else launch(workerGroupOf(context), start, block))
 fun Scheduler.relaunchJobIfNotActive(
     instance: KMutableProperty<Job?>,
     context: CoroutineContext = Scheduler,
@@ -929,7 +936,7 @@ fun Scheduler.relaunchJobIfNotActive(
     instance.mark(
         if (instance.getter.call()?.isActive == true)
             instance as Job
-        else launch(context, start, block))
+        else launch(workerGroupOf(context), start, block))
 fun LifecycleOwner.close(node: SchedulerNode) {}
 fun LifecycleOwner.detach(node: SchedulerNode) {}
 fun LifecycleOwner.reattach(node: SchedulerNode) {}
