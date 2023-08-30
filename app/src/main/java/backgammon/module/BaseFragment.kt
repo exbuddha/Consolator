@@ -85,7 +85,7 @@ abstract class BaseFragment : Fragment() {
             pathwise = [ FromLastCancellation::class ]
         ) @LaunchScope @Path("app-db.build") {
             context.tryCanceling(Context::buildAppDatabase)
-        } then @Scope(SchedulerScope::class) {
+        } then @Scope {
             context.change(Context::stageDbCreated)
         } given {
             db !== null
@@ -93,7 +93,7 @@ abstract class BaseFragment : Fragment() {
             SchedulerScope::retry
         ) then @LaunchScope @Path("session.build") {
             tryCancelingSuspended(::buildSession)
-        } then @Scope(SchedulerScope::class) {
+        } then @Scope {
             context.change(Context::stageSessionCreated)
         } given {
             session !== null

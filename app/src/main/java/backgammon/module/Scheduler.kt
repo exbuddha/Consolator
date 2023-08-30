@@ -698,7 +698,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
 
     @Retention(SOURCE)
     @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
-    annotation class Scope(val type: KClass<out CoroutineScope>)
+    annotation class Scope(val type: KClass<out CoroutineScope> = SchedulerScope::class)
     private val KCallable<*>.schedulerScope
         get() = annotations.find { it is Scope } as? Scope
     private fun annotatedScope(step: CoroutineStep?) =
