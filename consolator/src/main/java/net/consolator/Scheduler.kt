@@ -38,6 +38,16 @@ interface SchedulerScope : CoroutineScope {
         get() = Scheduler
 }
 
+private interface SchedulerKey : CoroutineContext.Key<SchedulerElement>
+private interface SchedulerElement : CoroutineContext.Element
+private lateinit var _key: SchedulerKey
+private val _element by lazy {
+    object : SchedulerElement{
+        override val key
+            get() = _key
+    }
+}
+
 object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, StepObserver, (SchedulerWork) -> Unit {
     inline fun <reified T : Deferral, R> defer(member: KCallable<R>, resolver: KClass<out T>?, vararg value: Any?): Unit? =
         when (resolver) {
@@ -770,15 +780,6 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     fun trySafelyForAnnotatedEvent(step: KFunction<*>) =
         trySafelyForResult { annotatedEvent(step) }
 
-    private interface SchedulerKey : CoroutineContext.Key<SchedulerElement>
-    private interface SchedulerElement : CoroutineContext.Element
-    private lateinit var _key: SchedulerKey
-    private val _element by lazy {
-        object : SchedulerElement{
-            override val key
-                get() = _key
-        }
-    }
     override fun <R> fold(initial: R, operation: (R, CoroutineContext.Element) -> R): R  {
         // context expansion by attachment: register operation callback.
         // return a default state or a new one depending on the initial value.
@@ -907,7 +908,7 @@ private fun <T, R> disposerOf(liveStep: Pair<LiveData<T>, (T) -> R>) = object : 
 }
 
 private fun CoroutineContext.isSchedulerContext() =
-    this is Scheduler
+    this is Scheduler || this[_key] is SchedulerKey
 private fun workerGroupOf(context: CoroutineContext) =
     if (context.isSchedulerContext()) context
     else Scheduler + context
@@ -1097,11 +1098,9 @@ abstract class WorkRef : Deferral() {
 abstract class StepRef : WorkRef() {
     var step: CoroutineStep? = null
 }
-interface Resolver : CoroutineScope {
+interface Resolver : SchedulerScope {
     fun resolve(vararg id: Any?): Unit =
         throw BaseImplementationRestriction
-    override val coroutineContext
-        get() = Scheduler
 }
 private fun Resolver.assignWork(work: Work, vararg id: Any?) {
     (this as WorkRef).work = work
