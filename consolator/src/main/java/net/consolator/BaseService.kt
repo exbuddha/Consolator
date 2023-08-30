@@ -22,30 +22,29 @@ open class BaseService : Service(), BaseServiceScope, Provider {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         mode = super.onStartCommand(intent, flags, startId)
         mode = getModeExtra(intent)
-        if (hasMoreInitWork())
+        if (hasMoreInitWork)
             defer<StartCommandResolver, _>(::onStartCommand) ?:
             work<StartCommandResolver> {
                 clockAhead {
                     startTime = getStartTimeExtra(intent)
                     sequencer {
                         if (logDb === null)
-                            ioResume(true) @Tag("log-db.build") {
+                            io(true) @Tag("log-db.build") {
                                 logDb = tryCanceling(::buildDatabase)
                                 change(Context::stageLogDbCreated)
                             }
                         if (netDb === null)
-                            ioResume(true) @Tag("net-db.build") {
+                            io(true) @Tag("net-db.build") {
                                 netDb = tryCanceling(::buildDatabase)
                                 // update net db records
                                 change(Context::stageNetDbInitialized)
                             }
+                        resume()
                     }
                     if (infoLogIsNotBypassed)
                         info(SVC_TAG, "Clock is detected.")
                 }
             }
-        else
-            Scheduler.serviceOnStartCommandResolver = null
         return mode!!
     }
 
@@ -69,9 +68,8 @@ open class BaseService : Service(), BaseServiceScope, Provider {
 
     inner class StartCommandResolver : ForgetfulWorkResolver() {
         override fun commit() {
-            if (hasNoMoreInitWork())
-                work = null
-            super.commit()
+            if (hasMoreInitWork)
+                super.commit()
         }
     }
     abstract inner class BindResolver : ForgetfulWorkResolver()
@@ -92,8 +90,10 @@ interface BaseServiceScope : IBinder, SchedulerScope, UniqueContext {
     fun getModeExtra(intent: Intent?) =
         intent?.getIntExtra(MODE_KEY, mode!!)!!
 
-    fun hasMoreInitWork() = logDb === null || netDb === null
-    fun hasNoMoreInitWork() = logDb !== null && netDb !== null
+    val hasMoreInitWork
+        get() = logDb === null || netDb === null
+    val hasNoMoreInitWork
+        get() = logDb !== null && netDb !== null
 
     override fun getInterfaceDescriptor(): String? {
         return null

@@ -235,73 +235,105 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     }
 
     class Sequencer {
+        fun io(async: Boolean = false, step: SequencerStep) = attach(IO, async, step)
+        fun io(index: Int, async: Boolean = false, step: SequencerStep) = attach(index, IO, async, step)
         fun ioStart(step: SequencerStep) =
             io(false, step).also { start() }
+        fun ioResume(async: Boolean = false, step: SequencerStep) =
+            io(async, step).also { resume() }
+        fun ioAfter(async: Boolean = false, step: SequencerStep) = attachAfter(IO, async, step)
+        fun ioBefore(async: Boolean = false, step: SequencerStep) = attachBefore(IO, async, step)
+        fun ioResettingFirstly(async: Boolean = false, step: SequencerStep) = io(async, resettingFirstly(step))
+        fun ioResettingLastly(async: Boolean = false, step: SequencerStep) = io(async, resettingLastly(step))
+        fun ioResettingFirstly(index: Int, async: Boolean = false, step: SequencerStep) = io(index, async, resettingFirstly(step))
+        fun ioResettingLastly(index: Int, async: Boolean = false, step: SequencerStep) = io(index, async, resettingLastly(step))
         fun ioStartResettingFirstly(step: SequencerStep) =
             io(false, resettingFirstly(step)).also { start() }
         fun ioStartResettingLastly(step: SequencerStep) =
             io(false, resettingLastly(step)).also { start() }
-        fun ioResume(async: Boolean = false, step: SequencerStep) =
-            io(async, step).also { resume() }
         fun ioResumeResettingFirstly(async: Boolean = false, step: SequencerStep) =
             io(async, resettingFirstly(step)).also { resume() }
         fun ioResumeResettingLastly(async: Boolean = false, step: SequencerStep) =
             io(async, resettingLastly(step)).also { resume() }
-        fun io(async: Boolean = false, step: SequencerStep) = attach(IO, async, step)
-        fun io(index: Int, async: Boolean = false, step: SequencerStep) = attach(index, IO, async, step)
-        fun ioAfter(async: Boolean = false, step: SequencerStep) = attachAfter(IO, async, step)
-        fun ioBefore(async: Boolean = false, step: SequencerStep) = attachBefore(IO, async, step)
+        fun ioAfterResettingFirstly(async: Boolean = false, step: SequencerStep) = ioAfter(async, resettingFirstly(step))
+        fun ioAfterResettingLastly(async: Boolean = false, step: SequencerStep) = ioAfter(async, resettingLastly(step))
+        fun ioBeforeResettingFirstly(async: Boolean = false, step: SequencerStep) = ioBefore(async, resettingFirstly(step))
+        fun ioBeforeResettingLastly(async: Boolean = false, step: SequencerStep) = ioBefore(async, resettingLastly(step))
 
+        fun main(async: Boolean = false, step: SequencerStep) = attach(Main, async, step)
+        fun main(index: Int, async: Boolean = false, step: SequencerStep) = attach(index, Main, async, step)
         fun mainStart(step: SequencerStep) =
             main(false, step).also { start() }
+        fun mainResume(async: Boolean = false, step: SequencerStep) =
+            main(async, step).also { resume() }
+        fun mainAfter(async: Boolean = false, step: SequencerStep) = attachAfter(Main, async, step)
+        fun mainBefore(async: Boolean = false, step: SequencerStep) = attachBefore(Main, async, step)
+        fun mainResettingFirstly(async: Boolean = false, step: SequencerStep) = main(async, resettingFirstly(step))
+        fun mainResettingLastly(async: Boolean = false, step: SequencerStep) = main(async, resettingLastly(step))
+        fun mainResettingFirstly(index: Int, async: Boolean = false, step: SequencerStep) = main(index, async, resettingFirstly(step))
+        fun mainResettingLastly(index: Int, async: Boolean = false, step: SequencerStep) = main(index, async, resettingLastly(step))
         fun mainStartResettingFirstly(step: SequencerStep) =
             main(false, resettingFirstly(step)).also { start() }
         fun mainStartResettingLastly(step: SequencerStep) =
             main(false, resettingLastly(step)).also { start() }
-        fun mainResume(async: Boolean = false, step: SequencerStep) =
-            main(async, step).also { resume() }
         fun mainResumeResettingFirstly(async: Boolean = false, step: SequencerStep) =
             main(async, resettingFirstly(step)).also { resume() }
         fun mainResumeResettingLastly(async: Boolean = false, step: SequencerStep) =
             main(async, resettingLastly(step)).also { resume() }
-        fun main(async: Boolean = false, step: SequencerStep) = attach(Main, async, step)
-        fun main(index: Int, async: Boolean = false, step: SequencerStep) = attach(index, Main, async, step)
-        fun mainAfter(async: Boolean = false, step: SequencerStep) = attachAfter(Main, async, step)
-        fun mainBefore(async: Boolean = false, step: SequencerStep) = attachBefore(Main, async, step)
+        fun mainAfterResettingFirstly(async: Boolean = false, step: SequencerStep) = mainAfter(async, resettingFirstly(step))
+        fun mainAfterResettingLastly(async: Boolean = false, step: SequencerStep) = mainAfter(async, resettingLastly(step))
+        fun mainBeforeResettingFirstly(async: Boolean = false, step: SequencerStep) = mainBefore(async, resettingFirstly(step))
+        fun mainBeforeResettingLastly(async: Boolean = false, step: SequencerStep) = mainBefore(async, resettingLastly(step))
 
+        fun default(async: Boolean = false, step: SequencerStep) = attach(Default, async, step)
+        fun default(index: Int, async: Boolean = false, step: SequencerStep) = attach(index, Default, async, step)
         fun defaultStart(step: SequencerStep) =
             default(false, step).also { start() }
+        fun defaultResume(async: Boolean = false, step: SequencerStep) =
+            default(async, step).also { resume() }
+        fun defaultAfter(async: Boolean = false, step: SequencerStep) = attachAfter(Default, async, step)
+        fun defaultBefore(async: Boolean = false, step: SequencerStep) = attachBefore(Default, async, step)
+        fun defaultResettingFirstly(async: Boolean = false, step: SequencerStep) = default(async, resettingFirstly(step))
+        fun defaultResettingLastly(async: Boolean = false, step: SequencerStep) = default(async, resettingLastly(step))
+        fun defaultResettingFirstly(index: Int, async: Boolean = false, step: SequencerStep) = default(index, async, resettingFirstly(step))
+        fun defaultResettingLastly(index: Int, async: Boolean = false, step: SequencerStep) = default(index, async, resettingLastly(step))
         fun defaultStartResettingFirstly(step: SequencerStep) =
             default(false, resettingFirstly(step)).also { start() }
         fun defaultStartResettingLastly(step: SequencerStep) =
             default(false, resettingLastly(step)).also { start() }
-        fun defaultResume(async: Boolean = false, step: SequencerStep) =
-            default(async, step).also { resume() }
         fun defaultResumeResettingFirstly(async: Boolean = false, step: SequencerStep) =
             default(async, resettingFirstly(step)).also { resume() }
         fun defaultResumeResettingLastly(async: Boolean = false, step: SequencerStep) =
             default(async, resettingLastly(step)).also { resume() }
-        fun default(async: Boolean = false, step: SequencerStep) = attach(Default, async, step)
-        fun default(index: Int, async: Boolean = false, step: SequencerStep) = attach(index, Default, async, step)
-        fun defaultAfter(async: Boolean = false, step: SequencerStep) = attachAfter(Default, async, step)
-        fun defaultBefore(async: Boolean = false, step: SequencerStep) = attachBefore(Default, async, step)
+        fun defaultAfterResettingFirstly(async: Boolean = false, step: SequencerStep) = defaultAfter(async, resettingFirstly(step))
+        fun defaultAfterResettingLastly(async: Boolean = false, step: SequencerStep) = defaultAfter(async, resettingLastly(step))
+        fun defaultBeforeResettingFirstly(async: Boolean = false, step: SequencerStep) = defaultBefore(async, resettingFirstly(step))
+        fun defaultBeforeResettingLastly(async: Boolean = false, step: SequencerStep) = defaultBefore(async, resettingLastly(step))
 
+        fun unconfined(async: Boolean = false, step: SequencerStep) = attach(Unconfined, async, step)
+        fun unconfined(index: Int, async: Boolean = false, step: SequencerStep) = attach(index, Unconfined, async, step)
         fun unconfinedStart(step: SequencerStep) =
             unconfined(false, step).also { start() }
+        fun unconfinedResume(async: Boolean = false, step: SequencerStep) =
+            unconfined(async, step).also { resume() }
+        fun unconfinedAfter(async: Boolean = false, step: SequencerStep) = attachAfter(Unconfined, async, step)
+        fun unconfinedBefore(async: Boolean = false, step: SequencerStep) = attachBefore(Unconfined, async, step)
+        fun unconfinedResettingFirstly(async: Boolean = false, step: SequencerStep) = unconfined(async, resettingFirstly(step))
+        fun unconfinedResettingLastly(async: Boolean = false, step: SequencerStep) = unconfined(async, resettingLastly(step))
+        fun unconfinedResettingFirstly(index: Int, async: Boolean = false, step: SequencerStep) = unconfined(index, async, resettingFirstly(step))
+        fun unconfinedResettingLastly(index: Int, async: Boolean = false, step: SequencerStep) = unconfined(index, async, resettingLastly(step))
         fun unconfinedStartResettingFirstly(step: SequencerStep) =
             unconfined(false, resettingFirstly(step)).also { start() }
         fun unconfinedStartResettingLastly(step: SequencerStep) =
             unconfined(false, resettingLastly(step)).also { start() }
-        fun unconfinedResume(async: Boolean = false, step: SequencerStep) =
-            unconfined(async, step).also { resume() }
         fun unconfinedResumeResettingFirstly(async: Boolean = false, step: SequencerStep) =
             unconfined(async, resettingFirstly(step)).also { resume() }
         fun unconfinedResumeResettingLastly(async: Boolean = false, step: SequencerStep) =
             unconfined(async, resettingLastly(step)).also { resume() }
-        fun unconfined(async: Boolean = false, step: SequencerStep) = attach(Unconfined, async, step)
-        fun unconfined(index: Int, async: Boolean = false, step: SequencerStep) = attach(index, Unconfined, async, step)
-        fun unconfinedAfter(async: Boolean = false, step: SequencerStep) = attachAfter(Unconfined, async, step)
-        fun unconfinedBefore(async: Boolean = false, step: SequencerStep) = attachBefore(Unconfined, async, step)
+        fun unconfinedAfterResettingFirstly(async: Boolean = false, step: SequencerStep) = unconfinedAfter(async, resettingFirstly(step))
+        fun unconfinedAfterResettingLastly(async: Boolean = false, step: SequencerStep) = unconfinedAfter(async, resettingLastly(step))
+        fun unconfinedBeforeResettingFirstly(async: Boolean = false, step: SequencerStep) = unconfinedBefore(async, resettingFirstly(step))
+        fun unconfinedBeforeResettingLastly(async: Boolean = false, step: SequencerStep) = unconfinedBefore(async, resettingLastly(step))
 
         private fun mark(step: SequencerStep) =
             step.apply { asCallable().markTag() }
@@ -930,7 +962,7 @@ fun LifecycleOwner.relaunchJobIfNotActive(
         if (instance.getter.call()?.isActive == true)
             instance as Job
         else launch(context, start, block))
-fun SchedulerScope.relaunchJobIfNotActive(
+fun CoroutineScope.relaunchJobIfNotActive(
     instance: KMutableProperty<Job?>,
     context: CoroutineContext = Scheduler,
     start: CoroutineStart = CoroutineStart.DEFAULT,
@@ -986,14 +1018,14 @@ private fun JobFunctionSet.save(tag: Tag?, function: KCallable<*>) {}
 operator fun Job.set(tag: String, value: Any) {
     jobs?.save(tag, value.asFunction())
 }
+fun KCallable<*>.markTag() {
+    jobs?.save(trySafelyForAnnotatedTag(this), this)
+}
 fun CoroutineScope.markFunctionTags(vararg function: Any?) {
     function.forEach {
         if (it is KCallable<*>)
-            jobs?.save(trySafelyForAnnotatedTag(it), it)
+            it.markTag()
     }
-}
-fun KCallable<*>.markTag() {
-    Scheduler.markFunctionTags(this)
 }
 fun KMutableProperty<Job?>.mark(job: Job): KMutableProperty<Job?> {
     setter.call(job)
@@ -1226,8 +1258,10 @@ sealed interface State {
     operator fun plus(state: Any): State {
         when {
             this === State[2] && state is Pending ->
-                if (service?.hasNoMoreInitWork() == true)
+                if (service?.hasNoMoreInitWork == true) {
                     State[2] = Succeeded
+                    Scheduler.serviceOnStartCommandResolver = null
+                }
         }
         return this
     }
