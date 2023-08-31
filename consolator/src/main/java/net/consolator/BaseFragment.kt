@@ -20,6 +20,7 @@ import net.consolator.Scheduler.Event.Listening
 import net.consolator.Scheduler.Event.Remitting
 import net.consolator.Scheduler.LaunchScope
 import net.consolator.Scheduler.Path
+import net.consolator.Scheduler.Path.Parallel
 import net.consolator.Scheduler.Scope
 import net.consolator.State.Pending
 import net.consolator.State.Resolved
@@ -82,7 +83,7 @@ abstract class BaseFragment : Fragment() {
         launch(IO, LAZY) @JobTreeRoot @MainViewGroup @Remitting(
             delay = 100L,
             pathwise = [ FromLastCancellation::class ]
-        ) @LaunchScope @Path("app-db.build") {
+        ) @LaunchScope @Parallel @Path("app-db.build") {
             context.tryCanceling(Context::buildAppDatabase)
         } then @Scope {
             context.change(Context::stageDbCreated)
