@@ -306,4 +306,4 @@ private val dbTimeDiff by lazy { with(session!!) { dbTime.toLocalTime() - startT
 private fun String.toAppTime() = toLocalTime() - dbTimeDiff
 private fun Long.toDbTime() = plus(dbTimeDiff)
 
-private const val BUILD_INFO= "${BuildConfig.APPLICATION_ID} ${BuildConfig.BUILD_TYPE} ${BuildConfig.VERSION_NAME}"
+private const val BUILD_INFO = "${BuildConfig.APPLICATION_ID} ${BuildConfig.BUILD_TYPE} ${BuildConfig.VERSION_NAME}"
