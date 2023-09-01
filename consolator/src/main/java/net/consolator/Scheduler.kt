@@ -42,7 +42,7 @@ private interface SchedulerKey : CoroutineContext.Key<SchedulerElement>
 private interface SchedulerElement : CoroutineContext.Element
 private lateinit var _key: SchedulerKey
 private val _element by lazy {
-    object : SchedulerElement{
+    object : SchedulerElement {
         override val key
             get() = _key
     }
