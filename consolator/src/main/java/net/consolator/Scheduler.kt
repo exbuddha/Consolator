@@ -357,7 +357,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         private fun advance() {
             prepare()
             while (jump() ?: return)
-                (observe(work) ?: capture()) || return
+                work.let { observe(it) ?: capture(it) } || return
             end()
         }
         private fun observe(work: LiveWork): Boolean? {
@@ -376,7 +376,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             isObserving = true
             return async
         }
-        private fun capture(): Boolean {
+        private fun capture(work: LiveWork): Boolean {
             work.second.let { capture ->
                 latestCapture = capture
                 capture?.invoke()?.let { async ->
