@@ -93,22 +93,23 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             }
         }
     fun work(vararg id: Any?, work: Work) {
+        fun Resolver.assignWork() = this.assignWork(work, id)
         when (id[0]) {
             is BaseServiceScope -> when (id[1]) {
                 StartCommandResolver::class ->
-                    serviceOnStartCommandResolver!!.assignWork(work, id)
+                    serviceOnStartCommandResolver!!.assignWork()
                 BindResolver::class ->
-                    serviceOnBindResolver!!.assignWork(work, id)
+                    serviceOnBindResolver!!.assignWork()
                 else ->
                     throw BaseImplementationRestriction
             }
             is BaseActivity -> when (id[1]) {
                 ConfigurationChangeManager::class ->
-                    activityConfigurationChangeManager!!.assignWork(work, id)
+                    activityConfigurationChangeManager!!.assignWork()
                 NightModeChangeManager::class ->
-                    activityNightModeChangeManager!!.assignWork(work, id)
+                    activityNightModeChangeManager!!.assignWork()
                 LocalesChangeManager::class ->
-                    activityLocalesChangeManager!!.assignWork(work, id)
+                    activityLocalesChangeManager!!.assignWork()
                 else ->
                     throw BaseImplementationRestriction
             }
@@ -130,15 +131,16 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
                     return
                 }
                 is BaseActivity -> {
+                    fun Resolver.assignStepThenResolve() = assignStepThenResolve(step)
                     when (context[1]) {
                         ConfigurationChangeManager::class ->
-                            activityConfigurationChangeManager!!.assignStepThenResolve(step)
+                            activityConfigurationChangeManager!!.assignStepThenResolve()
                         NightModeChangeManager::class -> {
-                            activityNightModeChangeManager!!.assignStepThenResolve(step)
+                            activityNightModeChangeManager!!.assignStepThenResolve()
                             activityNightModeChangeManager = null
                         }
                         LocalesChangeManager::class -> {
-                            activityLocalesChangeManager!!.assignStepThenResolve(step)
+                            activityLocalesChangeManager!!.assignStepThenResolve()
                             activityLocalesChangeManager = null
                         }
                         else ->
