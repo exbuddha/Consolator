@@ -66,12 +66,7 @@ open class BaseService : Service(), BaseServiceScope, Provider {
             get() = if (onMainThread()) "SERVICE" else "CLOCK"
     }
 
-    inner class StartCommandResolver : ForgetfulWorkResolver() {
-        override fun commit() {
-            if (hasMoreInitWork)
-                super.commit()
-        }
-    }
+    inner class StartCommandResolver : ForgetfulWorkResolver()
     abstract inner class BindResolver : ForgetfulWorkResolver()
 
     override fun invoke(type: KClass<*>) = when (type) {
