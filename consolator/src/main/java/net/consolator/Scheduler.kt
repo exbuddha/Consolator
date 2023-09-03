@@ -171,7 +171,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
 
     open class Clock(
         name: String? = null,
-        priority: Int = Thread.currentThread().priority
+        priority: Int = currentThread.priority
     ) : HandlerThread(name, priority) {
         override fun start() {
             commitAsyncIfNotAlive {
@@ -1074,9 +1074,11 @@ fun <R> with(vararg args: Any?): (KCallable<R>) -> R = {
     it.call(args)
 }
 
-val mainThread = Thread.currentThread()
+val currentThread
+    get() = Thread.currentThread()
+val mainThread = currentThread
 fun Thread.isMainThread() = this === mainThread
-fun onMainThread() = Thread.currentThread().isMainThread()
+fun onMainThread() = currentThread.isMainThread()
 private fun withPriority(priority: Int, target: Runnable) = Thread(target).also { it.priority = priority }
 
 abstract class Deferral {
