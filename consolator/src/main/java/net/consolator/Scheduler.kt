@@ -162,9 +162,9 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     var activityLocalesChangeManager: LocalesChangeManager? = null
         private set
     var applicationMigrationResolver: Migration? = null
-    fun setResolverThenCommit(instance: ResolverKProperty, type: ResolverKClass, provider: Any? = null) =
+    private fun setResolverThenCommit(instance: ResolverKProperty, type: ResolverKClass, provider: Any? = null) =
         (instance.reconstruct(type, provider, null) as? WorkRef)?.commit()
-    fun setResolverThenResolve(instance: ResolverKProperty, type: ResolverKClass, provider: Any? = null) =
+    private fun setResolverThenResolve(instance: ResolverKProperty, type: ResolverKClass, provider: Any? = null) =
         (instance.reconstruct(type, provider, null) as? Resolver)?.resolve(provider)
 
     open class Clock(
