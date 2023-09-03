@@ -125,7 +125,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
                         clockAhead {
                             step(
                                 context.lastOrNull()?.asType() ?:
-                                trySafelyForAnnotatedScope(step) ?:
+                                trySafelyForAnnotatedScopeOf(step) ?:
                                 scope)
                         }
                     return
@@ -151,7 +151,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             }
         else if (step !== null) {
             clock {
-                annotatedScope(step).step()
+                annotatedScopeOf(step).step()
             }
             return
         }
@@ -711,20 +711,20 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     annotation class LaunchScope
     private val KCallable<*>.launchScope
         get() = annotations.find { it is LaunchScope } as? LaunchScope
-    private fun annotatedLaunchScope(step: CoroutineStep?) =
+    private fun annotatedLaunchScopeOf(step: CoroutineStep?) =
         step!!.asCallable().launchScope!!
-    fun trySafelyForAnnotatedLaunchScope(step: CoroutineStep?) =
-        trySafelyForResult { annotatedLaunchScope(step) }
+    fun trySafelyForAnnotatedLaunchScopeOf(step: CoroutineStep?) =
+        trySafelyForResult { annotatedLaunchScopeOf(step) }
 
     @Retention(SOURCE)
     @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
     annotation class Scope(val type: KClass<out CoroutineScope> = SchedulerScope::class)
     private val KCallable<*>.schedulerScope
         get() = annotations.find { it is Scope } as? Scope
-    private fun annotatedScope(step: CoroutineStep?) =
+    private fun annotatedScopeOf(step: CoroutineStep?) =
         step!!.asCallable().schedulerScope!!.type.reconstruct(step)
-    fun trySafelyForAnnotatedScope(step: CoroutineStep?) =
-        trySafelyForResult { annotatedScope(step) }
+    fun trySafelyForAnnotatedScopeOf(step: CoroutineStep?) =
+        trySafelyForResult { annotatedScopeOf(step) }
 
     @Retention(SOURCE)
     @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
@@ -785,10 +785,10 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     }
     private val KCallable<*>.event
         get() = annotations.find { it is Event } as? Event
-    fun annotatedEvent(step: KFunction<*>) =
+    fun annotatedEventOf(step: KFunction<*>) =
         step.event!!
-    fun trySafelyForAnnotatedEvent(step: KFunction<*>) =
-        trySafelyForResult { annotatedEvent(step) }
+    fun trySafelyForAnnotatedEventOf(step: KFunction<*>) =
+        trySafelyForResult { annotatedEventOf(step) }
 
     override fun <R> fold(initial: R, operation: (R, CoroutineContext.Element) -> R): R  {
         // context expansion by attachment: register operation callback.
@@ -841,7 +841,7 @@ val Step.transit
 val ContextStep.transit
     get() = annotatedEvent?.transit
 private val Any.annotatedEvent
-    get() = Scheduler.trySafelyForAnnotatedEvent(asFunction())
+    get() = Scheduler.trySafelyForAnnotatedEventOf(asFunction())
 
 fun scheduleNow(step: Step) { Scheduler.value = step }
 fun schedule(step: Step) = Scheduler.postValue(step)
@@ -850,7 +850,7 @@ fun Context.schedule(ref: ContextStep) = schedule(step = { ref() })
 
 fun service(step: CoroutineStep) = runBlocking {
     step(
-        Scheduler.trySafelyForAnnotatedScope(step) ?:
+        Scheduler.trySafelyForAnnotatedScopeOf(step) ?:
         service!!)
 }
 fun clock(callback: Runnable) = Scheduler.clock!!.post(callback)
@@ -922,15 +922,15 @@ private fun CoroutineContext.isSchedulerContext() =
 private fun workerGroupOf(context: CoroutineContext) =
     if (context.isSchedulerContext()) context
     else Scheduler + context
-private fun LifecycleOwner.trySafelyForAnnotatedScope(step: CoroutineStep) =
-    Scheduler.trySafelyForAnnotatedScope(step) ?:
+private fun LifecycleOwner.trySafelyForAnnotatedScopeOf(step: CoroutineStep) =
+    Scheduler.trySafelyForAnnotatedScopeOf(step) ?:
     lifecycleScope
 fun LifecycleOwner.launch(context: CoroutineContext, start: CoroutineStart, step: CoroutineStep) =
-    trySafelyForAnnotatedScope(step).launch(workerGroupOf(context), start, step)
+    trySafelyForAnnotatedScopeOf(step).launch(workerGroupOf(context), start, step)
 fun LifecycleOwner.launch(context: CoroutineContext, step: CoroutineStep) =
-    trySafelyForAnnotatedScope(step).launch(workerGroupOf(context), block = step)
+    trySafelyForAnnotatedScopeOf(step).launch(workerGroupOf(context), block = step)
 fun LifecycleOwner.launch(start: CoroutineStart, step: CoroutineStep) =
-    trySafelyForAnnotatedScope(step).launch(Scheduler, start, step)
+    trySafelyForAnnotatedScopeOf(step).launch(Scheduler, start, step)
 fun LifecycleOwner.relaunchJobIfNotActive(
     instance: KMutableProperty<Job?>,
     context: CoroutineContext = Scheduler,
@@ -991,13 +991,13 @@ fun SchedulerScope.retry(job: Job, exit: ThrowableFunction? = null) {}
 private var jobs: JobFunctionSet? = null
 private fun JobFunctionSet.save(tag: String, keep: Boolean, function: KCallable<*>) {}
 private fun JobFunctionSet.save(tag: String, function: KCallable<*>) =
-    save(tag, trySafelyForAnnotatedTag(function)?.keep ?: true, function)
+    save(tag, trySafelyForAnnotatedTagOf(function)?.keep ?: true, function)
 private fun JobFunctionSet.save(tag: Tag?, function: KCallable<*>) {}
 operator fun Job.set(tag: String, value: Any) {
     jobs?.save(tag, value.asFunction())
 }
 fun KCallable<*>.markTag() {
-    jobs?.save(trySafelyForAnnotatedTag(this), this)
+    jobs?.save(trySafelyForAnnotatedTagOf(this), this)
 }
 fun CoroutineScope.markFunctionTags(vararg function: Any?) {
     function.forEach {
@@ -1020,10 +1020,10 @@ fun Any.markTagAsFunction() = asFunction().markTag()
 annotation class Tag(val string: String, val keep: Boolean = true)
 private val KCallable<*>.tag
     get() = annotations.find { it is Tag } as? Tag
-fun annotatedTag(item: KCallable<*>) =
+fun annotatedTagOf(item: KCallable<*>) =
     item.tag
-fun trySafelyForAnnotatedTag(item: KCallable<*>) =
-    trySafelyForResult { annotatedTag(item) }
+fun trySafelyForAnnotatedTagOf(item: KCallable<*>) =
+    trySafelyForResult { annotatedTagOf(item) }
 
 @Retention(SOURCE)
 @Target(CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
