@@ -49,7 +49,7 @@ private val _element by lazy {
 }
 
 object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, StepObserver, (SchedulerWork) -> Unit {
-    inline fun <reified T : Deferral, R> defer(member: KCallable<R>, resolver: KClass<out T>?, vararg value: Any?): Unit? =
+    fun <T : Deferral, R> defer(member: KCallable<R>, resolver: KClass<out T>?, vararg value: Any?): Unit? =
         when (resolver) {
             Migration::class ->
                 setResolverThenCommit(
@@ -70,24 +70,18 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
                     else ->
                         throw BaseImplementationRestriction
                 }
-                BaseActivity::class.java -> when (resolver) {
-                    ConfigurationChangeManager::class ->
-                        setResolverThenResolve(
-                            ::activityConfigurationChangeManager,
-                            ConfigurationChangeManager::class,
-                            value[0])
-                    NightModeChangeManager::class ->
-                        setResolverThenResolve(
-                            ::activityNightModeChangeManager,
-                            NightModeChangeManager::class,
-                            value[0])
-                    LocalesChangeManager::class ->
-                        setResolverThenResolve(
-                            ::activityLocalesChangeManager,
-                            LocalesChangeManager::class,
-                            value[0])
-                    else ->
-                        throw BaseImplementationRestriction
+                BaseActivity::class.java -> {
+                    fun setResolverThenResolve(instance: ResolverKProperty) = setResolverThenResolve(instance, resolver, value[0])
+                    when (resolver) {
+                        ConfigurationChangeManager::class ->
+                            setResolverThenResolve(::activityConfigurationChangeManager)
+                        NightModeChangeManager::class ->
+                            setResolverThenResolve(::activityNightModeChangeManager)
+                        LocalesChangeManager::class ->
+                            setResolverThenResolve(::activityLocalesChangeManager)
+                        else ->
+                            throw BaseImplementationRestriction
+                    }
                 }
                 else -> throw BaseImplementationRestriction
             }
