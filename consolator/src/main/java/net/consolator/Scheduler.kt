@@ -93,7 +93,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             }
         }
     fun work(vararg id: Any?, work: Work) {
-        fun Resolver.assignWork() = this.assignWork(work, id)
+        fun Resolver.assignWork() = assignWork(work, id)
         when (id[0]) {
             is BaseServiceScope -> when (id[1]) {
                 StartCommandResolver::class ->
