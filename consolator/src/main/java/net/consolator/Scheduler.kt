@@ -1112,6 +1112,7 @@ abstract class ForgetfulWorkResolver : WorkRef(), Resolver {
     override fun commit() {
         super.commit()
         work = null
+        id = null
     }
 }
 abstract class StepResolver : StepRef(), Resolver
