@@ -49,11 +49,10 @@ private val _element by lazy {
 }
 
 object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, StepObserver, (SchedulerWork) -> Unit {
-    fun <T : Deferral, R> defer(member: KCallable<R>, resolver: KClass<out T>?, vararg value: Any?): Unit? =
+    fun <T : Deferral, R> defer(member: KCallable<R>, resolver: KClass<out T>, vararg value: Any?): Unit? =
         when (resolver) {
             Migration::class ->
                 ::applicationMigrationResolver.setResolverThenCommit(value[0]!!)
-            null -> null
             else -> when (member.javaClass.enclosingClass) {
                 BaseService::class.java -> {
                     fun ResolverKProperty.setResolverThenCommit() = setResolverThenCommit(value[0]!!)
