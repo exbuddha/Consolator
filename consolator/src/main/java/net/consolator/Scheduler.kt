@@ -52,19 +52,22 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     fun <T : Deferral, R> defer(member: KCallable<R>, resolver: KClass<out T>?, vararg value: Any?): Unit? =
         when (resolver) {
             Migration::class ->
-                ::applicationMigrationResolver.setResolverThenCommit(Migration::class)
+                ::applicationMigrationResolver.setResolverThenCommit(value[0]!!)
             null -> null
             else -> when (member.javaClass.enclosingClass) {
-                BaseService::class.java -> when (resolver) {
-                    StartCommandResolver::class ->
-                        ::serviceOnStartCommandResolver.setResolverThenCommit(StartCommandResolver::class, value[0])
-                    BindResolver::class ->
-                        ::serviceOnBindResolver.setResolverThenCommit(BindResolver::class)
-                    else ->
-                        throw BaseImplementationRestriction
+                BaseService::class.java -> {
+                    fun ResolverKProperty.setResolverThenCommit() = setResolverThenCommit(value[0]!!)
+                    when (resolver) {
+                        StartCommandResolver::class ->
+                            ::serviceOnStartCommandResolver.setResolverThenCommit()
+                        BindResolver::class ->
+                            ::serviceOnBindResolver.setResolverThenCommit()
+                        else ->
+                            throw BaseImplementationRestriction
+                    }
                 }
                 BaseActivity::class.java -> {
-                    fun ResolverKProperty.setResolverThenResolve() = setResolverThenResolve(resolver, value[0])
+                    fun ResolverKProperty.setResolverThenResolve() = setResolverThenResolve(value[0]!!)
                     when (resolver) {
                         ConfigurationChangeManager::class ->
                             ::activityConfigurationChangeManager.setResolverThenResolve()
@@ -155,11 +158,11 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     var activityLocalesChangeManager: LocalesChangeManager? = null
         private set
     var applicationMigrationResolver: Migration? = null
-    private fun ResolverKProperty.setResolverThenCommit(type: ResolverKClass, provider: Any? = null) =
-        (reconstruct(type, provider) as? WorkRef)?.commit()
-    private fun ResolverKProperty.setResolverThenResolve(type: ResolverKClass, provider: Any?) =
-        (reconstruct(type, provider) as? Resolver)?.resolve(provider)
-    private fun ResolverKProperty.reconstruct(type: ResolverKClass, provider: Any?) =
+    private fun ResolverKProperty.setResolverThenCommit(provider: Any) =
+        (reconstruct(this::class, provider) as? WorkRef)?.commit()
+    private fun ResolverKProperty.setResolverThenResolve(provider: Any) =
+        (reconstruct(this::class, provider) as? Resolver)?.resolve(provider)
+    private fun ResolverKProperty.reconstruct(type: ResolverKClass, provider: Any) =
         reconstruct(type, provider, null)
 
     open class Clock(
