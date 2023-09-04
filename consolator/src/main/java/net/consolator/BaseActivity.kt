@@ -15,11 +15,11 @@ abstract class BaseActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         if (savedInstanceState === null) {
             setContentView(backgroundLayoutResId)
-            if (isNetworkStateAccessPermitted()) {
+            if (isNetworkStateAccessPermitted) {
                 enableNetworkCallbacks = ::registerNetworkCallback
                 disableNetworkCallbacks = ::unregisterNetworkCallback
             }
-            if (isInternetAccessPermitted()) {
+            if (isInternetAccessPermitted) {
                 enableNetworkCallbacks = enableNetworkCallbacks?.then(::registerInternetCallback)
                 disableNetworkCallbacks = disableNetworkCallbacks?.then(::unregisterInternetCallback)
             }

@@ -108,10 +108,10 @@ suspend fun updateNetworkCapabilities(networkCapabilities: NetworkCapabilities) 
 fun Context.registerReceiver(filter: IntentFilter) =
     ContextCompat.registerReceiver(this, receiver, filter, null, Scheduler.clock?.handler, 0)
 
-fun Context.isNetworkStateAccessPermitted() =
-    isPermissionGranted(Manifest.permission.ACCESS_NETWORK_STATE)
-fun Context.isInternetAccessPermitted() =
-    isNetworkStateAccessPermitted() and isPermissionGranted(Manifest.permission.INTERNET)
+val Context.isNetworkStateAccessPermitted
+    get() = isPermissionGranted(Manifest.permission.ACCESS_NETWORK_STATE)
+val Context.isInternetAccessPermitted
+    get() = isNetworkStateAccessPermitted and isPermissionGranted(Manifest.permission.INTERNET)
 fun Context.isPermissionGranted(permission: String) =
     ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
 fun Context.intendFor(cls: Class<*>) = Intent(this, cls)
