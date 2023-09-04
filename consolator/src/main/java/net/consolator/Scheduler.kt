@@ -923,6 +923,8 @@ fun LifecycleOwner.launch(context: CoroutineContext, step: CoroutineStep) =
     trySafelyForAnnotatedScopeOf(step).launch(workerGroupOf(context), block = step)
 fun LifecycleOwner.launch(start: CoroutineStart, step: CoroutineStep) =
     trySafelyForAnnotatedScopeOf(step).launch(Scheduler, start, step)
+fun LifecycleOwner.launch(step: CoroutineStep) =
+    trySafelyForAnnotatedScopeOf(step).launch(Scheduler, block = step)
 fun LifecycleOwner.relaunchJobIfNotActive(
     instance: KMutableProperty<Job?>,
     context: CoroutineContext = Scheduler,
