@@ -159,7 +159,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         private set
     var applicationMigrationResolver: Migration? = null
     private fun ResolverKProperty.setResolverThenCommit(provider: Any) =
-        (reconstruct(this::class, provider) as? WorkRef)?.commit()
+        (reconstruct(this::class, provider) as? Deferral)?.commit()
     private fun ResolverKProperty.setResolverThenResolve(provider: Any) =
         (reconstruct(this::class, provider) as? Resolver)?.resolve(provider)
     private fun ResolverKProperty.reconstruct(type: ResolverKClass, provider: Any) =
