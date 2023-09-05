@@ -158,18 +158,18 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         private set
     var applicationMigrationResolver: Migration? = null
     private fun ResolverKProperty.setResolverThenCommit(provider: Any) =
-        (reconstruct(provider) as? Deferral)?.commit()
+        (reconstruct(this::class, provider) as? Deferral)?.commit()
     private fun ResolverKProperty.setResolverThenResolve(provider: Any) =
-        (reconstruct(provider) as? Resolver)?.resolve(provider)
-    private fun ResolverKProperty.reconstruct(provider: Any) =
-        reconstruct(this::class, provider, null)
+        (reconstruct(this::class, provider) as? Resolver)?.resolve(provider)
+    private fun ResolverKProperty.reconstruct(type: ResolverKClass, provider: Any) =
+        reconstruct(type, provider, null)
 
     open class Clock(
         name: String? = null,
         priority: Int = currentThread.priority
     ) : HandlerThread(name, priority) {
         override fun start() {
-            commitAsyncIfNotAlive {
+            commitAsync(hLock, { !isAlive }) {
                 super.start()
                 queue = java.util.LinkedList()
             }
@@ -209,8 +209,6 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             block()
             hLock = Lock.Open()
         }
-        private fun <R> commitAsyncIfNotAlive(block: () -> R) =
-            commitAsync(hLock, { !isAlive }, block)
 
         private var sLock = Any()
         var post = fun(callback: Runnable) =
