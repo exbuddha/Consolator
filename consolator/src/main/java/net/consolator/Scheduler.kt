@@ -204,7 +204,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         }
 
         private var hLock = Lock.Open
-        fun <R> commit(block: () -> R) = synchronized(hLock) {
+        fun <R> commit(block: () -> R) = commit(hLock) {
             hLock = Lock.Closed()
             block()
             hLock = Lock.Open()
@@ -856,6 +856,7 @@ fun <T> blockingRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { ru
 fun <T> safeRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { trySafely { runBlocking(block = step) } }
 fun <T> interruptingRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { tryInterrupting(step) { runBlocking(block = step) } }
 fun <T> safeInterruptingRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { trySafelyInterrupting(step) { runBlocking(block = step) } }
+inline fun <R> commit(lock: Any, block: () -> R) = synchronized(lock) { block() }
 inline fun <R> commitAsync(lock: Any, crossinline predicate: Predicate, crossinline block: () -> R) {
     if (predicate())
         synchronized(lock) {
