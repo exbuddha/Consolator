@@ -185,10 +185,10 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             handler = object : Handler(looper) {
                 override fun handleMessage(msg: Message) {
                     super.handleMessage(msg)
-                    turn(msg)
+                    commit { turn(msg) }
                 }
             }
-            queue?.run()
+            commit { queue?.run() }
         }
         private fun turn(msg: Message) {
             queue?.run()
@@ -216,7 +216,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             synchronized(sLock) { queue!!.add(callback) }
         var postAhead = fun(callback: Runnable) =
             handler?.postAtFrontOfQueue(callback) ?:
-            synchronized(sLock) { queue!!.add(0, callback) }
+            synchronized(sLock) { queue!!.add(0, callback); true }
 
         fun clearObjects() {
             handler = null
