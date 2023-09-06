@@ -324,24 +324,24 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         }
         fun start() {
             init()
-            `continue`()
+            resume()
         }
-        fun resume(index: Int = ln) {
+        fun resume(index: Int) {
             ln = index
-            `continue`()
+            resume()
+        }
+        fun resume() {
+            isActive = true
+            advance()
         }
         fun retry() {
             ln -= 1
-            `continue`()
-        }
-        private fun `continue`() {
-            isActive = true
-            advance()
+            resume()
         }
         private fun prepare() {
             if (ln < -1) ln = -1
         }
-        private fun jump(index: Int = ++ln) =
+        private fun jump(index: Int = ln + 1) =
             if (hasError) null
             else (index < seq.size && (!isObserving || seq[index].third)).also {
                 if (it) ln = index
@@ -381,10 +381,8 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             step?.removeObserver(observer)
             isObserving = false
         }
-        fun end() {
-            if (!isObserving)
-                isCompleted = true
-        }
+        fun end() = !(ln < seq.size || isObserving).also { isCompleted = it }
+
         private fun resettingFirstly(step: SequencerStep) = SequencerScope::reset then step
         private fun resettingLastly(step: SequencerStep) = step then SequencerScope::reset
 
