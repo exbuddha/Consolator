@@ -188,6 +188,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
                     commit { turn(msg) }
                 }
             }
+            hLock = Lock.Open()
             commit { queue?.run() }
         }
         private fun turn(msg: Message) {
@@ -203,11 +204,11 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             }
         }
 
-        private var hLock = Lock.Open
-        fun <R> commit(block: () -> R) = commit(hLock) {
-            hLock = Lock.Closed()
+        private lateinit var hLock: Lock
+        fun <R> commit(block: () -> R) = synchronized(hLock(block)) {
+            hLock = Lock.Closed(block)
             block()
-            hLock = Lock.Open()
+            hLock = Lock.Open(block)
         }
 
         private var sLock = Any()
@@ -856,7 +857,6 @@ fun <T> blockingRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { ru
 fun <T> safeRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { trySafely { runBlocking(block = step) } }
 fun <T> interruptingRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { tryInterrupting(step) { runBlocking(block = step) } }
 fun <T> safeInterruptingRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { trySafelyInterrupting(step) { runBlocking(block = step) } }
-inline fun <R> commit(lock: Any, block: () -> R) = synchronized(lock) { block() }
 inline fun <R> commitAsync(lock: Any, crossinline predicate: Predicate, crossinline block: () -> R) {
     if (predicate())
         synchronized(lock) {
@@ -1222,7 +1222,7 @@ sealed interface State {
         operator fun contains(lock: Any) = false
         operator fun compareTo(lock: Any) = 1
     }
-    operator fun invoke(): Lock = this as Lock
+    operator fun invoke(vararg param: Any): Lock = this as Lock
     operator fun inc() = this
     operator fun dec() = this
     operator fun get(id: ID) = this
