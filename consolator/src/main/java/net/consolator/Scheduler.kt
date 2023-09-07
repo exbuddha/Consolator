@@ -381,8 +381,22 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             step?.removeObserver(observer)
             isObserving = false
         }
+        fun cancel(ex: Throwable) {
+            isCancelled = true
+            this.ex = ex
+        }
+        fun error(ex: Throwable) {
+            hasError = true
+            this.ex = ex
+        }
         fun end() = !(ln < seq.size || isObserving).also { isCompleted = it }
 
+        inline fun <R> resetOnError(block: () -> R) =
+            try { block() }
+            catch (ex: Throwable) {
+                cancel(ex)
+                throw ex
+            }
         private fun resettingFirstly(step: SequencerStep) = SequencerScope::reset then step
         private fun resettingLastly(step: SequencerStep) = step then SequencerScope::reset
 
@@ -699,9 +713,9 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     annotation class LaunchScope
     private val KCallable<*>.launchScope
         get() = annotations.find { it is LaunchScope } as? LaunchScope
-    private fun annotatedLaunchScopeOf(step: CoroutineStep?) =
-        step!!.asCallable().launchScope!!
-    fun trySafelyForAnnotatedLaunchScopeOf(step: CoroutineStep?) =
+    private fun annotatedLaunchScopeOf(step: CoroutineStep) =
+        step.asCallable().launchScope!!
+    fun trySafelyForAnnotatedLaunchScopeOf(step: CoroutineStep) =
         trySafelyForResult { annotatedLaunchScopeOf(step) }
 
     @Retention(SOURCE)
@@ -709,9 +723,9 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     annotation class Scope(val type: KClass<out CoroutineScope> = SchedulerScope::class)
     private val KCallable<*>.schedulerScope
         get() = annotations.find { it is Scope } as? Scope
-    private fun annotatedScopeOf(step: CoroutineStep?) =
-        step!!.asCallable().schedulerScope!!.type.reconstruct(step)
-    fun trySafelyForAnnotatedScopeOf(step: CoroutineStep?) =
+    private fun annotatedScopeOf(step: CoroutineStep) =
+        step.asCallable().schedulerScope!!.type.reconstruct(step)
+    fun trySafelyForAnnotatedScopeOf(step: CoroutineStep) =
         trySafelyForResult { annotatedScopeOf(step) }
 
     @Retention(SOURCE)
