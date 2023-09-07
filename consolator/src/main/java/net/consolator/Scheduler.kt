@@ -338,19 +338,22 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             ln -= 1
             resume()
         }
+        var activate = fun() = Unit
         private fun prepare() {
             if (ln < -1) ln = -1
         }
-        private fun jump(index: Int = ln + 1) =
+        fun jump(index: Int) =
             if (hasError) null
             else (index < seq.size && (!isObserving || seq[index].third)).also {
                 if (it) ln = index
             }
+        var next = fun(index: Int): Boolean? = jump(index)
         private fun advance() {
+            activate()
             prepare()
-            while (jump() ?: return)
-                work.let { observe(it) ?: capture(it) } || return
-            end()
+            while (next(ln + 1) ?: return)
+                work.let { observe(it) ?: bypass(it) } || return
+            isCompleted = end()
         }
         private fun observe(work: LiveWork): Boolean? {
             val (step, _, async) = work
@@ -361,14 +364,13 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
                     return null
                 }
             } catch (ex: Throwable) {
-                hasError = true
-                this.ex = ex
+                error(ex)
                 return false
             }
             isObserving = true
             return async
         }
-        private fun capture(work: LiveWork): Boolean {
+        fun capture(work: LiveWork): Boolean {
             work.second.let { capture ->
                 latestCapture = capture
                 capture?.invoke()?.let { async ->
@@ -377,6 +379,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             }
             return false
         }
+        var bypass = fun(work: LiveWork): Boolean = capture(work)
         fun reset(step: LiveStep? = latestStep) {
             step?.removeObserver(observer)
             isObserving = false
@@ -389,19 +392,23 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             hasError = true
             this.ex = ex
         }
-        fun end() = !(ln < seq.size || isObserving).also { isCompleted = it }
+        var interrupt = fun(_: Throwable?): Throwable = ex!!
+        fun finish() = !(ln < seq.size || isObserving)
+        var end = fun(): Boolean = finish()
 
-        inline fun <R> resetOnCancel(block: () -> R) =
+        suspend inline fun <R> SequencerScope.resetOnCancel(block: () -> R) =
             try { block() }
             catch (ex: CancellationException) {
+                reset()
                 cancel(ex)
-                throw ex
+                throw interrupt(ex)
             }
-        inline fun <R> resetOnError(block: () -> R) =
+        suspend inline fun <R> SequencerScope.resetOnError(block: () -> R) =
             try { block() }
             catch (ex: Throwable) {
+                reset()
                 error(ex)
-                throw ex
+                throw interrupt(ex)
             }
         private fun resettingFirstly(step: SequencerStep) = SequencerScope::reset then step
         private fun resettingLastly(step: SequencerStep) = step then SequencerScope::reset
@@ -670,12 +677,10 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             }
     }
 
-    fun observe() { observeForever(this) }
-    fun observeAsync() = commitAsync(Scheduler, { !Scheduler.hasObservers() }) {
-        observe()
-    }
+    fun observe() = observeForever(this)
+    fun observeAsync() = commitAsync(Scheduler, { !Scheduler.hasObservers() }, ::observe)
     fun observe(owner: LifecycleOwner) = observe(owner, this)
-    fun ignore() { removeObserver(this) }
+    fun ignore() = removeObserver(this)
     val observeScheduler = Runnable(::observe)
     val ignoreScheduler = Runnable(::ignore)
     val startSequencer = Runnable { sequencer?.start() }
@@ -683,13 +688,9 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     val retrySequencer = Runnable { sequencer?.retry() }
 
     var clock: Clock? = null
-        get() = commitAsyncForResult(Clock, { field === null }, field) {
-            Clock()
-        }
+        get() = commitAsyncForResult(Clock, { field === null }, field, ::Clock)
     var sequencer: Sequencer? = null
-        get() = commitAsyncForResult(Sequencer, { field === null }, field) {
-            Sequencer()
-        }
+        get() = commitAsyncForResult(Sequencer, { field === null }, field, ::Sequencer)
 
     fun windDownClock() {
         clock?.apply {
