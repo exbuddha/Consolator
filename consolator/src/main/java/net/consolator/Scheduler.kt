@@ -347,7 +347,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             else (index < seq.size && (!isObserving || seq[index].third)).also {
                 if (it) ln = index
             }
-        var next = fun(index: Int): Boolean? = jump(index)
+        var next = fun(index: Int) = jump(index)
         private fun advance() {
             activate()
             prepare()
@@ -379,7 +379,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             }
             return false
         }
-        var bypass = fun(work: LiveWork): Boolean = capture(work)
+        var bypass = fun(work: LiveWork) = capture(work)
         fun reset(step: LiveStep? = latestStep) {
             step?.removeObserver(observer)
             isObserving = false
@@ -392,22 +392,28 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             hasError = true
             this.ex = ex
         }
-        var interrupt = fun(_: Throwable?): Throwable = ex!!
+        var exception = fun(ex: Throwable) = when (ex) {
+            is CancellationException ->
+                cancel(ex)
+            else ->
+                error(ex)
+        }
+        var interrupt = fun(ex: Throwable) = ex
         fun finish() = !(ln < seq.size || isObserving)
-        var end = fun(): Boolean = finish()
+        var end = fun() = finish()
 
         suspend inline fun <R> SequencerScope.resetOnCancel(block: () -> R) =
             try { block() }
             catch (ex: CancellationException) {
                 reset()
-                cancel(ex)
+                exception(ex)
                 throw interrupt(ex)
             }
         suspend inline fun <R> SequencerScope.resetOnError(block: () -> R) =
             try { block() }
             catch (ex: Throwable) {
                 reset()
-                error(ex)
+                exception(ex)
                 throw interrupt(ex)
             }
         private fun resettingFirstly(step: SequencerStep) = SequencerScope::reset then step
