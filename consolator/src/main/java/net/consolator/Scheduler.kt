@@ -391,10 +391,16 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         }
         fun end() = !(ln < seq.size || isObserving).also { isCompleted = it }
 
+        inline fun <R> resetOnCancel(block: () -> R) =
+            try { block() }
+            catch (ex: CancellationException) {
+                cancel(ex)
+                throw ex
+            }
         inline fun <R> resetOnError(block: () -> R) =
             try { block() }
             catch (ex: Throwable) {
-                cancel(ex)
+                error(ex)
                 throw ex
             }
         private fun resettingFirstly(step: SequencerStep) = SequencerScope::reset then step
