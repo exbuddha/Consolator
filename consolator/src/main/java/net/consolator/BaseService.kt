@@ -8,6 +8,7 @@ import java.io.*
 import kotlin.coroutines.*
 import kotlin.reflect.*
 import kotlinx.coroutines.*
+import net.consolator.Scheduler.Sequencer
 
 open class BaseService : Service(), BaseServiceScope, Provider {
     override var startTime = 0L
@@ -27,7 +28,7 @@ open class BaseService : Service(), BaseServiceScope, Provider {
             work<StartCommandResolver> {
                 clockAhead {
                     startTime = getStartTimeExtra(intent)
-                    sequencer {
+                    Sequencer {
                         if (logDb === null)
                             ioResettingLastly(true) @Tag("log-db.build") {
                                 logDb = resetOnError(::buildDatabase)

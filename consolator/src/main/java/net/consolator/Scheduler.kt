@@ -438,7 +438,9 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             latestStep = null
             latestCapture = null
         }
-        companion object;
+        companion object : (SequencerWork) -> Unit {
+            override fun invoke(work: SequencerWork) = sequencer!!.work()
+        }
 
         private fun LiveSequence.attach(element: LiveWork) =
             add(element)
