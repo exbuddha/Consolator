@@ -160,26 +160,26 @@ inline fun <R> trySafelyForResult(block: () -> R) =
     try { block() } catch (_: Throwable) { null }
 inline fun <R> trySafelyCanceling(block: () -> R) =
     try { block() } catch (ex: CancellationException) { throw ex } catch (_: Throwable) {}
-inline fun <R> trySafelyCancelingForResult(block: () -> R) =
-    try { block() } catch (ex: CancellationException) { throw ex } catch (_: Throwable) { null }
 inline fun <R> tryCancelingForResult(block: () -> R, exit: (Throwable) -> R? = { null }) =
     try { block() } catch (ex: CancellationException) { throw ex } catch (ex: Throwable) { exit(ex) }
 inline fun <R> tryCanceling(block: () -> R) =
     try { block() } catch (ex: Throwable) { throw CancellationException(null, ex) }
-suspend inline fun <R> tryCancelingSuspended(block: suspend () -> R) =
-    try { block() } catch (ex: Throwable) { throw CancellationException(null, ex) }
+suspend inline fun <R> tryCancelingSuspended(crossinline block: suspend () -> R) =
+    tryCanceling { block() }
 inline fun <R> trySafelyInterrupting(block: () -> R) =
     try { block() } catch (ex: InterruptedException) { throw ex } catch (_: Throwable) {}
 inline fun <R> tryInterrupting(block: () -> R) =
     try { block() } catch (ex: Throwable) { throw InterruptedException() }
-inline fun <T, R> trySafelyInterrupting(noinline step: suspend CoroutineScope.() -> T, block: () -> R) =
-    try { block() } catch (ex: InterruptedException) { throw InterruptedStepException(step) } catch (_: Throwable) {}
-inline fun <T, R> tryInterrupting(noinline step: suspend CoroutineScope.() -> T, block: () -> R) =
-    try { block() } catch (ex: Throwable) { throw InterruptedStepException(step) }
+fun <R> trySafelyInterrupting(step: suspend CoroutineScope.() -> R, block: () -> R = blockOf(step)) =
+    try { block() } catch (ex: InterruptedException) { throw InterruptedStepException(step, ex) } catch (_: Throwable) {}
+fun <R> tryInterruptingForResult(step: suspend CoroutineScope.() -> R, block: () -> R = blockOf(step), exit: (Throwable) -> R? = { null }) =
+    try { block() } catch (ex: InterruptedException) { throw InterruptedStepException(step, ex) } catch (ex: Throwable) { exit(ex) }
+fun <R> tryInterrupting(step: suspend CoroutineScope.() -> R, block: () -> R = blockOf(step)) =
+    try { block() } catch (ex: Throwable) { throw InterruptedStepException(step, ex) }
 inline fun <R> Context.trySafelyCanceling(block: Context.() -> R) =
-    try { block() } catch (ex: CancellationException) { throw ex } catch (_: Throwable) {}
+    net.consolator.trySafelyCanceling { block() }
 inline fun <R> Context.tryCanceling(block: Context.() -> R) =
-    try { block() } catch (ex: Throwable) { throw CancellationException(null, ex) }
+    net.consolator.tryCanceling { block() }
 
 inline fun <reified R : Any> Any?.asType(): R? =
     if (this is R) this else null
@@ -218,7 +218,10 @@ open class BaseImplementationRestriction(
 ) : UnsupportedOperationException(msg, cause) {
     companion object : BaseImplementationRestriction()
 }
-open class InterruptedStepException(val step: Any) : InterruptedException()
+open class InterruptedStepException(
+    val step: Any,
+    override val cause: Throwable? = null
+) : InterruptedException()
 
 fun info(tag: String, msg: String) = _infoLogger(tag, msg)
 fun debug(tag: String, msg: String) = _debugLogger(tag, msg)
