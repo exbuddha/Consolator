@@ -207,8 +207,9 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         private lateinit var hLock: Lock
         fun <R> commit(block: () -> R) = synchronized(hLock(block)) {
             hLock = Lock.Closed(block)
-            block()
-            hLock = Lock.Open(block)
+            block().also {
+                hLock = Lock.Open(block)
+            }
         }
 
         private var sLock = Any()
