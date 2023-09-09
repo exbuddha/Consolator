@@ -417,8 +417,8 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
                 exception(ex)
                 throw interrupt(ex)
             }
-        private fun resettingFirstly(step: SequencerStep) = SequencerScope::reset then step
-        private fun resettingLastly(step: SequencerStep) = step then SequencerScope::reset
+        private fun resettingFirstly(step: SequencerStep) = SequencerScope::emitReset then step
+        private fun resettingLastly(step: SequencerStep) = step then SequencerScope::emitReset
 
         var isActive = false
         var isObserving = false
