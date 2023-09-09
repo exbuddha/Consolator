@@ -182,13 +182,13 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         var handler: Handler? = null
         private var queue: RunnableList? = null
         override fun run() {
+            hLock = Lock.Open()
             handler = object : Handler(looper) {
                 override fun handleMessage(msg: Message) {
                     super.handleMessage(msg)
                     commit { turn(msg) }
                 }
             }
-            hLock = Lock.Open()
             commit { queue?.run() }
         }
         private fun turn(msg: Message) {
@@ -1108,6 +1108,8 @@ val currentThread
 val mainThread = currentThread
 fun Thread.isMainThread() = this === mainThread
 fun onMainThread() = currentThread.isMainThread()
+private fun withPriority(group: ThreadGroup, name: String, priority: Int, target: Runnable) = Thread(group, target, name).also { it.priority = priority }
+private fun withPriority(name: String, priority: Int, target: Runnable) = Thread(target, name).also { it.priority = priority }
 private fun withPriority(priority: Int, target: Runnable) = Thread(target).also { it.priority = priority }
 
 abstract class Deferral {
