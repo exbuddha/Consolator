@@ -208,7 +208,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         fun <R> commit(block: () -> R) = synchronized(hLock(block)) {
             hLock = Lock.Closed(block)
             block().also {
-                hLock = Lock.Open(block)
+                hLock = Lock.Open(block, it)
             }
         }
 
@@ -1271,7 +1271,7 @@ sealed interface State {
         operator fun contains(lock: Any) = false
         operator fun compareTo(lock: Any) = 1
     }
-    operator fun invoke(vararg param: Any): Lock = this as Lock
+    operator fun invoke(vararg param: Any?): Lock = this as Lock
     operator fun inc() = this
     operator fun dec() = this
     operator fun get(id: ID) = this
