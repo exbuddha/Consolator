@@ -30,12 +30,12 @@ open class BaseService : Service(), BaseServiceScope, Provider {
                     startTime = getStartTimeExtra(intent)
                     Sequencer {
                         if (logDb === null)
-                            ioResettingLastly(true) @Tag("log-db.build") {
+                            io(true) @Tag("log-db.build") {
                                 logDb = resetOnError(::buildDatabase)
                                 change(Context::stageLogDbCreated)
                             }
                         if (netDb === null)
-                            ioResettingLastly(true) @Tag("net-db.build") {
+                            io(true) @Tag("net-db.build") {
                                 netDb = resetOnError(::buildDatabase)
                                 // update net db records
                                 change(Context::stageNetDbInitialized)
