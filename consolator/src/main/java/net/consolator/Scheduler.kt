@@ -169,7 +169,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         priority: Int = currentThread.priority
     ) : HandlerThread(name, priority) {
         override fun start() {
-            commitAsync(hLock, { !isAlive }) {
+            commitAsync(this, { !isAlive }) {
                 super.start()
                 queue = java.util.LinkedList()
             }
@@ -320,7 +320,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         private fun init() {
             ln = -1
             clearFlags()
-            clearObjects()
+            clearLatestObjects()
         }
         fun start() {
             init()
@@ -352,10 +352,10 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             activate()
             prepare()
             while (next(ln + 1) ?: return)
-                work.let { observe(it) ?: bypass(it) } || return
-            isCompleted = end()
+                work.let { run(it) ?: bypass(it) } || return
+            isCompleted = finish()
         }
-        private fun observe(work: LiveWork): Boolean? {
+        fun observe(work: LiveWork): Boolean? {
             val (step, _, async) = work
             try {
                 step().let { step ->
@@ -370,6 +370,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             isObserving = true
             return async
         }
+        var run = fun(work: LiveWork) = observe(work)
         fun capture(work: LiveWork): Boolean {
             work.second.let { capture ->
                 latestCapture = capture
@@ -380,6 +381,9 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             return false
         }
         var bypass = fun(work: LiveWork) = capture(work)
+        fun end() = !(ln < seq.size || isObserving)
+        var finish = fun() = end()
+
         fun reset(step: LiveStep? = latestStep) {
             step?.removeObserver(observer)
             isObserving = false
@@ -399,9 +403,6 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
                 error(ex)
         }
         var interrupt = fun(ex: Throwable) = ex
-        fun finish() = !(ln < seq.size || isObserving)
-        var end = fun() = finish()
-
         suspend inline fun <R> SequencerScope.resetOnCancel(block: () -> R) =
             try { block() }
             catch (ex: CancellationException) {
@@ -430,13 +431,19 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             isObserving = false
             isCompleted = false
             isCancelled = false
+            clearError()
+        }
+        fun clearError() {
             hasError = false
             ex = null
         }
-        fun clearObjects() {
-            seq.clear()
+        fun clearLatestObjects() {
             latestStep = null
             latestCapture = null
+        }
+        fun clearObjects() {
+            seq.clear()
+            clearLatestObjects()
         }
         companion object : (SequencerWork) -> Unit {
             override fun invoke(work: SequencerWork) = sequencer!!.work()

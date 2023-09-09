@@ -23,9 +23,7 @@ import net.consolator.BaseApplication.Companion.ACTION_MIGRATE_APP
 var instance: BaseApplication? = null
 var service: BaseService? = null
 var receiver: BaseReceiver? = null
-    get() = commitAsyncForResult(BaseReceiver, { field === null }, field) {
-        BaseReceiver()
-    }
+    get() = commitAsyncForResult(BaseReceiver, { field === null }, field, ::BaseReceiver)
 var db: AppDatabase? = null
 var logDb: LogDatabase? = null
 var netDb: NetworkDatabase? = null
