@@ -183,6 +183,8 @@ inline fun <R> Context.tryCanceling(block: Context.() -> R) =
 
 inline fun <reified R : Any> Any?.asType(): R? =
     if (this is R) this else null
+inline fun <reified R : Any> R?.singleton() =
+    commitAsyncForResult(R::class.objectInstance!!, { this !== null }, this, R::class::emptyConstructor) as R
 fun <T : Any> KClass<out T>.reconstruct(vararg args: Any?): T = when {
     isCompanion -> objectInstance!!
     args.isEmpty() -> emptyConstructor().call()

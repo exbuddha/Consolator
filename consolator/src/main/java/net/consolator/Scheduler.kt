@@ -906,8 +906,6 @@ inline fun <R> commitAsyncForResult(lock: Any, crossinline predicate: Predicate,
         }
     return fallback
 }
-inline fun <reified R : Any> R?.singleton() =
-    commitAsyncForResult(R::class.objectInstance!!, { this !== null }, this, R::class::emptyConstructor) as R
 
 inline fun <R> sequencer(block: Sequencer.() -> R) = Scheduler.sequencer!!.block()
 fun <T, R> capture(context: CoroutineContext, step: suspend LiveDataScope<T>.() -> Unit, capture: (T) -> R) =
