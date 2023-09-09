@@ -406,14 +406,14 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         suspend inline fun <R> SequencerScope.resetOnCancel(block: () -> R) =
             try { block() }
             catch (ex: CancellationException) {
-                emit { reset() }
+                emitReset()
                 exception(ex)
                 throw interrupt(ex)
             }
         suspend inline fun <R> SequencerScope.resetOnError(block: () -> R) =
             try { block() }
             catch (ex: Throwable) {
-                emit { reset() }
+                emitReset()
                 exception(ex)
                 throw interrupt(ex)
             }
@@ -1173,6 +1173,7 @@ suspend fun SequencerScope.change(transit: Short) { emit {
     EventBus.signal(transit)
 } }
 suspend fun SequencerScope.reset() = Scheduler.sequencer!!.reset()
+suspend fun SequencerScope.emitReset() = emit { reset() }
 private typealias SequencerStep = suspend SequencerScope.() -> Unit
 private typealias StepObserver = Observer<Step?>
 private typealias LiveStep = LiveData<Step?>
