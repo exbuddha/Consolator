@@ -170,10 +170,10 @@ inline fun <R> trySafelyInterrupting(block: () -> R) =
     try { block() } catch (ex: InterruptedException) { throw ex } catch (_: Throwable) {}
 inline fun <R> tryInterrupting(block: () -> R) =
     try { block() } catch (ex: Throwable) { throw InterruptedException() }
-fun <R> trySafelyInterrupting(step: suspend CoroutineScope.() -> R, block: () -> R = blockOf(step)) =
-    try { block() } catch (ex: InterruptedException) { throw InterruptedStepException(step, ex) } catch (_: Throwable) {}
-fun <R> tryInterruptingForResult(step: suspend CoroutineScope.() -> R, block: () -> R = blockOf(step), exit: (Throwable) -> R? = { null }) =
-    try { block() } catch (ex: InterruptedException) { throw InterruptedStepException(step, ex) } catch (ex: Throwable) { exit(ex) }
+fun <R> trySafelyInterrupting(step: suspend CoroutineScope.() -> R) =
+    try { blockOf(step)() } catch (ex: InterruptedException) { throw InterruptedStepException(step, ex) } catch (_: Throwable) {}
+fun <R> tryInterruptingForResult(step: suspend CoroutineScope.() -> R, exit: (Throwable) -> R? = { null }) =
+    try { blockOf(step)() } catch (ex: InterruptedException) { throw InterruptedStepException(step, ex) } catch (ex: Throwable) { exit(ex) }
 fun <R> tryInterrupting(step: suspend CoroutineScope.() -> R, block: () -> R = blockOf(step)) =
     try { block() } catch (ex: Throwable) { throw InterruptedStepException(step, ex) }
 inline fun <R> Context.trySafelyCanceling(block: Context.() -> R) =

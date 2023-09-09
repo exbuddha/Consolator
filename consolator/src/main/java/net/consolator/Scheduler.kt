@@ -890,7 +890,7 @@ fun <T> clockSafelyInterrupting(step: suspend CoroutineScope.() -> T) = clock(sa
 fun <T> clockAheadSafelyInterrupting(step: suspend CoroutineScope.() -> T) = clockAhead(safeInterruptingRunnableOf(step))
 fun <T> blockOf(step: suspend CoroutineScope.() -> T): () -> T = { runBlocking(block = step) }
 fun <T> blockingRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { runBlocking(block = step) }
-fun <T> safeRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { trySafely { runBlocking(block = step) } }
+fun <T> safeRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { trySafely(blockOf(step)) }
 fun <T> interruptingRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { tryInterrupting(step) }
 fun <T> safeInterruptingRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { trySafelyInterrupting(step) }
 inline fun <R> commitAsync(lock: Any, crossinline predicate: Predicate, crossinline block: () -> R) {
@@ -1110,9 +1110,9 @@ val currentThread
 val mainThread = currentThread
 fun Thread.isMainThread() = this === mainThread
 fun onMainThread() = currentThread.isMainThread()
-private fun withPriority(group: ThreadGroup, name: String, priority: Int, target: Runnable) = Thread(group, target, name).also { it.priority = priority }
-private fun withPriority(name: String, priority: Int, target: Runnable) = Thread(target, name).also { it.priority = priority }
-private fun withPriority(priority: Int, target: Runnable) = Thread(target).also { it.priority = priority }
+private fun newThread(group: ThreadGroup, name: String, priority: Int, target: Runnable) = Thread(group, target, name).also { it.priority = priority }
+private fun newThread(name: String, priority: Int, target: Runnable) = Thread(target, name).also { it.priority = priority }
+private fun newThread(priority: Int, target: Runnable) = Thread(target).also { it.priority = priority }
 
 abstract class Deferral {
     abstract fun commit(): Unit?
