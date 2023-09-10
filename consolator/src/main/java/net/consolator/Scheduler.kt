@@ -61,8 +61,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
                             ::serviceOnStartCommandResolver.setResolverThenCommit()
                         BindResolver::class ->
                             ::serviceOnBindResolver.setResolverThenCommit()
-                        else ->
-                            throw BaseImplementationRestriction
+                        else -> null
                     }
                 }
                 BaseActivity::class.java -> {
@@ -74,11 +73,10 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
                             ::activityNightModeChangeManager.setResolverThenResolve()
                         LocalesChangeManager::class ->
                             ::activityLocalesChangeManager.setResolverThenResolve()
-                        else ->
-                            throw BaseImplementationRestriction
+                        else -> null
                     }
                 }
-                else -> throw BaseImplementationRestriction
+                else -> null
             }
         }
     fun work(vararg id: Any?, work: Work) {
@@ -89,8 +87,6 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
                     serviceOnStartCommandResolver!!.assignWork()
                 BindResolver::class ->
                     serviceOnBindResolver!!.assignWork()
-                else ->
-                    throw BaseImplementationRestriction
             }
             is BaseActivity -> when (id[1]) {
                 ConfigurationChangeManager::class ->
@@ -99,16 +95,16 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
                     activityNightModeChangeManager!!.assignWork()
                 LocalesChangeManager::class ->
                     activityLocalesChangeManager!!.assignWork()
-                else ->
-                    throw BaseImplementationRestriction
             }
-            else -> throw BaseImplementationRestriction
         }
         work()
     }
     fun step(vararg context: Any?, step: CoroutineStep?) {
+        fun CoroutineScope.exec(step: CoroutineStep) {}
         if (context.isNotEmpty())
             when (val scope = context[0]) {
+                null -> if (step !== null)
+                    trySafelyForAnnotatedScopeOf(step)?.exec(step)
                 is BaseServiceScope -> {
                     if (step !== null)
                         clockAhead {
@@ -117,7 +113,10 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
                                 trySafelyForAnnotatedScopeOf(step) ?:
                                 scope)
                         }
-                    return
+                    else {
+                        fun CoroutineScope.exec() {}
+                        context.lastOrNull()?.asType<CoroutineScope>()?.exec()
+                    }
                 }
                 is BaseActivity -> {
                     fun Resolver.assignStepThenResolve() = assignStepThenResolve(step)
@@ -138,13 +137,8 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
                     return
                 }
             }
-        else if (step !== null) {
-            clock {
-                annotatedScopeOf(step).step()
-            }
-            return
-        }
-        throw BaseImplementationRestriction
+        else if (step !== null)
+            trySafelyForAnnotatedScopeOf(step)?.exec(step)
     }
 
     var serviceOnStartCommandResolver: StartCommandResolver? = null
@@ -873,10 +867,9 @@ fun schedule(step: Step) = Scheduler.postValue(step)
 fun Context.scheduleNow(ref: ContextStep) = scheduleNow(step = { ref() })
 fun Context.schedule(ref: ContextStep) = schedule(step = { ref() })
 
-fun service(step: CoroutineStep) = runBlocking {
-    step(
-        Scheduler.trySafelyForAnnotatedScopeOf(step) ?:
-        service!!)
+fun service(step: CoroutineStep) = clockAhead {
+    (Scheduler.trySafelyForAnnotatedScopeOf(step) ?:
+    service)?.step()
 }
 fun clock(callback: Runnable) = Scheduler.clock!!.post(callback)
 fun clockAhead(callback: Runnable) = Scheduler.clock!!.postAhead(callback)
