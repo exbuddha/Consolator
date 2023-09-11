@@ -28,7 +28,7 @@ var db: AppDatabase? = null
 var logDb: LogDatabase? = null
 var netDb: NetworkDatabase? = null
 var session: RuntimeSessionEntity? = null
-lateinit var reactToUncaughtExceptionThrown: ExceptionHandler
+lateinit var mainUncaughtExceptionHandler: ExceptionHandler
 
 val foregroundLifecycleOwner: LifecycleOwner?
     get() = TODO()
@@ -50,7 +50,7 @@ fun Context.stageSessionCreated() {
 }
 
 fun Context.stageLogDbCreated() {
-    reactToUncaughtExceptionThrown[0] = @Tag("uncaught-db") { th, ex ->
+    mainUncaughtExceptionHandler[0] = @Tag("uncaught-db") ExceptionHandler { th, ex ->
         // record in db safely
     }
     State[2] += Pending
@@ -124,7 +124,7 @@ fun isTimeIntervalExceeded(interval: Long, last: Long) =
 interface UniqueContext { var startTime: Long }
 typealias ContextStep = suspend Context.() -> Unit
 
-private typealias ExceptionHandler = (Thread, Throwable) -> Unit
+private typealias ExceptionHandler = Thread.UncaughtExceptionHandler
 private operator fun ExceptionHandler.plusAssign(other: ExceptionHandler) {}
 private operator fun ExceptionHandler.minusAssign(other: String) {}
 private operator fun ExceptionHandler.plus(other: String): ExceptionHandler = this

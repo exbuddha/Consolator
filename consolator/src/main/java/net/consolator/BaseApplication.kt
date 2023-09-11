@@ -8,10 +8,7 @@ open class BaseApplication : Application(), UniqueContext {
     override var startTime = now()
 
     override fun onCreate() {
-        Thread.setDefaultUncaughtExceptionHandler { th, ex ->
-            reactToUncaughtExceptionThrown(th, ex)
-        }
-        reactToUncaughtExceptionThrown = @Tag("uncaught-shared") { th, ex ->
+        mainUncaughtExceptionHandler = @Tag("uncaught-shared") ExceptionHandler { th, ex ->
             with(getSharedPreferences("uncaught", MODE_PRIVATE).edit()) {
                 putLong("start", startTime)
                 putLong("now", now())
@@ -19,6 +16,7 @@ open class BaseApplication : Application(), UniqueContext {
                 putException("exception", ex)
             }
         }
+        Thread.setDefaultUncaughtExceptionHandler(mainUncaughtExceptionHandler)
         super.onCreate()
         instance = this
         Scheduler {
