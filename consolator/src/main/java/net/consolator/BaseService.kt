@@ -67,6 +67,8 @@ open class BaseService : Service(), BaseServiceScope, Provider {
             get() = if (onMainThread()) "SERVICE" else "CLOCK"
     }
 
+    var sync = fun(context: AnyArray, _: CoroutineStep?) {}
+
     inner class StartCommandResolver : ForgetfulWorkResolver()
     abstract inner class BindResolver : ForgetfulWorkResolver()
 

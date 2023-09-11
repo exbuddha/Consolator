@@ -9,6 +9,7 @@ import kotlin.annotation.AnnotationRetention.*
 import kotlin.annotation.AnnotationTarget.*
 import kotlin.coroutines.*
 import kotlin.reflect.*
+import kotlin.reflect.full.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.Dispatchers.Default
 import kotlinx.coroutines.Dispatchers.IO
@@ -100,23 +101,19 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         work()
     }
     fun step(vararg context: Any?, step: CoroutineStep?) {
-        fun CoroutineScope.exec(step: CoroutineStep) {}
+        fun CoroutineScope.synchronize(step: CoroutineStep? = null) =
+            this::class.declaredMembers.find { it.name == "sync" }?.call(*context, step)
         if (context.isNotEmpty())
             when (val scope = context[0]) {
-                null -> if (step !== null)
-                    trySafelyForAnnotatedScopeOf(step)?.exec(step)
                 is BaseServiceScope -> {
                     if (step !== null)
                         clockAhead {
                             step(
-                                context.lastOrNull()?.asType() ?:
                                 trySafelyForAnnotatedScopeOf(step) ?:
                                 scope)
                         }
-                    else {
-                        fun CoroutineScope.exec() {}
-                        context.lastOrNull()?.asType<CoroutineScope>()?.exec()
-                    }
+                    else
+                        scope.synchronize()
                 }
                 is BaseActivity -> {
                     fun Resolver.assignStepThenResolve() = assignStepThenResolve(step)
@@ -138,8 +135,10 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
                 }
             }
         else if (step !== null)
-            trySafelyForAnnotatedScopeOf(step)?.exec(step)
+            (trySafelyForAnnotatedScopeOf(step) ?:
+            Scheduler).synchronize(step)
     }
+    fun sync(vararg context: Any?, step: CoroutineStep) = clock(step::invoke)
 
     var serviceOnStartCommandResolver: StartCommandResolver? = null
     var serviceOnBindResolver: BindResolver? = null
