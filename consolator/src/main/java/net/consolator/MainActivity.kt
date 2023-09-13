@@ -23,7 +23,7 @@ open class MainActivity : BaseActivity(), Provider {
     override fun onConfigurationChanged(newConfig: Configuration) {
         defer<ConfigurationChangeManager>(::onConfigurationChanged, newConfig)
         { super.onConfigurationChanged(newConfig) } ?:
-        step<ConfigurationChangeManager>(newConfig) {
+        step {
             // ...
         }
     }
@@ -31,7 +31,7 @@ open class MainActivity : BaseActivity(), Provider {
     override fun onNightModeChanged(mode: Int) {
         defer<NightModeChangeManager>(::onNightModeChanged, mode)
         { super.onNightModeChanged(mode) } ?:
-        step<NightModeChangeManager>(mode) {
+        step {
             // ...
         }
     }
@@ -39,7 +39,7 @@ open class MainActivity : BaseActivity(), Provider {
     override fun onLocalesChanged(locales: LocaleListCompat) {
         defer<LocalesChangeManager>(::onLocalesChanged, locales)
         { super.onLocalesChanged(locales) } ?:
-        step<LocalesChangeManager>(locales) {
+        step {
             // ...
         }
     }

@@ -7,7 +7,7 @@ import net.consolator.JobTreeRoot
 import net.consolator.BaseApplication.Companion.COMMIT_NAV_MAIN_UI
 
 class Migration : Resolver {
-    override fun commit(vararg id: Any?) {
+    override fun commit(vararg context: Any?) {
         // listen to db updates
         // preload data
         // reset function pointers

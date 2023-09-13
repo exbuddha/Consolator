@@ -60,7 +60,7 @@ abstract class BaseFragment : Fragment() {
                         close(MainViewGroup::class)
                     }
                     ACTION_MIGRATE_APP ->
-                        defer(::onViewCreated, Migration::class)
+                        defer(Migration::class, ::onViewCreated)
                 }
             }
         } onError { job ->
@@ -125,7 +125,7 @@ abstract class BaseFragment : Fragment() {
     }
 
     override fun onLowMemory() {
-        defer(::onLowMemory, MemoryManager::class, { super.onLowMemory() })
+        defer(MemoryManager::class, ::onLowMemory, { super.onLowMemory() })
     }
 
     @Retention(SOURCE)

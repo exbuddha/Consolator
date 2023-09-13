@@ -41,8 +41,9 @@ private val _element by lazy {
 }
 
 object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, StepObserver, (SchedulerWork) -> Unit {
-    fun <T : Resolver> defer(member: KFunction<*>, resolver: KClass<out T>, vararg value: Any?): Unit? {
-        fun ResolverKProperty.setResolverThenCommit() = setResolverThenCommit(value)
+    fun <T : Resolver> defer(resolver: KClass<out T>, vararg value: Any?): Unit? {
+        fun ResolverKProperty.setResolverThenCommit() =
+            (reconstruct(value[0]!!) as? Resolver)?.commit(value)
         return when (resolver) {
             Migration::class ->
                 ::applicationMigrationResolver.setResolverThenCommit()
@@ -59,13 +60,16 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     }
     fun step(vararg context: Any?, step: CoroutineStep) {
         fun CoroutineScope.sync(step: CoroutineStep) =
-            this::class.declaredMembers.find { it.name == "commit" }?.call(*context, step)
+            this::class.declaredMembers.find { it.name == "commit" }?.call(context, step)
         if (context.isNotEmpty())
             when (val scope = context[0]) {
                 is BaseServiceScope ->
                     scope.sync(step)
                 is BaseActivity -> {
-                    fun StepResolver.assignStepThenCommit() = assignStepThenCommit(id = context, step)
+                    fun StepResolver.assignStepThenCommit()  {
+                        this.step = step
+                        commit(context)
+                    }
                     when (context[1]) {
                         ConfigurationChangeManager::class ->
                             activityConfigurationChangeManager!!.assignStepThenCommit()
@@ -91,8 +95,6 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     private var activityNightModeChangeManager: NightModeChangeManager? = null
     private var activityLocalesChangeManager: LocalesChangeManager? = null
     var applicationMigrationResolver: Migration? = null
-    private fun ResolverKProperty.setResolverThenCommit(vararg value: Any?) =
-        (reconstruct(value[0]!!) as? Resolver)?.commit(value)
 
     open class Clock(
         name: String? = null,
@@ -797,19 +799,15 @@ private val Any.annotatedEvent
     get() = Scheduler.trySafelyForAnnotatedEventOf(asFunction())
 
 inline fun <reified T : Resolver> Context.defer(member: KFunction<*>, vararg value: Any?, noinline `super`: Work) =
-    Scheduler.defer(member, T::class, this, *value, `super`)
-inline fun <reified T : Resolver> Context.step(vararg id: Any?, noinline step: CoroutineStep) =
-    Scheduler.step(this, T::class, *id, step = step)
+    Scheduler.defer(T::class, this, member, *value, `super`)
+fun Context.step(vararg id: Any?, step: CoroutineStep) =
+    Scheduler.step(this, *id, step = step)
 
 interface Resolver : SchedulerScope {
-    fun commit(vararg id: Any?)
+    fun commit(vararg context: Any?)
 }
 abstract class StepResolver : Resolver {
     var step: CoroutineStep? = null
-}
-private fun StepResolver.assignStepThenCommit(vararg id: Any?, step: CoroutineStep?) {
-    this.step = step
-    commit(*id)
 }
 
 fun scheduleNow(step: Step) { Scheduler.value = step }
