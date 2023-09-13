@@ -17,22 +17,13 @@ import kotlinx.coroutines.Dispatchers.Main
 import kotlinx.coroutines.Dispatchers.Unconfined
 import kotlinx.coroutines.flow.*
 import okhttp3.*
-import net.consolator.BaseService.*
 import net.consolator.BaseActivity.*
+import net.consolator.BaseService.*
 import net.consolator.Scheduler.EventBus
 import net.consolator.Scheduler.EventBus.Relay
 import net.consolator.Scheduler.Lock
 import net.consolator.Scheduler.Sequencer
 import net.consolator.application.*
-
-inline fun <reified T : Deferral, R> Context.defer(member: KCallable<R>) =
-    Scheduler.defer(member, T::class, this)
-inline fun <reified T : Deferral> Context.defer(member: KFunction<Unit>, vararg value: Any?, noinline `super`: Work) =
-    Scheduler.defer(member, T::class, this, *value, `super`)
-inline fun <reified T : Deferral> Context.work(vararg id: Any?, noinline work: Work) =
-    Scheduler.work(this, T::class, *id, work = work)
-inline fun <reified T : Deferral> Context.step(vararg id: Any?, noinline step: CoroutineStep? = null) =
-    work<T>(*id) { Scheduler.step(this, T::class, *id, step = step) }
 
 interface SchedulerScope : CoroutineScope {
     override val coroutineContext
@@ -50,112 +41,58 @@ private val _element by lazy {
 }
 
 object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, StepObserver, (SchedulerWork) -> Unit {
-    fun <T : Deferral, R> defer(member: KCallable<R>, resolver: KClass<out T>, vararg value: Any?): Unit? =
-        when (resolver) {
+    fun <T : Resolver> defer(member: KFunction<*>, resolver: KClass<out T>, vararg value: Any?): Unit? {
+        fun ResolverKProperty.setResolverThenCommit() = setResolverThenCommit(value)
+        return when (resolver) {
             Migration::class ->
-                ::applicationMigrationResolver.setResolverThenCommit(value[0]!!)
-            else -> when (member.javaClass.enclosingClass) {
-                BaseService::class.java -> {
-                    fun ResolverKProperty.setResolverThenCommit() = setResolverThenCommit(value[0]!!)
-                    when (resolver) {
-                        StartCommandResolver::class ->
-                            ::serviceOnStartCommandResolver.setResolverThenCommit()
-                        BindResolver::class ->
-                            ::serviceOnBindResolver.setResolverThenCommit()
-                        else -> null
-                    }
-                }
-                BaseActivity::class.java -> {
-                    fun ResolverKProperty.setResolverThenResolve() = setResolverThenResolve(value[0]!!)
-                    when (resolver) {
-                        ConfigurationChangeManager::class ->
-                            ::activityConfigurationChangeManager.setResolverThenResolve()
-                        NightModeChangeManager::class ->
-                            ::activityNightModeChangeManager.setResolverThenResolve()
-                        LocalesChangeManager::class ->
-                            ::activityLocalesChangeManager.setResolverThenResolve()
-                        else -> null
-                    }
-                }
-                else -> null
-            }
+                ::applicationMigrationResolver.setResolverThenCommit()
+            ConfigurationChangeManager::class ->
+                ::activityConfigurationChangeManager.setResolverThenCommit()
+            NightModeChangeManager::class ->
+                ::activityNightModeChangeManager.setResolverThenCommit()
+            LocalesChangeManager::class ->
+                ::activityLocalesChangeManager.setResolverThenCommit()
+            MemoryManager::class ->
+                null
+            else -> null
         }
-    fun work(vararg id: Any?, work: Work) {
-        fun Resolver.assignWork() = assignWork(work, id)
-        when (id[0]) {
-            is BaseServiceScope -> when (id[1]) {
-                StartCommandResolver::class ->
-                    serviceOnStartCommandResolver!!.assignWork()
-                BindResolver::class ->
-                    serviceOnBindResolver!!.assignWork()
-            }
-            is BaseActivity -> when (id[1]) {
-                ConfigurationChangeManager::class ->
-                    activityConfigurationChangeManager!!.assignWork()
-                NightModeChangeManager::class ->
-                    activityNightModeChangeManager!!.assignWork()
-                LocalesChangeManager::class ->
-                    activityLocalesChangeManager!!.assignWork()
-            }
-        }
-        work()
     }
-    fun step(vararg context: Any?, step: CoroutineStep?) {
-        fun CoroutineScope.synchronize(step: CoroutineStep? = null) =
-            this::class.declaredMembers.find { it.name == "sync" }?.call(*context, step)
+    fun step(vararg context: Any?, step: CoroutineStep) {
+        fun CoroutineScope.sync(step: CoroutineStep) =
+            this::class.declaredMembers.find { it.name == "commit" }?.call(*context, step)
         if (context.isNotEmpty())
             when (val scope = context[0]) {
-                is BaseServiceScope -> {
-                    if (step !== null)
-                        clockAhead {
-                            step(
-                                trySafelyForAnnotatedScopeOf(step) ?:
-                                scope)
-                        }
-                    else
-                        scope.synchronize()
-                }
+                is BaseServiceScope ->
+                    scope.sync(step)
                 is BaseActivity -> {
-                    fun Resolver.assignStepThenResolve() = assignStepThenResolve(step)
+                    fun StepResolver.assignStepThenCommit() = assignStepThenCommit(id = context, step)
                     when (context[1]) {
                         ConfigurationChangeManager::class ->
-                            activityConfigurationChangeManager!!.assignStepThenResolve()
+                            activityConfigurationChangeManager!!.assignStepThenCommit()
                         NightModeChangeManager::class -> {
-                            activityNightModeChangeManager!!.assignStepThenResolve()
+                            activityNightModeChangeManager!!.assignStepThenCommit()
                             activityNightModeChangeManager = null
                         }
                         LocalesChangeManager::class -> {
-                            activityLocalesChangeManager!!.assignStepThenResolve()
+                            activityLocalesChangeManager!!.assignStepThenCommit()
                             activityLocalesChangeManager = null
                         }
-                        else ->
-                            throw BaseImplementationRestriction
                     }
                     return
                 }
             }
-        else if (step !== null)
+        else
             (trySafelyForAnnotatedScopeOf(step) ?:
-            Scheduler).synchronize(step)
+            Scheduler).sync(step)
     }
-    fun sync(vararg context: Any?, step: CoroutineStep) = clock(step::invoke)
+    fun commit(vararg context: Any?, step: CoroutineStep) = clock(step::invoke)
 
-    var serviceOnStartCommandResolver: StartCommandResolver? = null
-    var serviceOnBindResolver: BindResolver? = null
-        private set
-    var activityConfigurationChangeManager: ConfigurationChangeManager? = null
-        private set
-    var activityNightModeChangeManager: NightModeChangeManager? = null
-        private set
-    var activityLocalesChangeManager: LocalesChangeManager? = null
-        private set
+    private var activityConfigurationChangeManager: ConfigurationChangeManager? = null
+    private var activityNightModeChangeManager: NightModeChangeManager? = null
+    private var activityLocalesChangeManager: LocalesChangeManager? = null
     var applicationMigrationResolver: Migration? = null
-    private fun ResolverKProperty.setResolverThenCommit(provider: Any) =
-        (reconstruct(provider) as? Deferral)?.commit()
-    private fun ResolverKProperty.setResolverThenResolve(provider: Any) =
-        (reconstruct(provider) as? Resolver)?.resolve(provider)
-    private fun ResolverKProperty.reconstruct(provider: Any) =
-        reconstruct(this::class, provider, null)
+    private fun ResolverKProperty.setResolverThenCommit(vararg value: Any?) =
+        (reconstruct(value[0]!!) as? Resolver)?.commit(value)
 
     open class Clock(
         name: String? = null,
@@ -712,8 +649,6 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     }
 
     fun clearResolverObjects() {
-        serviceOnStartCommandResolver = null
-        serviceOnBindResolver = null
         activityConfigurationChangeManager = null
         activityNightModeChangeManager = null
         activityLocalesChangeManager = null
@@ -860,6 +795,22 @@ val ContextStep.transit
     get() = annotatedEvent?.transit
 private val Any.annotatedEvent
     get() = Scheduler.trySafelyForAnnotatedEventOf(asFunction())
+
+inline fun <reified T : Resolver> Context.defer(member: KFunction<*>, vararg value: Any?, noinline `super`: Work) =
+    Scheduler.defer(member, T::class, this, *value, `super`)
+inline fun <reified T : Resolver> Context.step(vararg id: Any?, noinline step: CoroutineStep) =
+    Scheduler.step(this, T::class, *id, step = step)
+
+interface Resolver : SchedulerScope {
+    fun commit(vararg id: Any?)
+}
+abstract class StepResolver : Resolver {
+    var step: CoroutineStep? = null
+}
+private fun StepResolver.assignStepThenCommit(vararg id: Any?, step: CoroutineStep?) {
+    this.step = step
+    commit(*id)
+}
 
 fun scheduleNow(step: Step) { Scheduler.value = step }
 fun schedule(step: Step) = Scheduler.postValue(step)
@@ -1106,53 +1057,6 @@ private fun newThread(group: ThreadGroup, name: String, priority: Int, target: R
 private fun newThread(name: String, priority: Int, target: Runnable) = Thread(target, name).also { it.priority = priority }
 private fun newThread(priority: Int, target: Runnable) = Thread(target).also { it.priority = priority }
 
-abstract class Deferral {
-    abstract fun commit(): Unit?
-}
-abstract class WorkRef : Deferral() {
-    var work: Work? = null
-    var id: AnyArray? = null
-    override fun commit(): Unit? {
-        work?.invoke() ?: return null
-        return Unit
-    }
-}
-abstract class StepRef : WorkRef() {
-    var step: CoroutineStep? = null
-}
-interface Resolver : SchedulerScope {
-    fun resolve(vararg id: Any?): Unit =
-        throw BaseImplementationRestriction
-}
-private fun Resolver.assignWork(work: Work, vararg id: Any?) {
-    (this as WorkRef).work = work
-    this.id = id
-}
-private fun Resolver.assignStep(step: CoroutineStep?) {
-    (this as StepRef).step = step
-}
-private fun Resolver.assignStepThenResolve(step: CoroutineStep?) {
-    assignStep(step)
-    (this as StepResolver).resolve()
-}
-abstract class WorkResolver : WorkRef(), Resolver
-abstract class ForgetfulWorkResolver : WorkRef(), Resolver {
-    override fun commit() {
-        super.commit()
-        work = null
-        id = null
-    }
-}
-abstract class StepResolver : StepRef(), Resolver
-abstract class ForgetfulStepResolver : StepRef(), Resolver {
-    override fun resolve(vararg id: Any?) {
-        commit()
-        work = null
-        this.id = null
-        step = null
-    }
-}
-
 private typealias JobPredicate = (Job) -> Boolean
 private typealias SchedulerNode = KClass<out Annotation>
 private typealias SchedulerPath = Array<KClass<out Throwable>>
@@ -1217,8 +1121,8 @@ fun Any.asCallable() = this as KCallable<*>
 fun Any.asFunction() = this as KFunction<*>
 fun Any.asProperty() = this as KProperty<*>
 fun Any.asMutableProperty() = this as KMutableProperty<*>
-private typealias ResolverKClass = KClass<out Deferral>
-private typealias ResolverKProperty = KMutableProperty<out Deferral?>
+private typealias ResolverKClass = KClass<out Resolver>
+private typealias ResolverKProperty = KMutableProperty<out Resolver?>
 
 private typealias ID = Short
 sealed interface State {
@@ -1237,11 +1141,11 @@ sealed interface State {
     }
     companion object {
         operator fun invoke(): State = Lock.Open
+        fun of(string: String): State = Ambiguous
         operator fun get(id: ID): State = Lock.Open
         operator fun set(id: ID, lock: Any) {
             when (id.toInt()) {
                 1 -> if (lock is Resolved) Scheduler.windDownClock()
-                2 -> if (lock is Resolved) Scheduler.serviceOnStartCommandResolver = null
             }
         }
         operator fun plus(lock: Any): State = Ambiguous

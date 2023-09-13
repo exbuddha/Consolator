@@ -194,13 +194,13 @@ fun <T : Any> KClass<out T>.emptyConstructor() = constructors.first { it.paramet
 fun <T : Any> KClass<out T>.firstConstructor() = constructors.first()
 fun <T : Any> KClass<out T>.lastAnnotatedFile() = annotations.last { it is File } as File
 fun <T : Any> KClass<out T>.lastAnnotatedFilename() = lastAnnotatedFile().name
-fun <T : Any> KMutableProperty<out T?>.reconstruct(type: KClass<out T>, provider: Any? = null, relay: KMutableProperty<out T?>? = this) =
+inline fun <reified T : Any> KMutableProperty<out T?>.reconstruct(provider: Any = T::class, relay: KMutableProperty<out T?>? = this) =
     if (getter.call() === null) {
-        setter.call(when {
-            type.isInner ->
-                (provider.asType<Provider>())?.invoke(type)
+        setter.call(when (provider) {
+            is KClass<*> ->
+                provider.emptyConstructor().call()
             else ->
-                type.emptyConstructor().call()
+                (provider.asType<Provider>())?.invoke(T::class)
         })
         relay
     } else this

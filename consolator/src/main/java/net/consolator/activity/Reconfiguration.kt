@@ -1,9 +1,7 @@
 package net.consolator.activity
 
-import net.consolator.ForgetfulStepResolver
-import net.consolator.Work
-import net.consolator.asType
+import net.consolator.StepResolver
 
-abstract class Reconfiguration : ForgetfulStepResolver() {
-    override fun commit() = (id?.last()?.asType<Work>())?.invoke()
+abstract class Reconfiguration : StepResolver() {
+    override fun commit(vararg id: Any?) {}
 }

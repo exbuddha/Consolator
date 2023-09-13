@@ -1,13 +1,13 @@
 package net.consolator.application
 
-import net.consolator.Deferral
+import net.consolator.Resolver
 import net.consolator.Scheduler
 import net.consolator.Scheduler.EventBus.signal
 import net.consolator.JobTreeRoot
 import net.consolator.BaseApplication.Companion.COMMIT_NAV_MAIN_UI
 
-class Migration : Deferral() {
-    override fun commit() {
+class Migration : Resolver {
+    override fun commit(vararg id: Any?) {
         // listen to db updates
         // preload data
         // reset function pointers
