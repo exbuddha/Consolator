@@ -1,5 +1,5 @@
 package net.consolator.application
 
-import net.consolator.StepResolver
+import net.consolator.Resolver
 
-abstract class MemoryManager : StepResolver()
+abstract class MemoryManager : Resolver

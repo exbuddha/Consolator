@@ -1,7 +1,11 @@
 package net.consolator.activity
 
-import net.consolator.StepResolver
+import net.consolator.Resolver
+import net.consolator.Work
+import net.consolator.asType
 
-abstract class Reconfiguration : StepResolver() {
-    override fun commit(vararg context: Any?) {}
+abstract class Reconfiguration : Resolver {
+    override fun commit(vararg context: Any?) {
+        context.lastOrNull().asType<Work>()?.invoke()
+    }
 }

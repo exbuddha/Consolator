@@ -41,9 +41,9 @@ private val _element by lazy {
 }
 
 object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, StepObserver, (SchedulerWork) -> Unit {
-    fun <T : Resolver> defer(resolver: KClass<out T>, vararg context: Any?): Unit? {
+    fun <T : Resolver> defer(resolver: KClass<out T>, provider: Any = resolver, vararg context: Any?): Unit? {
         fun ResolverKProperty.setResolverThenCommit() =
-            (reconstruct(context[0]!!) as Resolver).commit(context.sliceArray(1..context.size))
+            (reconstruct(provider) as Resolver).commit(context)
         return when (resolver) {
             Migration::class ->
                 ::applicationMigrationResolver.setResolverThenCommit()
@@ -766,13 +766,10 @@ val ContextStep.transit
 private val Any.annotatedEvent
     get() = Scheduler.trySafelyForAnnotatedEventOf(asFunction())
 
-inline fun <reified T : Resolver> Context.defer(member: KFunction<*>, vararg context: Any?, noinline `super`: Work) =
+inline fun <reified T : Resolver> Context.defer(member: KFunction<Unit>, vararg context: Any?, noinline `super`: Work) =
     Scheduler.defer(T::class, this, member, *context, `super`)
 interface Resolver : SchedulerScope {
     fun commit(vararg context: Any?)
-}
-abstract class StepResolver : Resolver {
-    var step: CoroutineStep? = null
 }
 
 fun scheduleNow(step: Step) { Scheduler.value = step }
