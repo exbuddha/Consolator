@@ -777,9 +777,12 @@ fun schedule(step: Step) = Scheduler.postValue(step)
 fun Context.scheduleNow(ref: ContextStep) = scheduleNow(step = { ref() })
 fun Context.schedule(ref: ContextStep) = schedule(step = { ref() })
 
-fun service(step: CoroutineStep) = clockAhead {
+fun service(step: CoroutineStep) {
+    step.markTagAsFunction()
     (Scheduler.trySafelyForAnnotatedScopeOf(step) ?:
-    service)?.step()
+    service)?.let { scope ->
+        scope::class.memberFunctions.find { it.name == "commit" }?.call(step)
+    }
 }
 fun clock(callback: Runnable) = Scheduler.clock!!.post(callback)
 fun clockAhead(callback: Runnable) = Scheduler.clock!!.postAhead(callback)
