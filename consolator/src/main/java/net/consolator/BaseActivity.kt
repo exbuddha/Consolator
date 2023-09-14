@@ -37,7 +37,9 @@ abstract class BaseActivity : AppCompatActivity() {
     }
 
     override fun onLowMemory() {
-        defer<MemoryManager>(::onLowMemory) { super.onLowMemory() }
+        defer<MemoryManager>(::onLowMemory) {
+            super.onLowMemory()
+        }
     }
 
     abstract inner class ConfigurationChangeManager : Reconfiguration()

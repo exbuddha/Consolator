@@ -57,7 +57,7 @@ open class BaseService : Service(), BaseServiceScope {
             get() = if (onMainThread()) "SERVICE" else "CLOCK"
     }
 
-    var commit = fun(_: AnyArray, step: CoroutineStep) = clockAhead(step::invoke)
+    var commit = fun(step: CoroutineStep) = clockAhead(step::invoke)
 }
 
 interface BaseServiceScope : IBinder, SchedulerScope, UniqueContext {

@@ -125,7 +125,9 @@ abstract class BaseFragment : Fragment() {
     }
 
     override fun onLowMemory() {
-        defer(MemoryManager::class, ::onLowMemory, { super.onLowMemory() })
+        defer(MemoryManager::class, ::onLowMemory, {
+            super.onLowMemory()
+        })
     }
 
     @Retention(SOURCE)

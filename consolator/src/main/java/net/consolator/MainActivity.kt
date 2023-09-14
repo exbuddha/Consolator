@@ -21,26 +21,20 @@ open class MainActivity : BaseActivity(), Provider {
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
-        defer<ConfigurationChangeManager>(::onConfigurationChanged, newConfig)
-        { super.onConfigurationChanged(newConfig) } ?:
-        step {
-            // ...
+        defer<ConfigurationChangeManager>(::onConfigurationChanged, newConfig) {
+            super.onConfigurationChanged(newConfig)
         }
     }
 
     override fun onNightModeChanged(mode: Int) {
-        defer<NightModeChangeManager>(::onNightModeChanged, mode)
-        { super.onNightModeChanged(mode) } ?:
-        step {
-            // ...
+        defer<NightModeChangeManager>(::onNightModeChanged, mode) {
+            super.onNightModeChanged(mode)
         }
     }
 
     override fun onLocalesChanged(locales: LocaleListCompat) {
-        defer<LocalesChangeManager>(::onLocalesChanged, locales)
-        { super.onLocalesChanged(locales) } ?:
-        step {
-            // ...
+        defer<LocalesChangeManager>(::onLocalesChanged, locales) {
+            super.onLocalesChanged(locales)
         }
     }
 

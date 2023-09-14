@@ -41,9 +41,9 @@ private val _element by lazy {
 }
 
 object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, StepObserver, (SchedulerWork) -> Unit {
-    fun <T : Resolver> defer(resolver: KClass<out T>, vararg value: Any?): Unit? {
+    fun <T : Resolver> defer(resolver: KClass<out T>, vararg context: Any?): Unit? {
         fun ResolverKProperty.setResolverThenCommit() =
-            (reconstruct(value[0]!!) as? Resolver)?.commit(value)
+            (reconstruct(context[0]!!) as Resolver).commit(context.sliceArray(1..context.size))
         return when (resolver) {
             Migration::class ->
                 ::applicationMigrationResolver.setResolverThenCommit()
@@ -58,38 +58,6 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             else -> null
         }
     }
-    fun step(vararg context: Any?, step: CoroutineStep) {
-        fun CoroutineScope.sync(step: CoroutineStep) =
-            this::class.declaredMembers.find { it.name == "commit" }?.call(context, step)
-        if (context.isNotEmpty())
-            when (val scope = context[0]) {
-                is BaseServiceScope ->
-                    scope.sync(step)
-                is BaseActivity -> {
-                    fun StepResolver.assignStepThenCommit()  {
-                        this.step = step
-                        commit(context)
-                    }
-                    when (context[1]) {
-                        ConfigurationChangeManager::class ->
-                            activityConfigurationChangeManager!!.assignStepThenCommit()
-                        NightModeChangeManager::class -> {
-                            activityNightModeChangeManager!!.assignStepThenCommit()
-                            activityNightModeChangeManager = null
-                        }
-                        LocalesChangeManager::class -> {
-                            activityLocalesChangeManager!!.assignStepThenCommit()
-                            activityLocalesChangeManager = null
-                        }
-                    }
-                    return
-                }
-            }
-        else
-            (trySafelyForAnnotatedScopeOf(step) ?:
-            Scheduler).sync(step)
-    }
-    fun commit(vararg context: Any?, step: CoroutineStep) = clock(step::invoke)
 
     private var activityConfigurationChangeManager: ConfigurationChangeManager? = null
     private var activityNightModeChangeManager: NightModeChangeManager? = null
@@ -740,7 +708,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     }
     private val KCallable<*>.event
         get() = annotations.find { it is Event } as? Event
-    fun annotatedEventOf(step: KFunction<*>) =
+    private fun annotatedEventOf(step: KFunction<*>) =
         step.event!!
     fun trySafelyForAnnotatedEventOf(step: KFunction<*>) =
         trySafelyForResult { annotatedEventOf(step) }
@@ -798,11 +766,8 @@ val ContextStep.transit
 private val Any.annotatedEvent
     get() = Scheduler.trySafelyForAnnotatedEventOf(asFunction())
 
-inline fun <reified T : Resolver> Context.defer(member: KFunction<*>, vararg value: Any?, noinline `super`: Work) =
-    Scheduler.defer(T::class, this, member, *value, `super`)
-fun Context.step(vararg id: Any?, step: CoroutineStep) =
-    Scheduler.step(this, *id, step = step)
-
+inline fun <reified T : Resolver> Context.defer(member: KFunction<*>, vararg context: Any?, noinline `super`: Work) =
+    Scheduler.defer(T::class, this, member, *context, `super`)
 interface Resolver : SchedulerScope {
     fun commit(vararg context: Any?)
 }

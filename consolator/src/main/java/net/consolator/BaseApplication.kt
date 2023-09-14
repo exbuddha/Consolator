@@ -28,10 +28,14 @@ open class BaseApplication : Application(), UniqueContext {
     }
 
     override fun onTrimMemory(level: Int) {
-        defer<MemoryManager>(::onTrimMemory, level) { super.onTrimMemory(level) }
+        defer<MemoryManager>(::onTrimMemory, level) {
+            super.onTrimMemory(level)
+        }
     }
     override fun onLowMemory() {
-        defer<MemoryManager>(::onLowMemory) { super.onLowMemory() }
+        defer<MemoryManager>(::onLowMemory) {
+            super.onLowMemory()
+        }
     }
 
     private fun SharedPreferences.Editor.putException(name: String, ex: Throwable) {
