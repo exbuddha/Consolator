@@ -43,7 +43,7 @@ private val _element by lazy {
 object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, StepObserver, (SchedulerWork) -> Unit {
     fun <T : Resolver> defer(resolver: KClass<out T>, provider: Any = resolver, vararg context: Any?): Unit? {
         fun ResolverKProperty.setResolverThenCommit() =
-            (reconstruct(provider) as Resolver).commit(context)
+            reconstruct(provider).getter.call()?.commit(context)
         return when (resolver) {
             Migration::class ->
                 ::applicationMigrationResolver.setResolverThenCommit()
