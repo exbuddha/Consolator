@@ -94,7 +94,7 @@ private var networkCallFunction: JobFunction = @Tag(INET_FUNCTION) { scope ->
 }
 
 @Tag(INET_CALL)
-var netCall = with<Call>("https://httpbin.org/delay/1")(::buildNetworkRequest)
+var netCall = ::buildHttpGetRequest.with("https://httpbin.org/delay/1")()
     private set
 private var reactToNetCallResponseReceived: JobResponseFunction = @Tag(INET_SUCCESS) { _, response ->
     with(response) {
@@ -130,7 +130,8 @@ private val isNetCallTimeIntervalExceeded
     get() = isTimeIntervalExceeded(netCallTimeInterval, lastNetCallResponseTime)
 private var repeatNetCallback = true
 
-fun buildNetworkRequest(
+fun buildHttpGetRequest(cmd: String) = buildHttpRequest(cmd)
+fun buildHttpRequest(
     cmd: String,
     method: String = "GET",
     headers: Headers? = null,

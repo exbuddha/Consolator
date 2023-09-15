@@ -713,6 +713,8 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     fun trySafelyForAnnotatedEventOf(step: KFunction<*>) =
         trySafelyForResult { annotatedEventOf(step) }
 
+    init { _key = object : SchedulerKey {} }
+
     override fun <R> fold(initial: R, operation: (R, CoroutineContext.Element) -> R): R  {
         // context expansion by attachment: register operation callback.
         // return a default state or a new one depending on the initial value.
@@ -1007,10 +1009,10 @@ infix fun <T, R, S> ((T) -> R).thru(next: (R) -> S): (T) -> S = {
 }
 
 fun <R> KCallable<R>.with(vararg args: Any?): () -> R = {
-    this@with.call(args)
+    this@with.call(*args)
 }
 fun <R> with(vararg args: Any?): (KCallable<R>) -> R = {
-    it.call(args)
+    it.call(*args)
 }
 
 val currentThread
