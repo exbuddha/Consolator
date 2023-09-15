@@ -1,6 +1,5 @@
 package net.consolator
 
-import android.Manifest
 import android.content.*
 import android.content.pm.*
 import android.net.*
@@ -18,6 +17,8 @@ import net.consolator.Scheduler.EventBus
 import net.consolator.State.Pending
 import net.consolator.State.Resolved
 import net.consolator.AppDatabase.Companion.File
+import android.Manifest.permission.ACCESS_NETWORK_STATE
+import android.Manifest.permission.INTERNET
 import net.consolator.BaseApplication.Companion.ACTION_MIGRATE_APP
 
 var instance: BaseApplication? = null
@@ -107,9 +108,9 @@ fun Context.registerReceiver(filter: IntentFilter) =
     ContextCompat.registerReceiver(this, receiver, filter, null, Scheduler.clock?.handler, 0)
 
 val Context.isNetworkStateAccessPermitted
-    get() = isPermissionGranted(Manifest.permission.ACCESS_NETWORK_STATE)
+    get() = isPermissionGranted(ACCESS_NETWORK_STATE)
 val Context.isInternetAccessPermitted
-    get() = isNetworkStateAccessPermitted and isPermissionGranted(Manifest.permission.INTERNET)
+    get() = isNetworkStateAccessPermitted and isPermissionGranted(INTERNET)
 fun Context.isPermissionGranted(permission: String) =
     ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
 fun Context.intendFor(cls: Class<*>) = Intent(this, cls)
