@@ -716,7 +716,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     override fun <R> fold(initial: R, operation: (R, CoroutineContext.Element) -> R): R  {
         // context expansion by attachment: register operation callback.
         // return a default state or a new one depending on the initial value.
-        return operation.invoke(initial, _element)
+        return operation(initial, _element)
     }
     override fun <E : CoroutineContext.Element> get(key: CoroutineContext.Key<E>): E? {
         // context element lookup
@@ -1080,7 +1080,7 @@ interface Expiry : MutableSet<Lifetime> {
     }
 }
 typealias Lifetime = (KMutableProperty<*>) -> Boolean?
-private fun KMutableProperty<*>.expire() = setter.call(null)
+fun KMutableProperty<*>.expire() = setter.call(null)
 
 fun Any.asCallable() = this as KCallable<*>
 fun Any.asFunction() = this as KFunction<*>

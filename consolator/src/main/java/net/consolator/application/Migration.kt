@@ -4,6 +4,7 @@ import net.consolator.Resolver
 import net.consolator.Scheduler
 import net.consolator.Scheduler.EventBus.signal
 import net.consolator.JobTreeRoot
+import net.consolator.expire
 import net.consolator.BaseApplication.Companion.COMMIT_NAV_MAIN_UI
 
 class Migration : Resolver {
@@ -13,7 +14,7 @@ class Migration : Resolver {
         // reset function pointers
         // repeat until stable
         signal(@JobTreeRoot COMMIT_NAV_MAIN_UI)
-        Scheduler.applicationMigrationResolver = null
+        Scheduler::applicationMigrationResolver.expire()
     }
 
     var progress: Byte = 0
