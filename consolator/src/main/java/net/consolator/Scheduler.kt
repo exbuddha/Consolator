@@ -790,8 +790,8 @@ fun service(step: CoroutineStep) {
 }
 fun clock(callback: Runnable) = Scheduler.clock!!.post(callback)
 fun clockAhead(callback: Runnable) = Scheduler.clock!!.postAhead(callback)
-fun <T> clock(step: suspend CoroutineScope.() -> T) = clock(blockingRunnableOf(step))
-fun <T> clockAhead(step: suspend CoroutineScope.() -> T) = clockAhead(blockingRunnableOf(step))
+fun <T> clock(step: suspend CoroutineScope.() -> T) = clock(runnableOf(step))
+fun <T> clockAhead(step: suspend CoroutineScope.() -> T) = clockAhead(runnableOf(step))
 fun <T> clockSafely(step: suspend CoroutineScope.() -> T) = clock(safeRunnableOf(step))
 fun <T> clockAheadSafely(step: suspend CoroutineScope.() -> T) = clockAhead(safeRunnableOf(step))
 fun <T> clockInterrupting(step: suspend CoroutineScope.() -> T) = clock(interruptingRunnableOf(step))
@@ -799,7 +799,7 @@ fun <T> clockAheadInterrupting(step: suspend CoroutineScope.() -> T) = clockAhea
 fun <T> clockSafelyInterrupting(step: suspend CoroutineScope.() -> T) = clock(safeInterruptingRunnableOf(step))
 fun <T> clockAheadSafelyInterrupting(step: suspend CoroutineScope.() -> T) = clockAhead(safeInterruptingRunnableOf(step))
 fun <T> blockOf(step: suspend CoroutineScope.() -> T): () -> T = { runBlocking(block = step) }
-fun <T> blockingRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { runBlocking(block = step) }
+fun <T> runnableOf(step: suspend CoroutineScope.() -> T) = Runnable { runBlocking(block = step) }
 fun <T> safeRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { trySafely(blockOf(step)) }
 fun <T> interruptingRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { tryInterrupting(step) }
 fun <T> safeInterruptingRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { trySafelyInterrupting(step) }
@@ -899,8 +899,8 @@ infix fun Job.then(next: DescriptiveStep): CoroutineStep = {}
 infix fun Job.given(predicate: JobPredicate): CoroutineStep = {}
 infix fun Job.from(next: DescriptiveStep): CoroutineStep = {}
 infix fun Job.onCancel(action: DescriptiveStep): CoroutineStep = {}
-infix fun Job.onError(action: DescriptiveStep): CoroutineStep =  {}
-infix fun Job.onTimeout(action: DescriptiveStep): CoroutineStep =  {}
+infix fun Job.onError(action: DescriptiveStep): CoroutineStep = {}
+infix fun Job.onTimeout(action: DescriptiveStep): CoroutineStep = {}
 infix fun CoroutineStep.then(next: DescriptiveStep): CoroutineStep = {}
 infix fun CoroutineStep.given(predicate: JobPredicate): CoroutineStep = {}
 infix fun CoroutineStep.otherwise(next: DescriptiveStep): CoroutineStep = {}
