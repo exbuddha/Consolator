@@ -952,7 +952,6 @@ fun KMutableProperty<Job?>.mark(job: Job): KMutableProperty<Job?> {
 
 private typealias JobFunctionSet = MutableSet<Pair<String, Job>>
 typealias JobFunction = suspend (Any?) -> Unit
-fun Any.markTagAsFunction() = asFunction().markTag()
 
 @Retention(SOURCE)
 @Target(CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)

@@ -80,6 +80,7 @@ private var networkCallFunction: JobFunction = @Tag(INET_FUNCTION) { scope ->
         if (infoLogIsNotBypassed)
             info(INET_TAG, "Trying to send out http request for network caller...")
         synchronized(::netCall) {
+            ::netCall[INET_CALL] = ::buildHttpGetRequest.with("https://httpbin.org/delay/1")()
             tryCancelingForResult({
                 ::netCall.commit { response ->
                     trySafelyCanceling { reactToNetCallResponseReceived.commit(scope, response) } }
@@ -91,7 +92,7 @@ private var networkCallFunction: JobFunction = @Tag(INET_FUNCTION) { scope ->
 }
 
 @Tag(INET_CALL)
-var netCall = ::buildHttpGetRequest.with("https://httpbin.org/delay/1")()
+lateinit var netCall: Call
     private set
 private var reactToNetCallResponseReceived: JobResponseFunction = @Tag(INET_SUCCESS) { _, response ->
     with(response) {
@@ -164,17 +165,17 @@ private fun String.asUrl() = this
 private inline fun <reified T : Any> take(value: Any?): T = value.asType()!!
 private typealias Respond = (Response) -> Unit
 private fun KCallable<Call>.commit(respond: Respond) {
-    markTagAsFunction()
-    respond(call().asType()!!)
+    markTag()
+    respond(call().execute())
 }
 private typealias JobResponseFunction = (Any?, Response) -> Unit
 private fun JobResponseFunction.commit(scope: Any?, response: Response) {
-    markTagAsFunction()
+    // mark tag
     invoke(scope, response)
 }
 private typealias JobThrowableFunction = (Any?, Throwable) -> Unit
 private fun JobThrowableFunction.commit(scope: Any?, ex: Throwable) {
-    markTagAsFunction()
+    // mark tag
     invoke(scope, ex)
 }
 
