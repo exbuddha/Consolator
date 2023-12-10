@@ -63,6 +63,7 @@ fun resumeInternetCallback() {
 }
 fun unregisterInternetCallback() {
     networkCaller?.cancel()
+    netCallDelayTime = -1L
     clearInternetCallbackObjects()
 }
 private fun clearInternetCallbackObjects() {
@@ -100,6 +101,7 @@ private var reactToNetCallResponseReceived: JobResponseFunction = @Tag(INET_SUCC
         if (isSuccessful)
             lastNetCallResponseTime = now()
         close()
+        netCallDelayTime = -1L
     }
     if (infoLogIsNotBypassed)
         info(INET_TAG, "Received response for internet availability.")
@@ -111,7 +113,9 @@ private var reactToNetCallRequestFailed: JobThrowableFunction = @Tag(INET_ERROR)
 
 @Tag(INET_DELAY)
 private var netCallDelayTime = -1L
-    get() = if (field < 0) getDelayTime(netCallTimeInterval, lastNetCallResponseTime) else field
+    get() = if (field < 0)
+                getDelayTime(netCallTimeInterval, lastNetCallResponseTime)
+            else field
 @Tag(INET_MIN_INTERVAL)
 private var minNetCallTimeInterval = 5000L
 @Tag(INET_INTERVAL)
