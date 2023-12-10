@@ -2,20 +2,14 @@ package net.consolator
 
 import android.content.Context
 import android.os.*
-import android.util.*
 import android.view.*
-import androidx.core.util.*
 import androidx.fragment.app.*
 import androidx.fragment.app.FragmentTransaction.*
 import kotlin.annotation.AnnotationRetention.*
 import kotlin.annotation.AnnotationTarget.*
-import kotlin.reflect.*
 import kotlinx.coroutines.*
-import kotlinx.coroutines.CoroutineStart.LAZY
-import kotlinx.coroutines.Dispatchers.IO
 import net.consolator.Scheduler.EventBus
 import net.consolator.Scheduler.FromLastCancellation
-import net.consolator.Scheduler.defer
 import net.consolator.Scheduler.Event.Listening
 import net.consolator.Scheduler.Event.Remitting
 import net.consolator.Scheduler.LaunchScope
@@ -27,10 +21,12 @@ import net.consolator.State.Resolved
 import net.consolator.State.Succeeded
 import net.consolator.State.Suspending
 import net.consolator.State.Unresolved
+import net.consolator.application.*
+import kotlinx.coroutines.CoroutineStart.LAZY
+import kotlinx.coroutines.Dispatchers.IO
 import net.consolator.BaseApplication.Companion.ACTION_MIGRATE_APP
 import net.consolator.BaseApplication.Companion.ABORT_NAV_MAIN_UI
 import net.consolator.BaseApplication.Companion.COMMIT_NAV_MAIN_UI
-import net.consolator.application.*
 
 abstract class BaseFragment : Fragment() {
     protected abstract var overlay: (View, Bundle?) -> Pair<Fragment?, Int?>
@@ -60,7 +56,7 @@ abstract class BaseFragment : Fragment() {
                         close(MainViewGroup::class)
                     }
                     ACTION_MIGRATE_APP ->
-                        defer(Migration::class, ::onViewCreated)
+                        defer<Migration>(::onViewCreated)
                 }
             }
         } onError { job ->
@@ -125,9 +121,9 @@ abstract class BaseFragment : Fragment() {
     }
 
     override fun onLowMemory() {
-        defer(MemoryManager::class, ::onLowMemory, {
+        defer<MemoryManager>(::onLowMemory) {
             super.onLowMemory()
-        })
+        }
     }
 
     @Retention(SOURCE)

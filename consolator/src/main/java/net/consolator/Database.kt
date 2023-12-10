@@ -1,12 +1,9 @@
 package net.consolator
 
-import android.net.*
 import androidx.room.*
 import java.text.*
 import java.util.*
 import kotlin.annotation.AnnotationTarget.*
-import kotlin.reflect.*
-import com.google.gson.*
 import net.consolator.AppDatabase.Companion.File
 import net.consolator.AppDatabase.Companion.CURRENT_TIMESTAMP
 

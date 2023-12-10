@@ -11,19 +11,18 @@ import kotlin.coroutines.*
 import kotlin.reflect.*
 import kotlin.reflect.full.*
 import kotlinx.coroutines.*
-import kotlinx.coroutines.Dispatchers.Default
-import kotlinx.coroutines.Dispatchers.IO
-import kotlinx.coroutines.Dispatchers.Main
-import kotlinx.coroutines.Dispatchers.Unconfined
 import kotlinx.coroutines.flow.*
-import okhttp3.*
-import net.consolator.BaseActivity.*
-import net.consolator.BaseService.*
 import net.consolator.Scheduler.EventBus
 import net.consolator.Scheduler.EventBus.Relay
 import net.consolator.Scheduler.Lock
 import net.consolator.Scheduler.Sequencer
 import net.consolator.application.*
+import net.consolator.BaseActivity.*
+import net.consolator.BaseService.*
+import kotlinx.coroutines.Dispatchers.Default
+import kotlinx.coroutines.Dispatchers.IO
+import kotlinx.coroutines.Dispatchers.Main
+import kotlinx.coroutines.Dispatchers.Unconfined
 
 interface SchedulerScope : CoroutineScope {
     override val coroutineContext
@@ -65,7 +64,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     var applicationMigrationResolver: Migration? = null
 
     open class Clock(
-        name: String? = null,
+        name: String,
         priority: Int = currentThread.priority
     ) : HandlerThread(name, priority) {
         override fun start() {
@@ -770,6 +769,10 @@ val ContextStep.transit
 private val Any.annotatedEvent
     get() = Scheduler.trySafelyForAnnotatedEventOf(asFunction())
 
+inline fun <reified T : Resolver> LifecycleOwner.defer(member: KFunction<Unit>, vararg context: Any?) =
+    Scheduler.defer(T::class, this, member, *context)
+inline fun <reified T : Resolver> LifecycleOwner.defer(member: KFunction<Unit>, vararg context: Any?, noinline `super`: Work) =
+    Scheduler.defer(T::class, this, member, *context, `super`)
 inline fun <reified T : Resolver> Context.defer(member: KFunction<Unit>, vararg context: Any?, noinline `super`: Work) =
     Scheduler.defer(T::class, this, member, *context, `super`)
 interface Resolver : SchedulerScope {
@@ -782,7 +785,6 @@ fun Context.scheduleNow(ref: ContextStep) = scheduleNow(step = { ref() })
 fun Context.schedule(ref: ContextStep) = schedule(step = { ref() })
 
 fun service(step: CoroutineStep) {
-    step.markTagAsFunction()
     (Scheduler.trySafelyForAnnotatedScopeOf(step) ?:
     service)?.let { scope ->
         scope::class.memberFunctions.find { it.name == "commit" }?.call(step)

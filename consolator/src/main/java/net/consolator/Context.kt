@@ -88,7 +88,8 @@ suspend fun updateNetworkState() {
             isConnected,
             hasInternet,
             hasMobile,
-            hasWifi)
+            hasWifi
+        )
     }
 }
 suspend fun updateNetworkCapabilities(networkCapabilities: NetworkCapabilities) {
@@ -143,7 +144,11 @@ typealias Predicate = () -> Boolean
 typealias AnyPredicate = (Any?) -> Boolean
 typealias IntPredicate = (Int) -> Boolean
 
-suspend fun <T> T.repeatSuspended(predicate: Predicate, block: JobFunction, delayTime: LongFunction = { 0L }, scope: T = this) {
+suspend fun <T> T.repeatSuspended(
+    predicate: Predicate,
+    block: JobFunction,
+    delayTime: LongFunction = { 0L },
+    scope: T = this) {
     if (scope is CoroutineScope)
         scope.markFunctionTags(predicate, block, delayTime)
     while (predicate()) {
@@ -152,7 +157,8 @@ suspend fun <T> T.repeatSuspended(predicate: Predicate, block: JobFunction, dela
     }
 }
 suspend fun delayOrYield(dt: Long = 0L) {
-    if (dt > 0) delay(dt) else if (dt == 0L) yield()
+    if (dt > 0) delay(dt)
+    else if (dt == 0L) yield()
 }
 
 inline fun <R> trySafely(block: () -> R) =

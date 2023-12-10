@@ -1,11 +1,12 @@
 package net.consolator
 
+import android.content.Context
 import android.content.res.Configuration
 import android.os.Bundle
 import androidx.core.os.LocaleListCompat
+import kotlin.reflect.KClass
 import androidx.fragment.app.add
 import androidx.fragment.app.commit
-import kotlin.reflect.KClass
 
 open class MainActivity : BaseActivity(), Provider {
     override val backgroundLayoutResId = R.layout.background
@@ -21,19 +22,19 @@ open class MainActivity : BaseActivity(), Provider {
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
-        defer<ConfigurationChangeManager>(::onConfigurationChanged, newConfig) {
+        (this as Context).defer<ConfigurationChangeManager>(::onConfigurationChanged, newConfig) {
             super.onConfigurationChanged(newConfig)
         }
     }
 
     override fun onNightModeChanged(mode: Int) {
-        defer<NightModeChangeManager>(::onNightModeChanged, mode) {
+        (this as Context).defer<NightModeChangeManager>(::onNightModeChanged, mode) {
             super.onNightModeChanged(mode)
         }
     }
 
     override fun onLocalesChanged(locales: LocaleListCompat) {
-        defer<LocalesChangeManager>(::onLocalesChanged, locales) {
+        (this as Context).defer<LocalesChangeManager>(::onLocalesChanged, locales) {
             super.onLocalesChanged(locales)
         }
     }

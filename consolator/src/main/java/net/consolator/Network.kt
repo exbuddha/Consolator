@@ -3,16 +3,13 @@ package net.consolator
 import android.net.*
 import android.net.ConnectivityManager.*
 import android.net.NetworkCapabilities.*
-import android.os.*
-import android.util.*
 import androidx.lifecycle.*
 import kotlin.annotation.AnnotationRetention.*
 import kotlin.annotation.AnnotationTarget.*
-import kotlin.coroutines.*
 import kotlin.reflect.*
 import kotlinx.coroutines.*
-import kotlinx.coroutines.Dispatchers.IO
 import okhttp3.*
+import kotlinx.coroutines.Dispatchers.IO
 
 val isConnected
     get() = connectivityRequest!!.canBeSatisfiedBy(networkCapabilities)
@@ -84,7 +81,7 @@ private var networkCallFunction: JobFunction = @Tag(INET_FUNCTION) { scope ->
             info(INET_TAG, "Trying to send out http request for network caller...")
         synchronized(::netCall) {
             tryCancelingForResult({
-                netCall.asType<NetCall>()!!.commit { response ->
+                ::netCall.commit { response ->
                     trySafelyCanceling { reactToNetCallResponseReceived.commit(scope, response) } }
             }, { ex ->
                 trySafelyCanceling { reactToNetCallRequestFailed.commit(scope, ex) }
@@ -146,6 +143,9 @@ fun buildHttpRequest(
             .apply { if (headers !== null) headers(headers) }
             .method(method, body)
             .build())
+
+private typealias NetCall = KCallable<Call>
+operator fun NetCall.get(cmd: String): Result<Response> = TODO()
 operator fun NetCall.set(cmd: String, value: Any?) {
     // keep old value
     synchronized(asProperty()) {
@@ -160,10 +160,7 @@ operator fun NetCall.set(cmd: String, value: Any?) {
         }
     }
 }
-operator fun NetCall.get(cmd: String): Result<Response> = TODO()
 private fun String.asUrl() = this
-
-private typealias NetCall = KCallable<Call>
 private inline fun <reified T : Any> take(value: Any?): T = value.asType()!!
 private typealias Respond = (Response) -> Unit
 private fun KCallable<Call>.commit(respond: Respond) {

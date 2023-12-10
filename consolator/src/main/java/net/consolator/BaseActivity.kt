@@ -1,5 +1,6 @@
 package net.consolator
 
+import android.content.Context
 import android.os.*
 import androidx.appcompat.app.*
 import net.consolator.activity.*
@@ -37,7 +38,7 @@ abstract class BaseActivity : AppCompatActivity() {
     }
 
     override fun onLowMemory() {
-        defer<MemoryManager>(::onLowMemory) {
+        (this as Context).defer<MemoryManager>(::onLowMemory) {
             super.onLowMemory()
         }
     }
