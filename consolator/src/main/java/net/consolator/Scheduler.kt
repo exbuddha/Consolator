@@ -769,11 +769,11 @@ val ContextStep.transit
 private val Any.annotatedEvent
     get() = Scheduler.trySafelyForAnnotatedEventOf(asFunction())
 
-inline fun <reified T : Resolver> LifecycleOwner.defer(member: KFunction<Unit>, vararg context: Any?) =
+inline fun <reified T : Resolver> LifecycleOwner.defer(member: UnitKFunction, vararg context: Any?) =
     Scheduler.defer(T::class, this, member, *context)
-inline fun <reified T : Resolver> LifecycleOwner.defer(member: KFunction<Unit>, vararg context: Any?, noinline `super`: Work) =
+inline fun <reified T : Resolver> LifecycleOwner.defer(member: UnitKFunction, vararg context: Any?, noinline `super`: Work) =
     Scheduler.defer(T::class, this, member, *context, `super`)
-inline fun <reified T : Resolver> Context.defer(member: KFunction<Unit>, vararg context: Any?, noinline `super`: Work) =
+inline fun <reified T : Resolver> Context.defer(member: UnitKFunction, vararg context: Any?, noinline `super`: Work) =
     Scheduler.defer(T::class, this, member, *context, `super`)
 interface Resolver : SchedulerScope {
     fun commit(vararg context: Any?)
@@ -1092,6 +1092,7 @@ fun Any.asProperty() = this as KProperty<*>
 fun Any.asMutableProperty() = this as KMutableProperty<*>
 private typealias ResolverKClass = KClass<out Resolver>
 private typealias ResolverKProperty = KMutableProperty<out Resolver?>
+private typealias UnitKFunction = KFunction<Unit>
 
 private typealias ID = Short
 sealed interface State {
