@@ -27,6 +27,7 @@ import kotlinx.coroutines.Dispatchers.Unconfined
 interface SchedulerScope : CoroutineScope {
     override val coroutineContext
         get() = Scheduler
+    fun commit(step: CoroutineStep): Boolean
 }
 
 private interface SchedulerKey : CoroutineContext.Key<SchedulerElement>
@@ -67,6 +68,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         name: String,
         priority: Int = currentThread.priority
     ) : HandlerThread(name, priority) {
+        constructor() : this("clk")
         override fun start() {
             commitAsync(this, { !isAlive }) {
                 super.start()
@@ -732,7 +734,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         if (step !== null) runBlocking { step() }
     }
 
-    fun commit(step: CoroutineStep) = clock(step::invoke)
+    override fun commit(step: CoroutineStep) = clock(step::invoke)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     object EventBus : AbstractFlow<Step?>() {
@@ -787,7 +789,7 @@ fun Context.schedule(ref: ContextStep) = schedule(step = { ref() })
 fun service(step: CoroutineStep) {
     (Scheduler.trySafelyForAnnotatedScopeOf(step) ?:
     service)?.let { scope ->
-        scope::class.memberFunctions.find { it.name == "commit" }?.call(step)
+        scope::class.memberFunctions.find { it.name == "commit" }?.call(scope, step)
     }
 }
 fun clock(callback: Runnable) = Scheduler.clock!!.post(callback)

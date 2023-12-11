@@ -1,5 +1,6 @@
 package net.consolator.application
 
+import net.consolator.CoroutineStep
 import net.consolator.Resolver
 import net.consolator.Scheduler
 import net.consolator.Scheduler.EventBus.signal
@@ -16,6 +17,8 @@ class Migration : Resolver {
         signal(@JobTreeRoot COMMIT_NAV_MAIN_UI)
         Scheduler::applicationMigrationResolver.expire()
     }
+
+    override fun commit(step: CoroutineStep): Boolean = TODO()
 
     var progress: Byte = 0
         private set
