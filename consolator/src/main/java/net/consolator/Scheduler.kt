@@ -68,11 +68,20 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         name: String,
         priority: Int = currentThread.priority
     ) : HandlerThread(name, priority) {
+        var handler: Handler? = null
+        private var queue: RunnableList
+
+        init {
+            queue = java.util.LinkedList()
+        }
         constructor() : this("clk")
+        constructor(callback: Runnable) : this() {
+            queue.add(callback)
+        }
+
         override fun start() {
             commitAsync(this, { !isAlive }) {
                 super.start()
-                queue = java.util.LinkedList()
             }
         }
         fun alsoStart(): Clock {
@@ -80,8 +89,6 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             return this
         }
 
-        var handler: Handler? = null
-        private var queue: RunnableList? = null
         override fun run() {
             hLock = Lock.Open()
             handler = object : Handler(looper) {
@@ -90,10 +97,10 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
                     commit { turn(msg) }
                 }
             }
-            commit { queue?.run() }
+            commit { queue.run() }
         }
         private fun turn(msg: Message) {
-            queue?.run()
+            queue.run()
             msg.callback.run()
         }
         private fun RunnableList.run() {
@@ -116,14 +123,14 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         private var sLock = Any()
         var post = fun(callback: Runnable) =
             handler?.post(callback) ?:
-            synchronized(sLock) { queue!!.add(callback) }
+            synchronized(sLock) { queue.add(callback) }
         var postAhead = fun(callback: Runnable) =
             handler?.postAtFrontOfQueue(callback) ?:
-            synchronized(sLock) { queue!!.add(0, callback); true }
+            synchronized(sLock) { queue.add(0, callback); true }
 
         fun clearObjects() {
             handler = null
-            queue = null
+            queue.clear()
         }
         companion object
     }
