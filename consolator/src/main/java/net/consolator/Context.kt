@@ -232,31 +232,22 @@ open class InterruptedStepException(
     override val cause: Throwable? = null
 ) : InterruptedException()
 
-fun info(tag: String, msg: String) = _infoLogger(tag, msg)
-fun debug(tag: String, msg: String) = _debugLogger(tag, msg)
-fun warning(tag: String, msg: String) = _warningLogger(tag, msg)
+var info: LogFunction = fun(tag: String, msg: String) = Log.i(tag, msg)
+var debug: LogFunction = fun(tag: String, msg: String) = Log.d(tag, msg)
+var warning: LogFunction = fun(tag: String, msg: String) = Log.w(tag, msg)
+private val bypass: LogFunction = { _, _ -> }
 
 private typealias LogFunction = (String, String) -> Any?
-fun bypassInfoLog() { _infoLogger = _emptyLogger }
-fun bypassDebugLog() { _debugLogger = _emptyLogger }
-fun bypassWarningLog() { _warningLogger = _emptyLogger }
+fun bypassInfoLog() { info = bypass }
+fun bypassDebugLog() { debug = bypass }
+fun bypassWarningLog() { info = bypass }
 fun bypassAllLogs() {
     bypassInfoLog()
     bypassDebugLog()
     bypassWarningLog()
 }
-private var _infoLogger: LogFunction = Log::i
-private var _debugLogger: LogFunction = Log::d
-private var _warningLogger: LogFunction = Log::w
-private val _emptyLogger: LogFunction = { _, _ -> }
-private fun LogFunction.isBypassed() = this === _emptyLogger
-private fun LogFunction.isNotBypassed() = this !== _emptyLogger
-val infoLogIsNotBypassed
-    get() = _infoLogger.isNotBypassed()
-val debugLogIsNotBypassed
-    get() = _debugLogger.isNotBypassed()
-val warningLogIsNotBypassed
-    get() = _warningLogger.isNotBypassed()
+fun LogFunction.isOff() = this === bypass
+fun LogFunction.isOn() = this !== bypass
 
 const val START_TIME_KEY = "1"
 const val MODE_KEY = "2"

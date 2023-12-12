@@ -37,7 +37,7 @@ open class BaseService : Service(), BaseServiceScope {
                         }
                     resume()
                 }
-                if (infoLogIsNotBypassed)
+                if (info.isOn())
                     info(SVC_TAG, "Clock is detected.")
             }
         return mode!!
