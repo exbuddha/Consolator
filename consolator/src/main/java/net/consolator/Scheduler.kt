@@ -100,16 +100,17 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             commit { queue.run() }
         }
         private fun turn(msg: Message) {
-            queue.run()
+            queue.run(msg) || return
             msg.callback.run()
         }
-        private fun RunnableList.run() {
+        private fun RunnableList.run(msg: Message? = null): Boolean {
             onEach {
                 synchronized(sLock) {
                     it.run()
                     remove(it)
                 }
             }
+            return true
         }
 
         private lateinit var hLock: Lock
