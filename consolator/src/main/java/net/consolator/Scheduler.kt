@@ -602,7 +602,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     }
 
     fun observe() = observeForever(this)
-    fun observeAsync() = commitAsync(Scheduler, { !Scheduler.hasObservers() }, ::observe)
+    fun observeAsync() = commitAsync(this, { !hasObservers() }, ::observe)
     fun observe(owner: LifecycleOwner) = observe(owner, this)
     fun ignore() = removeObserver(this)
     val observeScheduler = Runnable(::observe)
@@ -796,7 +796,11 @@ fun Context.schedule(ref: ContextStep) = schedule(step = { ref() })
 fun service(step: CoroutineStep) {
     (Scheduler.trySafelyForAnnotatedScopeOf(step) ?:
     service)?.let { scope ->
-        scope::class.memberFunctions.find { it.name == "commit" }?.call(scope, step)
+        scope::class.memberFunctions.find {
+            it.name == "commit" &&
+            it.parameters.size == 2 &&
+            it.parameters[1].name == "step"
+        }?.call(scope, step)
     }
 }
 fun clock(callback: Runnable) = Scheduler.clock!!.post(callback)
