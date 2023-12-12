@@ -208,7 +208,7 @@ inline fun <reified T : Any> KMutableProperty<out T?>.reconstruct(provider: Any 
             if (provider is KClass<*>)
                 provider.emptyConstructor().call()
             else
-                (provider.asType<Provider>())?.invoke(T::class))
+                provider.asType<Provider>()?.invoke(T::class))
 }
 typealias Provider = (KClass<*>) -> Any
 
