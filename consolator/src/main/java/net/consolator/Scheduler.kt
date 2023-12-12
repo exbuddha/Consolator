@@ -750,11 +750,13 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             // emit signalled events to collector
         }
 
-        fun event(step: ContextStep) {
+        fun event(step: ContextStep): Boolean {
             // record context event
+            return true
         }
-        fun signal(transit: Short?) {
+        fun signal(transit: Short?): Boolean {
             // record signal event
+            return true
         }
 
         open class Relay(val transit: Short? = null) : Step {
@@ -1053,9 +1055,9 @@ suspend fun SequencerScope.change(transit: Short) = emitResetting {
     EventBus.signal(transit)
 }
 suspend fun SequencerScope.emitReset() = emit { reset() }
-private suspend inline fun SequencerScope.emitResetting(block: Work) {
+private suspend inline fun <R> SequencerScope.emitResetting(block: () -> R): R {
     reset()
-    block()
+    return block()
 }
 private suspend fun SequencerScope.reset() = Scheduler.sequencer!!.reset()
 private typealias SequencerStep = suspend SequencerScope.() -> Unit
