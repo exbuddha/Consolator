@@ -723,7 +723,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
 
     init { _key = object : SchedulerKey {} }
 
-    override fun <R> fold(initial: R, operation: (R, CoroutineContext.Element) -> R): R  {
+    override fun <R> fold(initial: R, operation: (R, CoroutineContext.Element) -> R): R {
         // context expansion by attachment: register operation callback.
         // return a default state or a new one depending on the initial value.
         return operation(initial, _element)
