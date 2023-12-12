@@ -5,11 +5,11 @@ import android.content.*
 import android.os.*
 import java.io.*
 import net.consolator.Scheduler.Sequencer
+import net.consolator.Scheduler.clock
 
 open class BaseService : Service(), BaseServiceScope {
     override var startTime = 0L
     override var mode: Int? = null
-        get() = field ?: START_NOT_STICKY
 
     override fun onCreate() {
         super.onCreate()
@@ -17,6 +17,7 @@ open class BaseService : Service(), BaseServiceScope {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        clock?.start()
         mode = super.onStartCommand(intent, flags, startId)
         mode = getModeExtra(intent)
         if (hasMoreInitWork)
@@ -66,7 +67,7 @@ interface BaseServiceScope : IBinder, SchedulerScope, UniqueContext {
 
     var mode: Int?
     fun getModeExtra(intent: Intent?) =
-        intent?.getIntExtra(MODE_KEY, mode!!)!!
+        intent?.getIntExtra(MODE_KEY, mode ?: Service.START_NOT_STICKY)!!
 
     val hasMoreInitWork
         get() = logDb === null || netDb === null
