@@ -28,7 +28,6 @@ class MainFragment : BaseFragment() {
             else ->
                 throw BaseImplementationRestriction
         }
-
     private inline fun <reified R> screenEventInterceptor(
         listener: Any,
         callback: KFunction<R>,
