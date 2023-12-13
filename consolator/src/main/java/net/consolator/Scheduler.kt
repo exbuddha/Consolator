@@ -79,9 +79,11 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             queue.add(callback)
         }
 
+        var id: Int = -1
         override fun start() {
             commitAsync(this, { !isAlive }) {
                 super.start()
+                id = count++
             }
         }
         fun alsoStart(): Clock {
@@ -133,7 +135,10 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             handler = null
             queue.clear()
         }
-        companion object
+        companion object {
+            var count = 0
+                private set
+        }
     }
 
     class Sequencer {
