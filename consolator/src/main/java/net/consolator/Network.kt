@@ -42,18 +42,10 @@ private var networkCallback: NetworkCallback? = null
     }.also { field = it }
 
 fun LifecycleOwner.registerInternetCallback() {
-    relaunchJobIfNotActive(::networkCaller, IO) {
-        repeatSuspended(::isActive,
-            networkCallFunction,
-            ::netCallDelayTime)
-    }
+    relaunch(::networkCaller, IO, step = ::repeatNetworkCallFunction)
 }
 fun registerInternetCallback() {
-    Scheduler.relaunchJobIfNotActive(::networkCaller, IO) {
-        repeatSuspended(::isActive,
-            networkCallFunction,
-            ::netCallDelayTime)
-    }
+    Scheduler.relaunch(::networkCaller, IO, step = ::repeatNetworkCallFunction)
 }
 fun pauseInternetCallback() {
     repeatNetCallback = false
@@ -76,6 +68,12 @@ var networkCaller: Job? = null
         // update addressable layer?
         field = value
     }
+private suspend fun repeatNetworkCallFunction(scope: CoroutineScope) {
+    scope.repeatSuspended(
+        scope::isActive,
+        networkCallFunction,
+        ::netCallDelayTime)
+}
 private var networkCallFunction: JobFunction = @Tag(INET_FUNCTION) { scope ->
     if (repeatNetCallback && isNetCallTimeIntervalExceeded) {
         if (info.isOn())

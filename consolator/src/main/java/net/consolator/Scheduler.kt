@@ -894,25 +894,25 @@ fun LifecycleOwner.launch(start: CoroutineStart, step: CoroutineStep) =
     trySafelyForAnnotatedScopeOf(step).launch(Scheduler, start, step)
 fun LifecycleOwner.launch(step: CoroutineStep) =
     trySafelyForAnnotatedScopeOf(step).launch(Scheduler, block = step)
-fun LifecycleOwner.relaunchJobIfNotActive(
+fun LifecycleOwner.relaunch(
     instance: KMutableProperty<Job?>,
     context: CoroutineContext = Scheduler,
     start: CoroutineStart = CoroutineStart.DEFAULT,
-    block: CoroutineStep) =
+    step: CoroutineStep) =
     instance.mark(
         instance.getter.call().let {
             if (it !== null && it.isActive) it
-            else launch(context, start, block)
+            else launch(context, start, step)
         })
-fun CoroutineScope.relaunchJobIfNotActive(
+fun CoroutineScope.relaunch(
     instance: KMutableProperty<Job?>,
     context: CoroutineContext = Scheduler,
     start: CoroutineStart = CoroutineStart.DEFAULT,
-    block: CoroutineStep) =
+    step: CoroutineStep) =
     instance.mark(
         instance.getter.call().let {
             if (it !== null && it.isActive) it
-            else launch(workerGroupOf(context), start, block)
+            else launch(workerGroupOf(context), start, step)
         })
 fun LifecycleOwner.close(node: SchedulerNode) {}
 fun LifecycleOwner.detach(node: SchedulerNode) {}
