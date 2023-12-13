@@ -701,7 +701,9 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     annotation class Event(val transit: Short = 0) {
         @Retention(SOURCE)
         @Target(FUNCTION, EXPRESSION)
-        annotation class Listening(val timeout: Long = 0L, val channel: Short = 0)
+        annotation class Listening(
+            val timeout: Long = 0L,
+            val channel: Short = 0)
 
         @Retention(SOURCE)
         @Target(FUNCTION, EXPRESSION)
@@ -951,13 +953,17 @@ fun SchedulerScope.error(job: Job, exit: ThrowableFunction? = null) {}
 fun SchedulerScope.retry(job: Job, exit: ThrowableFunction? = null) {}
 
 private var jobs: JobFunctionSet? = null
+operator fun Job.get(tag: String): Any? = null
+operator fun Job.set(tag: String, value: Any) {
+    jobs?.save(tag, value.asFunction())
+}
+typealias JobFunction = suspend (Any?) -> Unit
+private typealias JobFunctionSet = MutableSet<Pair<String, Job>>
 private fun JobFunctionSet.save(tag: String, keep: Boolean, function: KCallable<*>) {}
 private fun JobFunctionSet.save(tag: String, function: KCallable<*>) =
     save(tag, trySafelyForAnnotatedTagOf(function)?.keep ?: true, function)
 private fun JobFunctionSet.save(tag: Tag?, function: KCallable<*>) {}
-operator fun Job.set(tag: String, value: Any) {
-    jobs?.save(tag, value.asFunction())
-}
+
 fun KCallable<*>.markTag() {
     jobs?.save(trySafelyForAnnotatedTagOf(this), this)
 }
@@ -973,12 +979,11 @@ fun KMutableProperty<Job?>.mark(job: Job): KMutableProperty<Job?> {
     return this
 }
 
-private typealias JobFunctionSet = MutableSet<Pair<String, Job>>
-typealias JobFunction = suspend (Any?) -> Unit
-
 @Retention(SOURCE)
 @Target(CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
-annotation class Tag(val string: String, val keep: Boolean = true)
+annotation class Tag(
+    val string: String,
+    val keep: Boolean = true)
 private val KCallable<*>.tag
     get() = annotations.find { it is Tag } as? Tag
 fun annotatedTagOf(item: KCallable<*>) =
@@ -992,7 +997,9 @@ annotation class JobTreeRoot
 
 @Retention(SOURCE)
 @Target(CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
-annotation class JobTree(val branch: String = "", val level: UByte = 0u)
+annotation class JobTree(
+    val branch: String = "",
+    val level: UByte = 0u)
 
 infix fun <R, S> (suspend () -> R).then(next: suspend () -> S): suspend () -> S = {
     this@then()
