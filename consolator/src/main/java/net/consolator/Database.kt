@@ -3,8 +3,6 @@ package net.consolator
 import androidx.room.*
 import java.text.*
 import java.util.*
-import kotlin.annotation.AnnotationTarget.*
-import net.consolator.AppDatabase.Companion.File
 import net.consolator.AppDatabase.Companion.CURRENT_TIMESTAMP
 
 private const val DB_VERSION = 1
@@ -19,10 +17,6 @@ abstract class AppDatabase : RoomDatabase() {
         const val CURRENT_TIMESTAMP = "CURRENT_TIMESTAMP"
         const val ID = "_id"
         const val DB_TAG = "DATABASE"
-
-        @Repeatable
-        @Target(CLASS)
-        annotation class File(val name: String)
     }
 }
 

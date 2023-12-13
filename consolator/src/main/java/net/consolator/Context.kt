@@ -9,6 +9,8 @@ import androidx.core.content.*
 import androidx.lifecycle.*
 import androidx.room.*
 import java.lang.*
+import kotlin.annotation.AnnotationRetention.*
+import kotlin.annotation.AnnotationTarget.*
 import kotlin.reflect.*
 import kotlinx.coroutines.*
 import com.google.gson.Gson
@@ -16,7 +18,6 @@ import net.consolator.Scheduler.Event
 import net.consolator.Scheduler.EventBus
 import net.consolator.State.Pending
 import net.consolator.State.Resolved
-import net.consolator.AppDatabase.Companion.File
 import android.Manifest.permission.ACCESS_NETWORK_STATE
 import android.Manifest.permission.INTERNET
 import net.consolator.BaseApplication.Companion.ACTION_MIGRATE_APP
@@ -189,6 +190,13 @@ inline fun <R> Context.trySafelyCanceling(block: Context.() -> R) =
 inline fun <R> Context.tryCanceling(block: Context.() -> R) =
     net.consolator.tryCanceling { block() }
 
+@Retention(SOURCE)
+@Target(CLASS)
+@Repeatable
+annotation class File(val name: String)
+fun <T : Any> KClass<out T>.lastAnnotatedFile() = annotations.last { it is File } as File
+fun <T : Any> KClass<out T>.lastAnnotatedFilename() = lastAnnotatedFile().name
+
 inline fun <reified R : Any> Any?.asType(): R? =
     if (this is R) this else null
 inline fun <reified R : Any> R?.singleton() =
@@ -201,8 +209,6 @@ fun <T : Any> KClass<out T>.reconstruct(vararg args: Any?): T = when {
 }
 fun <T : Any> KClass<out T>.emptyConstructor() = constructors.first { it.parameters.isEmpty() }
 fun <T : Any> KClass<out T>.firstConstructor() = constructors.first()
-fun <T : Any> KClass<out T>.lastAnnotatedFile() = annotations.last { it is File } as File
-fun <T : Any> KClass<out T>.lastAnnotatedFilename() = lastAnnotatedFile().name
 inline fun <reified T : Any> KMutableProperty<out T?>.reconstruct(provider: Any = T::class) = apply {
     if (getter.call() === null)
         setter.call(
