@@ -1115,14 +1115,14 @@ private typealias ID = Short
 sealed interface State {
     object Failed : Resolved
     object Succeeded : Resolved
-    object Pending : Resolved, Ambiguous
+    object Pending : Unresolved, Ambiguous
+    object Suspending : Ambiguous
     interface Resolved : State {
         companion object : Resolved
     }
     interface Unresolved : State {
         companion object : Unresolved
     }
-    object Suspending : Ambiguous
     interface Ambiguous : State {
         companion object : Ambiguous
     }
