@@ -893,18 +893,20 @@ fun LifecycleOwner.relaunchJobIfNotActive(
     start: CoroutineStart = CoroutineStart.DEFAULT,
     block: CoroutineStep) =
     instance.mark(
-        if (instance.getter.call()?.isActive == true)
-            instance as Job
-        else launch(context, start, block))
+        instance.getter.call().let {
+            if (it !== null && it.isActive) it
+            else launch(context, start, block)
+        })
 fun CoroutineScope.relaunchJobIfNotActive(
     instance: KMutableProperty<Job?>,
     context: CoroutineContext = Scheduler,
     start: CoroutineStart = CoroutineStart.DEFAULT,
     block: CoroutineStep) =
     instance.mark(
-        if (instance.getter.call()?.isActive == true)
-            instance as Job
-        else launch(workerGroupOf(context), start, block))
+        instance.getter.call().let {
+            if (it !== null && it.isActive) it
+            else launch(workerGroupOf(context), start, block)
+        })
 fun LifecycleOwner.close(node: SchedulerNode) {}
 fun LifecycleOwner.detach(node: SchedulerNode) {}
 fun LifecycleOwner.reattach(node: SchedulerNode) {}
