@@ -83,7 +83,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         override fun start() {
             commitAsync(this, { !isAlive }) {
                 super.start()
-                id = count++
+                id = synchronized(Clock::class) { count++ }
             }
         }
         fun alsoStart(): Clock {

@@ -70,7 +70,7 @@ abstract class BaseFragment : Fragment() {
         } then
             Job::join
 
-        if (info.isOn())
+        if (info.isOn)
             info(UI_TAG, "Main fragment view is created.")
     }
 

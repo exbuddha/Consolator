@@ -200,8 +200,8 @@ fun <T : Any> KClass<out T>.lastAnnotatedFilename() = lastAnnotatedFile().name
 
 inline fun <reified R : Any> Any?.asType(): R? =
     if (this is R) this else null
-inline fun <reified R : Any> R?.singleton() =
-    commitAsyncForResult(R::class.lock(), { this === null }, this, R::class::emptyConstructor) as R
+inline fun <reified R : Any> R?.singleton(lock: Any = R::class.lock()) =
+    commitAsyncForResult(lock, { this === null }, this, R::class::emptyConstructor) as R
 fun <T : Any> KClass<out T>.lock() = objectInstance ?: this
 fun <T : Any> KClass<out T>.reconstruct(vararg args: Any?): T = when {
     isCompanion -> objectInstance!!
@@ -245,6 +245,10 @@ var warning: LogFunction = fun(tag: String, msg: String) = Log.w(tag, msg)
 private val bypass: LogFunction = { _, _ -> }
 
 private typealias LogFunction = (String, String) -> Any?
+val LogFunction.isOn
+    get() = this !== bypass
+val LogFunction.isOff
+    get() = this === bypass
 fun bypassInfoLog() { info = bypass }
 fun bypassDebugLog() { debug = bypass }
 fun bypassWarningLog() { info = bypass }
@@ -253,8 +257,6 @@ fun bypassAllLogs() {
     bypassDebugLog()
     bypassWarningLog()
 }
-fun LogFunction.isOff() = this === bypass
-fun LogFunction.isOn() = this !== bypass
 
 const val START_TIME_KEY = "1"
 const val MODE_KEY = "2"
