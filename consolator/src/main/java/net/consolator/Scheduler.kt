@@ -19,6 +19,7 @@ import net.consolator.Scheduler.Sequencer
 import net.consolator.application.*
 import net.consolator.BaseActivity.*
 import net.consolator.BaseService.*
+import kotlin.reflect.jvm.jvmErasure
 import kotlinx.coroutines.Dispatchers.Default
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Dispatchers.Main
@@ -809,7 +810,7 @@ fun service(step: CoroutineStep) {
         scope::class.memberFunctions.find {
             it.name == "commit" &&
             it.parameters.size == 2 &&
-            it.parameters[1].name == "step"
+            it.parameters[1].type.jvmErasure == step::class
         }?.call(scope, step)
     }
 }
@@ -900,12 +901,12 @@ fun CoroutineScope.relaunch(
     start: CoroutineStart = CoroutineStart.DEFAULT,
     step: CoroutineStep) =
     relaunch(::launch, instance, context, start, step)
-private inline fun <reified T> T.relaunch(
+private fun relaunch(
     launcher: KFunction<Job>,
     instance: JobKProperty,
-    context: CoroutineContext = Scheduler,
-    start: CoroutineStart = CoroutineStart.DEFAULT,
-    noinline step: CoroutineStep) =
+    context: CoroutineContext,
+    start: CoroutineStart,
+    step: CoroutineStep) =
     instance.mark(
         instance.getter.call().let {
             if (it !== null && it.isActive) it
@@ -970,7 +971,7 @@ fun CoroutineScope.markFunctionTags(vararg function: Any?) {
             it.markTag()
     }
 }
-fun KMutableProperty<Job?>.mark(job: Job): KMutableProperty<Job?> {
+fun JobKProperty.mark(job: Job): JobKProperty {
     setter.call(job)
     markTag()
     return this
