@@ -149,7 +149,18 @@ fun buildHttpRequest(
             .build())
 
 private typealias NetCall = KCallable<Call>
-operator fun NetCall.get(cmd: String): Result<Response> = TODO()
+operator fun NetCall.get(cmd: String): Any? = when (cmd) {
+    INET_CALL -> this
+    INET_FUNCTION -> networkCallFunction
+    INET_SUCCESS -> reactToNetCallResponseReceived
+    INET_ERROR -> reactToNetCallRequestFailed
+    INET_DELAY -> netCallDelayTime
+    INET_INTERVAL -> netCallTimeInterval
+    INET_MIN_INTERVAL -> minNetCallTimeInterval
+    else -> if (cmd.endsWith(".type"))
+        trySafelyForResult { this[cmd.substringBeforeLast(".type")]!!::class }
+    else null
+}
 operator fun NetCall.set(cmd: String, value: Any?) {
     // keep old value
     synchronized(asProperty()) {
@@ -167,9 +178,9 @@ operator fun NetCall.set(cmd: String, value: Any?) {
 private fun String.asUrl() = this
 private inline fun <reified T : Any> take(value: Any?): T = value.asType()!!
 private typealias Respond = (Response) -> Unit
-private fun KCallable<Call>.commit(respond: Respond) {
+private fun NetCall.commit(cmd: String = INET_CALL, respond: Respond) {
     markTag()
-    respond(call().execute())
+    respond(this[cmd].asType<NetCall>()!!.call().execute())
 }
 private typealias JobResponseFunction = (Any?, Response) -> Unit
 private fun JobResponseFunction.commit(scope: Any?, response: Response) {
