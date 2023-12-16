@@ -124,7 +124,7 @@ private var netCallTimeInterval = minNetCallTimeInterval
     }
 private var lastNetCallResponseTime = 0L
     set(value) {
-        if (value == 0L || value > field)
+        if (value > field || value == 0L)
             field = value
     }
 private val isNetCallTimeIntervalExceeded
