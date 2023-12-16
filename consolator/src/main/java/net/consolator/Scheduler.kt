@@ -758,7 +758,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             // emit signalled events to collector
         }
 
-        fun event(step: ContextStep): Boolean {
+        fun signal(step: ContextStep): Boolean {
             // record context event
             return true
         }
@@ -1064,7 +1064,7 @@ private typealias DescriptiveStep = suspend SchedulerScope.(Job) -> Unit
 private typealias SequencerWork = Sequencer.() -> Unit
 private typealias SequencerScope = LiveDataScope<Step?>
 suspend fun SequencerScope.change(stage: ContextStep) = emitResetting {
-    EventBus.event(stage)
+    EventBus.signal(stage)
 }
 suspend fun SequencerScope.change(transit: Short) = emitResetting {
     EventBus.signal(transit)

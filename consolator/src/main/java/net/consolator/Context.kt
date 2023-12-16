@@ -15,7 +15,7 @@ import kotlin.reflect.*
 import kotlinx.coroutines.*
 import com.google.gson.Gson
 import net.consolator.Scheduler.Event
-import net.consolator.Scheduler.EventBus
+import net.consolator.Scheduler.EventBus.signal
 import net.consolator.State.Pending
 import net.consolator.State.Resolved
 import android.Manifest.permission.ACCESS_NETWORK_STATE
@@ -38,7 +38,7 @@ val foregroundContext: Context
     get() = instance!!
 
 fun Context.change(stage: ContextStep) {
-    EventBus.event(stage)
+    signal(stage)
 }
 
 @Event(ACTION_MIGRATE_APP)
