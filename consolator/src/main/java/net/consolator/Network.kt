@@ -113,8 +113,8 @@ private var reactToNetCallRequestFailed: JobThrowableFunction = @Tag(INET_ERROR)
 @Tag(INET_DELAY)
 private var netCallDelayTime = -1L
     get() = if (field < 0)
-                getDelayTime(netCallTimeInterval, lastNetCallResponseTime)
-            else field
+        getDelayTime(netCallTimeInterval, lastNetCallResponseTime)
+    else field
 @Tag(INET_MIN_INTERVAL)
 private var minNetCallTimeInterval = 5000L
 @Tag(INET_INTERVAL)
