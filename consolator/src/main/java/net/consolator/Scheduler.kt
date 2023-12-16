@@ -913,7 +913,8 @@ private fun relaunch(
         instance.getter.call().let {
             if (it !== null && it.isActive) it
             else launcher.call(context, start, step)
-        }).getter.call()!!
+        }
+    ).getter.call()!!
 fun LifecycleOwner.close(node: SchedulerNode) {}
 fun LifecycleOwner.detach(node: SchedulerNode) {}
 fun LifecycleOwner.reattach(node: SchedulerNode) {}
