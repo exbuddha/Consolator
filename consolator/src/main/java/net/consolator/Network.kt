@@ -98,8 +98,8 @@ private var reactToNetCallResponseReceived: JobResponseFunction = @Tag(INET_SUCC
         hasInternet = isSuccessful
         if (isSuccessful)
             lastNetCallResponseTime = now()
-        close()
         netCallDelayTime = -1L
+        close()
     }
     if (info.isOn)
         info(INET_TAG, "Received response for internet availability.")
