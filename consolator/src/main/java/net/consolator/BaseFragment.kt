@@ -46,7 +46,7 @@ abstract class BaseFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        launch(LAZY) @MainViewGroup @Listening {
+        launch(start = LAZY) @MainViewGroup @Listening {
             EventBus.collectSafely {
                 when (it?.transit) {
                     COMMIT_NAV_MAIN_UI -> {

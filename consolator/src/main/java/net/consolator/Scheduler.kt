@@ -886,33 +886,30 @@ private fun CoroutineScope.workerGroupOf(context: CoroutineContext) =
 private fun LifecycleOwner.trySafelyForAnnotatedScopeOf(step: CoroutineStep) =
     Scheduler.trySafelyForAnnotatedScopeOf(step) ?:
     lifecycleScope
-fun LifecycleOwner.launch(context: CoroutineContext, start: CoroutineStart, step: CoroutineStep) =
+fun LifecycleOwner.launch(context: CoroutineContext = Scheduler, start: CoroutineStart, step: CoroutineStep) =
     trySafelyForAnnotatedScopeOf(step).run { launch(workerGroupOf(context), start, step) }
-fun LifecycleOwner.launch(context: CoroutineContext, step: CoroutineStep) =
-    trySafelyForAnnotatedScopeOf(step).run { launch(workerGroupOf(context), block = step) }
-fun LifecycleOwner.launch(start: CoroutineStart, step: CoroutineStep) =
-    trySafelyForAnnotatedScopeOf(step).launch(Scheduler, start, step)
-fun LifecycleOwner.launch(step: CoroutineStep) =
-    trySafelyForAnnotatedScopeOf(step).launch(Scheduler, block = step)
 fun LifecycleOwner.relaunch(
-    instance: KMutableProperty<Job?>,
+    instance: JobKProperty,
     context: CoroutineContext = Scheduler,
     start: CoroutineStart = CoroutineStart.DEFAULT,
     step: CoroutineStep) =
-    instance.mark(
-        instance.getter.call().let {
-            if (it !== null && it.isActive) it
-            else launch(context, start, step)
-        })
+    relaunch(::launch, instance, context, start, step)
 fun CoroutineScope.relaunch(
-    instance: KMutableProperty<Job?>,
+    instance: JobKProperty,
     context: CoroutineContext = Scheduler,
     start: CoroutineStart = CoroutineStart.DEFAULT,
     step: CoroutineStep) =
+    relaunch(::launch, instance, context, start, step)
+private inline fun <reified T> T.relaunch(
+    launcher: KFunction<Job>,
+    instance: JobKProperty,
+    context: CoroutineContext = Scheduler,
+    start: CoroutineStart = CoroutineStart.DEFAULT,
+    noinline step: CoroutineStep) =
     instance.mark(
         instance.getter.call().let {
             if (it !== null && it.isActive) it
-            else launch(workerGroupOf(context), start, step)
+            else launcher.call(context, start, step)
         })
 fun LifecycleOwner.close(node: SchedulerNode) {}
 fun LifecycleOwner.detach(node: SchedulerNode) {}
@@ -1119,6 +1116,7 @@ fun Any.asCallable() = this as KCallable<*>
 fun Any.asFunction() = this as KFunction<*>
 fun Any.asProperty() = this as KProperty<*>
 fun Any.asMutableProperty() = this as KMutableProperty<*>
+private typealias JobKProperty = KMutableProperty<Job?>
 private typealias ResolverKClass = KClass<out Resolver>
 private typealias ResolverKProperty = KMutableProperty<out Resolver?>
 private typealias UnitKFunction = KFunction<Unit>
