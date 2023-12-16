@@ -914,7 +914,7 @@ private fun relaunch(
         instance.getter.call().let {
             if (it !== null && it.isActive) it
             else launcher.call(context, start, step)
-        })
+        }).getter.call()!!
 fun LifecycleOwner.close(node: SchedulerNode) {}
 fun LifecycleOwner.detach(node: SchedulerNode) {}
 fun LifecycleOwner.reattach(node: SchedulerNode) {}
@@ -965,13 +965,13 @@ private fun JobFunctionSet.save(tag: String, function: KCallable<*>) =
     save(tag, trySafelyForAnnotatedTagOf(function)?.keep ?: true, function)
 private fun JobFunctionSet.save(tag: Tag?, function: KCallable<*>) {}
 
+fun Any.markTag() {}
 fun KCallable<*>.markTag() {
     jobs?.save(trySafelyForAnnotatedTagOf(this), this)
 }
 fun CoroutineScope.markFunctionTags(vararg function: Any?) {
     function.forEach {
-        if (it is KCallable<*>)
-            it.markTag()
+        it?.markTag()
     }
 }
 fun JobKProperty.mark(job: Job): JobKProperty {
