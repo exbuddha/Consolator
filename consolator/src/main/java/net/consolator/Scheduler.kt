@@ -887,7 +887,10 @@ private fun CoroutineScope.workerGroupOf(context: CoroutineContext) =
 private fun LifecycleOwner.trySafelyForAnnotatedScopeOf(step: CoroutineStep) =
     Scheduler.trySafelyForAnnotatedScopeOf(step) ?:
     lifecycleScope
-fun LifecycleOwner.launch(context: CoroutineContext = Scheduler, start: CoroutineStart, step: CoroutineStep) =
+fun LifecycleOwner.launch(
+    context: CoroutineContext = Scheduler,
+    start: CoroutineStart = CoroutineStart.DEFAULT,
+    step: CoroutineStep) =
     trySafelyForAnnotatedScopeOf(step).run { launch(workerGroupOf(context), start, step) }
 fun LifecycleOwner.relaunch(
     instance: JobKProperty,
