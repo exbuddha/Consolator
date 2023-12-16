@@ -18,7 +18,6 @@ import net.consolator.Scheduler.Lock
 import net.consolator.Scheduler.Sequencer
 import net.consolator.application.*
 import net.consolator.BaseActivity.*
-import net.consolator.BaseService.*
 import kotlin.reflect.jvm.jvmErasure
 import kotlinx.coroutines.Dispatchers.Default
 import kotlinx.coroutines.Dispatchers.IO
@@ -910,7 +909,7 @@ private fun relaunch(
     context: CoroutineContext,
     start: CoroutineStart,
     step: CoroutineStep) =
-    instance.mark(
+    instance.refer(
         instance.getter.call().let {
             if (it !== null && it.isActive) it
             else launcher.call(context, start, step)
@@ -974,7 +973,7 @@ fun CoroutineScope.markFunctionTags(vararg function: Any?) {
         it?.markTag()
     }
 }
-fun JobKProperty.mark(job: Job): JobKProperty {
+fun JobKProperty.refer(job: Job): JobKProperty {
     setter.call(job)
     markTag()
     return this
