@@ -18,7 +18,6 @@ import net.consolator.Scheduler.Lock
 import net.consolator.Scheduler.Sequencer
 import net.consolator.application.*
 import net.consolator.BaseActivity.*
-import kotlin.reflect.jvm.jvmErasure
 import kotlinx.coroutines.Dispatchers.Default
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Dispatchers.Main
@@ -810,7 +809,7 @@ fun service(step: CoroutineStep) {
         scope::class.memberFunctions.find {
             it.name == "commit" &&
             it.parameters.size == 2 &&
-            it.parameters[1].type.jvmErasure == step::class
+            it.parameters[1].name == "step"
         }?.call(scope, step)
     }
 }
@@ -909,15 +908,13 @@ private fun relaunch(
     instance: JobKProperty,
     context: CoroutineContext,
     start: CoroutineStart,
-    step: CoroutineStep): Job {
-        instance.markTag()
-        return instance.getter.call().let { old ->
+    step: CoroutineStep) =
+        instance.getter.call().let { old ->
             if (old !== null && old.isActive) old
             else launcher.call(context, start, step).also { new ->
                 instance.setter.call(new)
             }
-        }
-    }
+        }.also { instance.markTag() }
 fun LifecycleOwner.close(node: SchedulerNode) {}
 fun LifecycleOwner.detach(node: SchedulerNode) {}
 fun LifecycleOwner.reattach(node: SchedulerNode) {}
