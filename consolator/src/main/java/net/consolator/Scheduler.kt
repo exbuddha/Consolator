@@ -908,13 +908,15 @@ private fun relaunch(
     instance: JobKProperty,
     context: CoroutineContext,
     start: CoroutineStart,
-    step: CoroutineStep) =
-    instance.refer(
-        instance.getter.call().let {
-            if (it !== null && it.isActive) it
-            else launcher.call(context, start, step)
+    step: CoroutineStep): Job {
+        instance.markTag()
+        return instance.getter.call().let { old ->
+            if (old !== null && old.isActive) old
+            else launcher.call(context, start, step).also { new ->
+                instance.setter.call(new)
+            }
         }
-    ).getter.call()!!
+    }
 fun LifecycleOwner.close(node: SchedulerNode) {}
 fun LifecycleOwner.detach(node: SchedulerNode) {}
 fun LifecycleOwner.reattach(node: SchedulerNode) {}
@@ -973,11 +975,6 @@ fun CoroutineScope.markFunctionTags(vararg function: Any?) {
     function.forEach {
         it?.markTag()
     }
-}
-fun JobKProperty.refer(job: Job): JobKProperty {
-    setter.call(job)
-    markTag()
-    return this
 }
 
 @Retention(SOURCE)
