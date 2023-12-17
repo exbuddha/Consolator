@@ -157,9 +157,7 @@ operator fun NetCall.get(cmd: String): Any? = when (cmd) {
     INET_DELAY -> netCallDelayTime
     INET_INTERVAL -> netCallTimeInterval
     INET_MIN_INTERVAL -> minNetCallTimeInterval
-    else -> if (cmd.endsWith(".type"))
-        trySafelyForResult { this[cmd.substringBeforeLast(".type")]!!::class }
-    else null
+    else -> null
 }
 operator fun NetCall.set(cmd: String, value: Any?) {
     // keep old value
