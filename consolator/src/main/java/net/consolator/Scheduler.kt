@@ -220,6 +220,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
 
         private fun mark(step: SequencerStep) =
             step.apply { asCallable().markTag() }
+        private fun SequencerStep.asCallable(): KCallable<*> = TODO()
 
         private constructor(observer: StepObserver) { this.observer = observer }
         constructor() : this(Scheduler)
