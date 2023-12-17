@@ -963,7 +963,9 @@ private typealias JobFunctionSet = MutableSet<Pair<String, Job>>
 private fun JobFunctionSet.save(tag: String, keep: Boolean, function: KCallable<*>) {}
 private fun JobFunctionSet.save(tag: String, function: KCallable<*>) =
     save(tag, trySafelyForAnnotatedTagOf(function)?.keep ?: true, function)
-private fun JobFunctionSet.save(tag: Tag?, function: KCallable<*>) {}
+private fun JobFunctionSet.save(tag: Tag?, function: KCallable<*>) = tag?.let {
+    save(it.string, it.keep, function)
+}
 
 fun Any.markTag() {}
 fun KCallable<*>.markTag() {
