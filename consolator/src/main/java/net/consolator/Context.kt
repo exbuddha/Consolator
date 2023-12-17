@@ -151,7 +151,7 @@ suspend fun <T : CoroutineScope> T.repeatSuspended(
     block: JobFunction,
     delayTime: LongFunction = { 0L },
     scope: T = this) {
-    scope.markFunctionTags(predicate, block, delayTime)
+    scope.markTags(predicate, block, delayTime)
     while (predicate()) {
         block(scope)
         delayOrYield(delayTime())

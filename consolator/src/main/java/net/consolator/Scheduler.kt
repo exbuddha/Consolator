@@ -971,7 +971,7 @@ fun Any.markTag() {}
 fun KCallable<*>.markTag() {
     jobs?.save(trySafelyForAnnotatedTagOf(this), this)
 }
-fun CoroutineScope.markFunctionTags(vararg function: Any?) {
+fun CoroutineScope.markTags(vararg function: Any?) {
     function.forEach {
         it?.markTag()
     }
