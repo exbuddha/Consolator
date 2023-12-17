@@ -880,7 +880,11 @@ private fun <T, R> disposerOf(liveStep: Pair<LiveData<T>, (T) -> R>) = object : 
 
 private fun CoroutineContext.isSchedulerContext() =
     this is Scheduler || this[_key] is SchedulerKey
-private fun CoroutineScope.workerGroupOf(context: CoroutineContext) =
+private fun CoroutineScope.workerGroupOf(
+    owner: LifecycleOwner,
+    context: CoroutineContext,
+    start: CoroutineStart,
+    step: CoroutineStep) =
     if (context.isSchedulerContext()) context
     else Scheduler + context
 private fun LifecycleOwner.trySafelyForAnnotatedScopeOf(step: CoroutineStep) =
@@ -890,7 +894,8 @@ fun LifecycleOwner.launch(
     context: CoroutineContext = Scheduler,
     start: CoroutineStart = CoroutineStart.DEFAULT,
     step: CoroutineStep) =
-    trySafelyForAnnotatedScopeOf(step).run { launch(workerGroupOf(context), start, step) }
+    trySafelyForAnnotatedScopeOf(step).run {
+        launch(workerGroupOf(this@launch, context, start, step), start, step) }
 fun LifecycleOwner.relaunch(
     instance: JobKProperty,
     context: CoroutineContext = Scheduler,
