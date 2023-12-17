@@ -146,13 +146,12 @@ typealias Predicate = () -> Boolean
 typealias AnyPredicate = (Any?) -> Boolean
 typealias IntPredicate = (Int) -> Boolean
 
-suspend fun <T> T.repeatSuspended(
+suspend fun <T : CoroutineScope> T.repeatSuspended(
     predicate: Predicate,
     block: JobFunction,
     delayTime: LongFunction = { 0L },
     scope: T = this) {
-    if (scope is CoroutineScope)
-        scope.markFunctionTags(predicate, block, delayTime)
+    scope.markFunctionTags(predicate, block, delayTime)
     while (predicate()) {
         block(scope)
         delayOrYield(delayTime())
