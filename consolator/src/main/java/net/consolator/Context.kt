@@ -37,9 +37,12 @@ val foregroundLifecycleOwner: LifecycleOwner?
 val foregroundContext: Context
     get() = instance!!
 
-fun Context.change(stage: ContextStep) {
+fun Context.change(stage: ContextStep) =
     signal(stage)
-}
+fun <R> Context.changeFrom(member: Context.() -> R, stage: ContextStep) =
+    signal(stage)
+fun <R> Context.changeFrom(owner: LifecycleOwner, member: Context.() -> R, stage: ContextStep) =
+    signal(stage)
 
 @Event(ACTION_MIGRATE_APP)
 fun Context.stageDbCreated() {

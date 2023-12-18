@@ -942,6 +942,17 @@ infix fun CoroutineStep.onCancel(action: DescriptiveStep): CoroutineStep = {}
 infix fun CoroutineStep.onError(action: DescriptiveStep): CoroutineStep = {}
 infix fun CoroutineStep.onTimeout(action: DescriptiveStep): CoroutineStep = {}
 
+fun SchedulerScope.change(stage: ContextStep) =
+    EventBus.signal(stage)
+fun <R> SchedulerScope.changeFrom(
+    member: Context.() -> R,
+    stage: ContextStep) =
+    EventBus.signal(stage)
+fun <R> SchedulerScope.changeFrom(
+    owner: LifecycleOwner,
+    member: Context.() -> R,
+    stage: ContextStep) =
+    EventBus.signal(stage)
 fun SchedulerScope.keepAlive(node: SchedulerNode): Boolean = false
 fun SchedulerScope.keepAliveOrClose(node: SchedulerNode, job: Job) {
     keepAlive(node) && return
