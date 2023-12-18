@@ -707,7 +707,11 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
 
         @Retention(SOURCE)
         @Target(FUNCTION, EXPRESSION)
-        annotation class Remitting(
+        annotation class Signaling(val channel: Short = 0)
+
+        @Retention(SOURCE)
+        @Target(FUNCTION, EXPRESSION)
+        annotation class Retrying(
             val delay: Long = 0L,
             val timeout: Long = -1L,
             val channel: Short = 0,

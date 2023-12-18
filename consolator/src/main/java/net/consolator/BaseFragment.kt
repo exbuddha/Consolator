@@ -11,7 +11,8 @@ import kotlinx.coroutines.*
 import net.consolator.Scheduler.EventBus
 import net.consolator.Scheduler.FromLastCancellation
 import net.consolator.Scheduler.Event.Listening
-import net.consolator.Scheduler.Event.Remitting
+import net.consolator.Scheduler.Event.Retrying
+import net.consolator.Scheduler.Event.Signaling
 import net.consolator.Scheduler.LaunchScope
 import net.consolator.Scheduler.Path
 import net.consolator.Scheduler.Path.Parallel
@@ -77,14 +78,14 @@ abstract class BaseFragment : Fragment() {
     override fun onAttach(context: Context) {
         super.onAttach(context)
         val context = context.weakRef()!!
-        launch(IO, LAZY) @JobTreeRoot @MainViewGroup @Remitting(
+        launch(IO, LAZY) @JobTreeRoot @MainViewGroup @Retrying(
             delay = 100L,
             pathwise = [ FromLastCancellation::class ]
         ) @Tag("view.attach") {
             registerContext(context)
         } then @LaunchScope @Parallel @Path("app-db.build") {
             tryCancelingSuspended(retrieveContext(), Context::buildAppDatabase)
-        } then @Scope {
+        } then @Scope @Signaling {
             change(Context::stageDbCreated)
         } given {
             db !== null
@@ -92,7 +93,7 @@ abstract class BaseFragment : Fragment() {
             SchedulerScope::retry
         ) then @LaunchScope @Path("session.build") {
             tryCancelingSuspended(::buildSession)
-        } then @Scope {
+        } then @Scope @Signaling {
             change(Context::stageSessionCreated)
         } given {
             session !== null
