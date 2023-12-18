@@ -4,17 +4,16 @@ import android.content.Context
 import android.view.*
 import android.view.GestureDetector.*
 import androidx.fragment.app.*
-import java.lang.ref.*
 import kotlin.reflect.*
 import kotlinx.coroutines.*
 
 object UI : (Context, ScreenEventInterceptor?) -> Pair<Fragment, Int?> {
     override fun invoke(context: Context, interceptor: ScreenEventInterceptor?): Pair<Fragment, Int?> =
-        Pair(OverlayFragment(WeakReference(context), interceptor), null)
+        Pair(OverlayFragment(context.weakRef()!!, interceptor), null)
 }
 
 private open class OverlayFragment(
-    private val context: WeakReference<out Context>,
+    private val context: WeakContext,
     private val interceptor: ScreenEventInterceptor?
 ) : Fragment(),
     OnContextClickListener {
