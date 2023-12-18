@@ -44,7 +44,7 @@
         android:theme="@style/Theme.Consolator">
 
         <activity
-            android:name=".MainActivity"
+            android:name=".UserActivity"
             android:exported="true"
             android:launchMode="singleInstance">
             <intent-filter>
