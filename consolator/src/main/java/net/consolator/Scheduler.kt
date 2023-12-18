@@ -942,32 +942,28 @@ infix fun CoroutineStep.onCancel(action: DescriptiveStep): CoroutineStep = {}
 infix fun CoroutineStep.onError(action: DescriptiveStep): CoroutineStep = {}
 infix fun CoroutineStep.onTimeout(action: DescriptiveStep): CoroutineStep = {}
 
-fun SchedulerScope.change(stage: ContextStep) =
-    EventBus.signal(stage)
-fun <R> SchedulerScope.changeFrom(
-    member: Context.() -> R,
-    stage: ContextStep) =
-    EventBus.signal(stage)
-fun <R> SchedulerScope.changeFrom(
-    owner: LifecycleOwner,
-    member: Context.() -> R,
-    stage: ContextStep) =
-    EventBus.signal(stage)
 fun SchedulerScope.keepAlive(node: SchedulerNode): Boolean = false
+fun SchedulerScope.keepAlive(job: Job) = keepAlive(job.node)
 fun SchedulerScope.keepAliveOrClose(node: SchedulerNode, job: Job) {
     keepAlive(node) && return
     job.close(node)
 }
-fun SchedulerScope.keepAliveOrClose(job: Job) {
-    job.node.let {
-        keepAlive(it) && return
-        job.close(it)
-    }
-}
+fun SchedulerScope.keepAliveOrClose(job: Job) {}
 fun SchedulerScope.close(job: Job, exit: ThrowableFunction? = null) {}
 fun SchedulerScope.enact(job: Job, exit: ThrowableFunction? = null) {}
 fun SchedulerScope.error(job: Job, exit: ThrowableFunction? = null) {}
 fun SchedulerScope.retry(job: Job, exit: ThrowableFunction? = null) {}
+
+fun SchedulerScope.change(stage: ContextStep) =
+    EventBus.signal(stage)
+fun <R> SchedulerScope.change(member: KFunction<R>, stage: ContextStep) =
+    EventBus.signal(stage)
+fun <R> SchedulerScope.change(owner: LifecycleOwner, member: KFunction<R>, stage: ContextStep) =
+    EventBus.signal(stage)
+fun <R> SchedulerScope.change(ref: WeakContext, member: KFunction<R>, stage: ContextStep) =
+    EventBus.signal(stage)
+fun <R> SchedulerScope.change(ref: WeakContext, owner: LifecycleOwner, member: KFunction<R>, stage: ContextStep) =
+    EventBus.signal(stage)
 
 private var jobs: JobFunctionSet? = null
 operator fun Job.get(tag: String): Any? = null

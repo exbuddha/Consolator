@@ -8,6 +8,8 @@ import net.consolator.Scheduler.Sequencer
 import net.consolator.Scheduler.clock
 
 open class BaseService : Service(), BaseServiceScope {
+    override val ref: WeakContext? = null
+        get() = field.unique(this)
     override var startTime = 0L
     override var mode: Int? = null
 
@@ -61,7 +63,7 @@ open class BaseService : Service(), BaseServiceScope {
     override fun commit(step: CoroutineStep) = clockAhead(step::invoke)
 }
 
-interface BaseServiceScope : IBinder, SchedulerScope, UniqueContext {
+interface BaseServiceScope : IBinder, SchedulerScope, SystemContext, UniqueContext {
     fun getStartTimeExtra(intent: Intent?) =
         intent?.getLongExtra(START_TIME_KEY, instance!!.startTime)!!
 

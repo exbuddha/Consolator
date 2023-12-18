@@ -6,7 +6,9 @@ import androidx.appcompat.app.*
 import net.consolator.activity.*
 import net.consolator.application.*
 
-abstract class BaseActivity : AppCompatActivity() {
+abstract class BaseActivity : AppCompatActivity(), SystemContext {
+    override val ref: WeakContext? = null
+        get() = field.unique(this)
     abstract val backgroundLayoutResId: Int
 
     var enableNetworkCallbacks: Work? = null

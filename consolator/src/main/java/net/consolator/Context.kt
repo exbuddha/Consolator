@@ -9,6 +9,7 @@ import androidx.core.content.*
 import androidx.lifecycle.*
 import androidx.room.*
 import java.lang.*
+import java.lang.ref.*
 import kotlin.annotation.AnnotationRetention.*
 import kotlin.annotation.AnnotationTarget.*
 import kotlin.reflect.*
@@ -39,9 +40,11 @@ val foregroundContext: Context
 
 fun Context.change(stage: ContextStep) =
     signal(stage)
-fun <R> Context.changeFrom(member: Context.() -> R, stage: ContextStep) =
+fun Context.changeLocally(owner: LifecycleOwner, stage: ContextStep) =
     signal(stage)
-fun <R> Context.changeFrom(owner: LifecycleOwner, member: Context.() -> R, stage: ContextStep) =
+fun Context.changeBroadly(ref: WeakContext = weakRef()!!, stage: ContextStep) =
+    signal(stage)
+fun Context.changeGlobally(ref: WeakContext = weakRef()!!, owner: LifecycleOwner, stage: ContextStep) =
     signal(stage)
 
 @Event(ACTION_MIGRATE_APP)
@@ -121,6 +124,14 @@ fun Context.isPermissionGranted(permission: String) =
     ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
 fun Context.intendFor(cls: Class<*>) = Intent(this, cls)
 fun Context.intendFor(cls: KClass<*>) = intendFor(cls.java)
+
+interface SystemContext { val ref: WeakContext? }
+typealias WeakContext = WeakReference<out Context>
+fun Context.weakRef() = when (this) {
+    is SystemContext -> ref
+    else -> WeakReference(this)
+}
+fun <T : Context> WeakReference<out T>?.unique(context: T) = this ?: WeakReference(context)
 
 fun now() = java.util.Calendar.getInstance().timeInMillis
 fun getDelayTime(interval: Long, last: Long) =
