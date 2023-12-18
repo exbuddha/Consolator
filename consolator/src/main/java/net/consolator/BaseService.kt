@@ -28,18 +28,22 @@ open class BaseService : Service(), BaseServiceScope {
                 Sequencer {
                     if (logDb === null)
                         io(true) @Tag("log-db.build") {
-                            commitAsync(LogDatabase::class.lock(), { logDb === null }) {
+                            commitAsyncBlocking(LogDatabase::class.lock(), { logDb === null }, {
                                 logDb = resetOnError(::buildDatabase)
                                 change(Context::stageLogDbCreated)
-                            }
+                            }, {
+                                emitReset()
+                            })
                         }
                     if (netDb === null)
                         io(true) @Tag("net-db.build") {
-                            commitAsync(NetworkDatabase::class.lock(), { netDb === null }) {
+                            commitAsyncBlocking(NetworkDatabase::class.lock(), { netDb === null }, {
                                 netDb = resetOnError(::buildDatabase)
                                 // update net db records
                                 change(Context::stageNetDbInitialized)
-                            }
+                            }, {
+                                emitReset()
+                            })
                         }
                     resume()
                 }
