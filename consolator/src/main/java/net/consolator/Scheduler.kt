@@ -834,16 +834,16 @@ inline fun <R> commitAsync(lock: Any, crossinline predicate: Predicate, crossinl
             if (predicate()) block()
         }
 }
-inline fun <T, R> T.commitAsyncBlocking(lock: Any, crossinline predicate: Predicate, crossinline block: suspend T.() -> R, crossinline exit: suspend T.() -> R) {
+inline fun <T, R> T.commitAsyncBlocking(lock: Any, crossinline predicate: Predicate, crossinline block: suspend T.() -> R, crossinline fallback: suspend T.() -> R) {
     if (predicate())
         synchronized(lock) {
             runBlocking {
                 if (predicate()) block()
-                else exit()
+                else fallback()
             }
         }
     else
-        runBlocking { exit() }
+        runBlocking { fallback() }
 }
 inline fun <R> commitAsyncForResult(lock: Any, crossinline predicate: Predicate, fallback: R? = null, crossinline block: () -> R): R? {
     if (predicate())
@@ -852,15 +852,15 @@ inline fun <R> commitAsyncForResult(lock: Any, crossinline predicate: Predicate,
         }
     return fallback
 }
-inline fun <T, R> T.commitAsyncBlockingForResult(lock: Any, crossinline predicate: Predicate, crossinline block: suspend T.() -> R, crossinline exit: suspend T.() -> R? = { null }) =
+inline fun <T, R> T.commitAsyncBlockingForResult(lock: Any, crossinline predicate: Predicate, crossinline block: suspend T.() -> R, crossinline fallback: suspend T.() -> R? = { null }) =
     if (predicate())
         synchronized(lock) {
             runBlocking {
                 if (predicate()) block()
-                else exit()
+                else fallback()
             }
         }
-    else runBlocking { exit() }
+    else runBlocking { fallback() }
 
 inline fun <R> sequencer(block: Sequencer.() -> R) = Scheduler.sequencer!!.block()
 fun <T, R> capture(context: CoroutineContext, step: suspend LiveDataScope<T>.() -> Unit, capture: (T) -> R) =
