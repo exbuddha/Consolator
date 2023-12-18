@@ -76,13 +76,15 @@ abstract class BaseFragment : Fragment() {
 
     override fun onAttach(context: Context) {
         super.onAttach(context)
+        val context = context.weakRef()!!
         launch(IO, LAZY) @JobTreeRoot @MainViewGroup @Remitting(
             delay = 100L,
             pathwise = [ FromLastCancellation::class ]
         ) @LaunchScope @Parallel @Path("app-db.build") {
-            context.tryCanceling(Context::buildAppDatabase)
+            registerContext(context)
+            tryCancelingSuspended(retrieveContext(), Context::buildAppDatabase)
         } then @Scope {
-            context.change(Context::stageDbCreated)
+            change(Context::stageDbCreated)
         } given {
             db !== null
         } otherwise(
@@ -90,7 +92,7 @@ abstract class BaseFragment : Fragment() {
         ) then @LaunchScope @Path("session.build") {
             tryCancelingSuspended(::buildSession)
         } then @Scope {
-            context.change(Context::stageSessionCreated)
+            change(Context::stageSessionCreated)
         } given {
             session !== null
         } otherwise(

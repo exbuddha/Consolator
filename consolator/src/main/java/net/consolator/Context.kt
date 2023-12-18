@@ -160,6 +160,11 @@ typealias Predicate = () -> Boolean
 typealias AnyPredicate = (Any?) -> Boolean
 typealias IntPredicate = (Int) -> Boolean
 
+fun CoroutineScope.retrieveContext(): Context = TODO()
+suspend fun CoroutineScope.registerContext(context: WeakContext) {
+    currentCoroutineContext().job to context
+}
+
 suspend fun <T : CoroutineScope> T.repeatSuspended(
     predicate: Predicate,
     block: JobFunction,
@@ -188,6 +193,8 @@ inline fun <R> tryCancelingForResult(block: () -> R, exit: (Throwable) -> R? = {
     try { block() } catch (ex: CancellationException) { throw ex } catch (ex: Throwable) { exit(ex) }
 suspend inline fun <R> tryCancelingSuspended(crossinline block: suspend () -> R) =
     tryCanceling { block() }
+suspend inline fun <T, R> tryCancelingSuspended(scope: T, crossinline block: suspend T.() -> R) =
+    tryCanceling { block(scope) }
 inline fun <R> tryInterrupting(block: () -> R) =
     try { block() } catch (ex: Throwable) { throw InterruptedException() }
 fun <R> tryInterrupting(step: suspend CoroutineScope.() -> R, blockOf: (suspend CoroutineScope.() -> R) -> () -> R = ::blockOf) =
@@ -198,11 +205,6 @@ fun <R> trySafelyInterrupting(step: suspend CoroutineScope.() -> R, blockOf: (su
     try { blockOf(step)() } catch (ex: InterruptedException) { throw InterruptedStepException(step, ex) } catch (_: Throwable) {}
 fun <R> tryInterruptingForResult(step: suspend CoroutineScope.() -> R, blockOf: (suspend CoroutineScope.() -> R) -> () -> R = ::blockOf, exit: (Throwable) -> R? = { null }) =
     try { blockOf(step)() } catch (ex: InterruptedException) { throw InterruptedStepException(step, ex) } catch (ex: Throwable) { exit(ex) }
-
-inline fun <R> Context.trySafelyCanceling(block: Context.() -> R) =
-    net.consolator.trySafelyCanceling { block() }
-inline fun <R> Context.tryCanceling(block: Context.() -> R) =
-    net.consolator.tryCanceling { block() }
 
 @Retention(SOURCE)
 @Target(CLASS)
