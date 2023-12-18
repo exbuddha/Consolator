@@ -1091,7 +1091,7 @@ private typealias SchedulerPath = Array<KClass<out Throwable>>
 private typealias SchedulerWork = Scheduler.() -> Unit
 private typealias DescriptiveStep = suspend SchedulerScope.(Job) -> Unit
 private typealias SequencerWork = Sequencer.() -> Unit
-private typealias SequencerScope = LiveDataScope<Step?>
+typealias SequencerScope = LiveDataScope<Step?>
 suspend fun SequencerScope.change(stage: ContextStep) = emitResetting {
     EventBus.signal(stage)
 }

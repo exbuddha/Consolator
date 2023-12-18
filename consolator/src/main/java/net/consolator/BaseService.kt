@@ -31,9 +31,7 @@ open class BaseService : Service(), BaseServiceScope {
                             commitAsyncBlocking(LogDatabase::class.lock(), { logDb === null }, {
                                 logDb = resetOnError(::buildDatabase)
                                 change(Context::stageLogDbCreated)
-                            }, {
-                                emitReset()
-                            })
+                            }, SequencerScope::emitReset)
                         }
                     if (netDb === null)
                         io(true) @Tag("net-db.build") {
@@ -41,9 +39,7 @@ open class BaseService : Service(), BaseServiceScope {
                                 netDb = resetOnError(::buildDatabase)
                                 // update net db records
                                 change(Context::stageNetDbInitialized)
-                            }, {
-                                emitReset()
-                            })
+                            }, SequencerScope::emitReset)
                         }
                     resume()
                 }
