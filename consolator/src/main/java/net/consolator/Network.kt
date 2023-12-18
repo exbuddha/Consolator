@@ -78,7 +78,7 @@ private var networkCallFunction: JobFunction = @Tag(INET_FUNCTION) { scope ->
     if (repeatNetCallback && isNetCallTimeIntervalExceeded) {
         if (info.isOn)
             info(INET_TAG, "Trying to send out http request for network caller...")
-        ::netCall.commit {
+        ::netCall.commit(scope) {
             ::netCall[INET_CALL] = ::buildHttpGetRequest.with("https://httpbin.org/delay/1")()
             tryCancelingForResult({
                 ::netCall.exec { response ->
@@ -176,7 +176,7 @@ operator fun NetCall.set(cmd: String, value: Any?) {
 private fun String.asUrl() = this
 private inline fun <reified T : Any> take(value: Any?): T = value.asType()!!
 private typealias Respond = (Response) -> Unit
-private fun <R> NetCall.commit(block: () -> R) { synchronized(this, block) }
+private fun NetCall.commit(scope: Any?, block: Work) { synchronized(this, block) }
 private fun NetCall.exec(cmd: String = INET_CALL, respond: Respond) {
     markTag()
     respond(this[cmd].asType<NetCall>()!!.call().execute())
