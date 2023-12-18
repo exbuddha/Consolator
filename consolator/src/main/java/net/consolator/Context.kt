@@ -165,11 +165,11 @@ suspend fun CoroutineScope.registerContext(context: WeakContext) {
     currentCoroutineContext().job to context
 }
 
-suspend fun <T : CoroutineScope> T.repeatSuspended(
+suspend fun CoroutineScope.repeatSuspended(
     predicate: Predicate,
     block: JobFunction,
     delayTime: LongFunction = { 0L },
-    scope: T = this) {
+    scope: CoroutineScope = this) {
     scope.markTags(predicate, block, delayTime)
     while (predicate()) {
         block(scope)
