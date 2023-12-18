@@ -80,8 +80,9 @@ abstract class BaseFragment : Fragment() {
         launch(IO, LAZY) @JobTreeRoot @MainViewGroup @Remitting(
             delay = 100L,
             pathwise = [ FromLastCancellation::class ]
-        ) @LaunchScope @Parallel @Path("app-db.build") {
+        ) @Tag("view.attach") {
             registerContext(context)
+        } then @LaunchScope @Parallel @Path("app-db.build") {
             tryCancelingSuspended(retrieveContext(), Context::buildAppDatabase)
         } then @Scope {
             change(Context::stageDbCreated)
