@@ -290,11 +290,36 @@ abstract class NetworkDao {
 suspend fun <R> runtimeDao(block: suspend RuntimeDao.() -> R) = db!!.runtimeDao().block()
 suspend fun <R> networkDao(block: suspend NetworkDao.() -> R) = netDb!!.networkDao().block()
 
-private val dateTimeFormat by lazy { SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US) }
-private fun String.toLocalTime() = dateTimeFormat.parse(this)!!.time
-private fun Long.toLocalTimestamp() = dateTimeFormat.format(Date(this))
-private val dbTimeDiff by lazy { with(session!!) { dbTime.toLocalTime() - startTime } }
-private fun String.toAppTime() = toLocalTime() - dbTimeDiff
-private fun Long.toDbTime() = plus(dbTimeDiff)
+private var dateTimeFormat: DateFormat? = null
+    get() = field ?: SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
+private fun String.toLocalTime() = dateTimeFormat!!.parse(this)!!.time
+private fun Long.toLocalTimestamp() = dateTimeFormat!!.format(Date(this))
+private var dbTimeDiff: Long? = null
+    get() = field ?: with(session!!) { dbTime.toLocalTime() - startTime }
+private fun String.toAppTime() = toLocalTime() - dbTimeDiff!!
+private fun Long.toDbTime() = plus(dbTimeDiff!!)
+
+private fun clearObjects() {
+    dateTimeFormat = null
+    dbTimeDiff = null
+}
+fun clearAppDbObjects() {
+    db = null
+}
+fun clearLogDbObjects() {
+    logDb = null
+}
+fun clearNetDbObjects() {
+    netDb = null
+}
+fun clearAllDbObjects() {
+    clearAppDbObjects()
+    clearLogDbObjects()
+    clearNetDbObjects()
+    clearObjects()
+}
+fun clearSessionObjects() {
+    session = null
+}
 
 private const val BUILD_INFO = "${BuildConfig.APPLICATION_ID} ${BuildConfig.BUILD_TYPE} ${BuildConfig.VERSION_NAME}"
