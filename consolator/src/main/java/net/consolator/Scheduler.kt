@@ -902,6 +902,19 @@ private fun <T, R> disposerOf(liveStep: Pair<LiveData<T>, (T) -> R>) = object : 
     }
 }
 
+suspend fun SequencerScope.change(stage: ContextStep) = emitResetting {
+    EventBus.signal(stage)
+}
+suspend fun SequencerScope.change(transit: Short) = emitResetting {
+    EventBus.signal(transit)
+}
+private suspend inline fun <R> SequencerScope.emitResetting(block: () -> R): R {
+    emitReset()
+    return block()
+}
+suspend fun SequencerScope.emitReset() = emit { reset() }
+private suspend fun SequencerScope.reset() = Scheduler.sequencer!!.reset()
+
 private fun CoroutineContext.isSchedulerContext() =
     this is Scheduler || this[_key] is SchedulerKey
 private fun CoroutineScope.workerGroupOf(
@@ -1096,18 +1109,6 @@ private typealias SchedulerWork = Scheduler.() -> Unit
 private typealias DescriptiveStep = suspend SchedulerScope.(Job) -> Unit
 private typealias SequencerWork = Sequencer.() -> Unit
 typealias SequencerScope = LiveDataScope<Step?>
-suspend fun SequencerScope.change(stage: ContextStep) = emitResetting {
-    EventBus.signal(stage)
-}
-suspend fun SequencerScope.change(transit: Short) = emitResetting {
-    EventBus.signal(transit)
-}
-private suspend inline fun <R> SequencerScope.emitResetting(block: () -> R): R {
-    emitReset()
-    return block()
-}
-suspend fun SequencerScope.emitReset() = emit { reset() }
-private suspend fun SequencerScope.reset() = Scheduler.sequencer!!.reset()
 private typealias SequencerStep = suspend SequencerScope.() -> Unit
 private typealias StepObserver = Observer<Step?>
 private typealias LiveStep = LiveData<Step?>
