@@ -838,6 +838,13 @@ inline fun <R> commitAsync(lock: Any, crossinline predicate: Predicate, crossinl
             if (predicate()) block()
         }
 }
+inline fun <R> commitAsyncForResult(lock: Any, crossinline predicate: Predicate, fallback: R? = null, crossinline block: () -> R): R? {
+    if (predicate())
+        synchronized(lock) {
+            if (predicate()) return block()
+        }
+    return fallback
+}
 inline fun <T, R, S> T.commitAsyncBlocking(lock: Any, crossinline predicate: Predicate, crossinline block: suspend T.() -> R, crossinline fallback: suspend T.() -> S) {
     if (predicate())
         synchronized(lock) {
@@ -848,13 +855,6 @@ inline fun <T, R, S> T.commitAsyncBlocking(lock: Any, crossinline predicate: Pre
         }
     else
         runBlocking { fallback() }
-}
-inline fun <R> commitAsyncForResult(lock: Any, crossinline predicate: Predicate, fallback: R? = null, crossinline block: () -> R): R? {
-    if (predicate())
-        synchronized(lock) {
-            if (predicate()) return block()
-        }
-    return fallback
 }
 inline fun <T, R, S : R> T.commitAsyncBlockingForResult(lock: Any, crossinline predicate: Predicate, crossinline block: suspend T.() -> R, crossinline fallback: suspend T.() -> S? = { null }) =
     if (predicate())
