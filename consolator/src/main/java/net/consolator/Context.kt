@@ -5,6 +5,7 @@ import android.content.pm.*
 import android.net.*
 import android.os.*
 import android.util.*
+import androidx.annotation.*
 import androidx.core.content.*
 import androidx.lifecycle.*
 import androidx.room.*
@@ -32,6 +33,10 @@ var logDb: LogDatabase? = null
 var netDb: NetworkDatabase? = null
 var session: RuntimeSessionEntity? = null
 lateinit var mainUncaughtExceptionHandler: ExceptionHandler
+@LayoutRes
+var backgroundLayoutResId = R.layout.background
+@IdRes
+var frameLayoutResId = R.id.layout_background
 
 val foregroundLifecycleOwner: LifecycleOwner?
     get() = TODO()

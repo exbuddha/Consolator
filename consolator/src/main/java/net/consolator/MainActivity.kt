@@ -9,14 +9,12 @@ import androidx.fragment.app.add
 import androidx.fragment.app.commit
 
 open class MainActivity : BaseActivity(), Provider {
-    override val backgroundLayoutResId = R.layout.background
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (savedInstanceState === null)
             supportFragmentManager.commit {
                 setReorderingAllowed(true)
-                add<MainFragment>(R.id.layout_background)
+                add<MainFragment>(frameLayoutResId)
                 setVisible(false)
             }
     }

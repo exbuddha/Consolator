@@ -29,7 +29,7 @@ import net.consolator.BaseApplication.Companion.ACTION_MIGRATE_APP
 import net.consolator.BaseApplication.Companion.ABORT_NAV_MAIN_UI
 import net.consolator.BaseApplication.Companion.COMMIT_NAV_MAIN_UI
 
-abstract class BaseFragment : Fragment() {
+abstract class BaseFragment : Fragment(backgroundLayoutResId) {
     protected abstract var overlay: (View, Bundle?) -> Pair<Fragment?, Int?>
     private inline fun transit(view: View, savedInstanceState: Bundle?, crossinline editor: BundleEditor) {
         val (overlay, transition) =
