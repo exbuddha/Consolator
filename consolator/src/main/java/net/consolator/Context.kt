@@ -22,6 +22,7 @@ import net.consolator.State.Pending
 import net.consolator.State.Resolved
 import android.Manifest.permission.ACCESS_NETWORK_STATE
 import android.Manifest.permission.INTERNET
+import androidx.core.content.ContextCompat.RECEIVER_EXPORTED
 import net.consolator.BaseApplication.Companion.ACTION_MIGRATE_APP
 
 var instance: BaseApplication? = null
@@ -122,7 +123,7 @@ suspend fun updateNetworkCapabilities(networkCapabilities: NetworkCapabilities) 
 }
 
 fun Context.registerReceiver(filter: IntentFilter) =
-    ContextCompat.registerReceiver(this, receiver, filter, null, Scheduler.clock?.handler, 0)
+    ContextCompat.registerReceiver(this, receiver, filter, null, Scheduler.clock?.handler, RECEIVER_EXPORTED)
 
 val Context.isNetworkStateAccessPermitted
     get() = isPermissionGranted(ACCESS_NETWORK_STATE)
