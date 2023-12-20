@@ -2,12 +2,10 @@ package net.consolator
 
 import android.app.*
 import android.content.*
-import android.os.*
-import java.io.*
 import net.consolator.Scheduler.Sequencer
 import net.consolator.Scheduler.clock
 
-open class BaseService : Service(), BaseServiceScope {
+open class BaseService : Service(), Scheduler.BaseServiceScope {
     override val ref: WeakContext? = null
         get() = field.unique(this)
     override var startTime = 0L
@@ -49,7 +47,7 @@ open class BaseService : Service(), BaseServiceScope {
         return mode!!
     }
 
-    override fun onBind(intent: Intent?): BaseServiceScope {
+    override fun onBind(intent: Intent?): BaseService {
         // ...
         return this
     }
@@ -62,55 +60,5 @@ open class BaseService : Service(), BaseServiceScope {
     companion object {
         val SVC_TAG
             get() = if (onMainThread()) "SERVICE" else "CLOCK"
-    }
-
-    override fun commit(step: CoroutineStep) = clockAhead(step::invoke)
-}
-
-interface BaseServiceScope : IBinder, SchedulerScope, SystemContext, UniqueContext {
-    fun getStartTimeExtra(intent: Intent?) =
-        intent?.getLongExtra(START_TIME_KEY, instance!!.startTime)!!
-
-    var mode: Int?
-    fun getModeExtra(intent: Intent?) =
-        intent?.getIntExtra(MODE_KEY, mode ?: Service.START_NOT_STICKY)!!
-
-    val hasMoreInitWork
-        get() = logDb === null || netDb === null
-    val hasNoMoreInitWork
-        get() = logDb !== null && netDb !== null
-
-    override fun getInterfaceDescriptor(): String? {
-        return null
-    }
-
-    override fun pingBinder(): Boolean {
-        return true
-    }
-
-    override fun isBinderAlive(): Boolean {
-        return false
-    }
-
-    override fun queryLocalInterface(descriptor: String): IInterface? {
-        return null
-    }
-
-    override fun dump(fd: FileDescriptor, args: Array<out String>?) {}
-
-    override fun dumpAsync(fd: FileDescriptor, args: Array<out String>?) {}
-
-    override fun transact(code: Int, data: Parcel, reply: Parcel?, flags: Int): Boolean {
-        return true
-    }
-
-    override fun linkToDeath(recipient: IBinder.DeathRecipient, flags: Int) {}
-
-    override fun unlinkToDeath(recipient: IBinder.DeathRecipient, flags: Int): Boolean {
-        return true
-    }
-
-    fun clearObjects() {
-        mode = null
     }
 }

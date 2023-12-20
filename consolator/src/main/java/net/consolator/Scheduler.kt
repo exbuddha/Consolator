@@ -4,6 +4,7 @@ import android.content.*
 import android.os.*
 import android.os.Process
 import androidx.lifecycle.*
+import java.io.*
 import java.lang.*
 import kotlin.annotation.AnnotationRetention.*
 import kotlin.annotation.AnnotationTarget.*
@@ -18,12 +19,13 @@ import net.consolator.Scheduler.Lock
 import net.consolator.Scheduler.Sequencer
 import net.consolator.application.*
 import net.consolator.BaseActivity.*
+import android.app.Service.START_NOT_STICKY
 import kotlinx.coroutines.Dispatchers.Default
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Dispatchers.Main
 import kotlinx.coroutines.Dispatchers.Unconfined
 
-interface SchedulerScope : CoroutineScope {
+sealed interface SchedulerScope : CoroutineScope {
     override val coroutineContext
         get() = Scheduler
     fun commit(step: CoroutineStep): Boolean
@@ -32,12 +34,7 @@ interface SchedulerScope : CoroutineScope {
 private interface SchedulerKey : CoroutineContext.Key<SchedulerElement>
 private interface SchedulerElement : CoroutineContext.Element
 private lateinit var _key: SchedulerKey
-private val _element by lazy {
-    object : SchedulerElement {
-        override val key
-            get() = _key
-    }
-}
+private lateinit var _element: SchedulerElement
 
 object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, StepObserver, (SchedulerWork) -> Unit {
     fun <T : Resolver> defer(resolver: KClass<out T>, provider: Any = resolver, vararg context: Any?): Unit? {
@@ -62,6 +59,54 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     private var activityNightModeChangeManager: NightModeChangeManager? = null
     private var activityLocalesChangeManager: LocalesChangeManager? = null
     var applicationMigrationResolver: Migration? = null
+
+    sealed interface BaseServiceScope : IBinder, SchedulerScope, SystemContext, UniqueContext {
+        fun getStartTimeExtra(intent: Intent?) =
+            intent?.getLongExtra(START_TIME_KEY, instance!!.startTime)!!
+
+        var mode: Int?
+        fun getModeExtra(intent: Intent?) =
+            intent?.getIntExtra(MODE_KEY, mode ?: START_NOT_STICKY)!!
+
+        val hasMoreInitWork
+            get() = logDb === null || netDb === null
+
+        override fun commit(step: CoroutineStep) = clockAhead(step::invoke)
+
+        fun clearObjects() {
+            mode = null
+        }
+
+        override fun getInterfaceDescriptor(): String? {
+            return null
+        }
+
+        override fun pingBinder(): Boolean {
+            return true
+        }
+
+        override fun isBinderAlive(): Boolean {
+            return false
+        }
+
+        override fun queryLocalInterface(descriptor: String): IInterface? {
+            return null
+        }
+
+        override fun dump(fd: FileDescriptor, args: Array<out String>?) {}
+
+        override fun dumpAsync(fd: FileDescriptor, args: Array<out String>?) {}
+
+        override fun transact(code: Int, data: Parcel, reply: Parcel?, flags: Int): Boolean {
+            return true
+        }
+
+        override fun linkToDeath(recipient: IBinder.DeathRecipient, flags: Int) {}
+
+        override fun unlinkToDeath(recipient: IBinder.DeathRecipient, flags: Int): Boolean {
+            return true
+        }
+    }
 
     open class Clock(
         name: String,
@@ -733,7 +778,13 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     fun trySafelyForAnnotatedEventOf(step: KFunction<*>) =
         trySafelyForResult { annotatedEventOf(step) }
 
-    init { _key = object : SchedulerKey {} }
+    init {
+        _key = object : SchedulerKey {}
+        _element = object : SchedulerElement {
+            override val key
+                get() = _key
+        }
+    }
 
     override fun <R> fold(initial: R, operation: (R, CoroutineContext.Element) -> R): R {
         // context expansion by attachment: register operation callback.
@@ -1208,7 +1259,7 @@ sealed interface State {
     operator fun plus(state: Any): State {
         when {
             this === State[2] && state is Pending ->
-                if (service?.hasNoMoreInitWork == true)
+                if (service?.hasMoreInitWork == false)
                     State[2] = Succeeded
         }
         return this

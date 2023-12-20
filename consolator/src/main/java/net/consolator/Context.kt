@@ -140,13 +140,6 @@ fun Context.weakRef() = when (this) {
     else -> WeakReference(this)
 }
 fun <T : Context> WeakReference<out T>?.unique(context: T) = this ?: WeakReference(context)
-
-fun now() = java.util.Calendar.getInstance().timeInMillis
-fun getDelayTime(interval: Long, last: Long) =
-    last + interval - now()
-fun isTimeIntervalExceeded(interval: Long, last: Long) =
-    (now() - last) >= interval || last == 0L
-
 interface UniqueContext { var startTime: Long }
 typealias ContextStep = suspend Context.() -> Unit
 
@@ -188,6 +181,12 @@ suspend fun delayOrYield(dt: Long = 0L) {
     if (dt > 0) delay(dt)
     else if (dt == 0L) yield()
 }
+
+fun now() = java.util.Calendar.getInstance().timeInMillis
+fun getDelayTime(interval: Long, last: Long) =
+    last + interval - now()
+fun isTimeIntervalExceeded(interval: Long, last: Long) =
+    (now() - last) >= interval || last == 0L
 
 inline fun <R> trySafely(block: () -> R) =
     try { block() } catch (_: Throwable) {}
