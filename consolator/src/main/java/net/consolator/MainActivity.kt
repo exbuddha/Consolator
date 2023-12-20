@@ -4,9 +4,9 @@ import android.content.Context
 import android.content.res.Configuration
 import android.os.Bundle
 import androidx.core.os.LocaleListCompat
-import kotlin.reflect.KClass
 import androidx.fragment.app.add
 import androidx.fragment.app.commit
+import kotlin.reflect.KClass
 
 open class MainActivity : BaseActivity(), Provider {
     override fun onCreate(savedInstanceState: Bundle?) {

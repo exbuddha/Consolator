@@ -33,6 +33,7 @@ var logDb: LogDatabase? = null
 var netDb: NetworkDatabase? = null
 var session: RuntimeSessionEntity? = null
 lateinit var mainUncaughtExceptionHandler: ExceptionHandler
+
 @LayoutRes
 var backgroundLayoutId = R.layout.background
 @IdRes
