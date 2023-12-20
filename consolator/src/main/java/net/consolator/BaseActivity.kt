@@ -16,7 +16,7 @@ abstract class BaseActivity : AppCompatActivity(), SystemContext {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (savedInstanceState === null) {
-            setContentView(backgroundLayoutId)
+            setContentView(layoutId)
             if (isNetworkStateAccessPermitted) {
                 enableNetworkCallbacks = ::registerNetworkCallback
                 disableNetworkCallbacks = ::unregisterNetworkCallback

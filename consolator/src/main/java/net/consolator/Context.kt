@@ -36,11 +36,11 @@ var session: RuntimeSessionEntity? = null
 lateinit var mainUncaughtExceptionHandler: ExceptionHandler
 
 @LayoutRes
-var backgroundLayoutId = R.layout.background
+var layoutId = R.layout.background
 @IdRes
 var containerViewId = R.id.layout_background
 @LayoutRes
-var frameLayoutId = R.layout.background
+var contentLayoutId = R.layout.background
 
 val foregroundLifecycleOwner: LifecycleOwner?
     get() = TODO()
