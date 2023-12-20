@@ -968,22 +968,31 @@ private suspend fun SequencerScope.reset() = Scheduler.sequencer!!.reset()
 
 private fun CoroutineContext.isSchedulerContext() =
     this is Scheduler || this[_key] is SchedulerKey
-private fun CoroutineScope.workerGroupOf(
+private fun CoroutineScope.determineCoroutine(
     owner: LifecycleOwner,
     context: CoroutineContext,
     start: CoroutineStart,
     step: CoroutineStep) =
-    if (context.isSchedulerContext()) context
-    else Scheduler + context
-private fun LifecycleOwner.trySafelyForAnnotatedScopeOf(step: CoroutineStep) =
+    this to Triple(
+        if (context.isSchedulerContext()) context
+        else Scheduler + context,
+        start,
+        step)
+private fun LifecycleOwner.determineScope(step: CoroutineStep) =
     Scheduler.trySafelyForAnnotatedScopeOf(step) ?:
     lifecycleScope
+private fun LifecycleOwner.determineScopeAndCoroutine(
+    owner: LifecycleOwner,
+    context: CoroutineContext,
+    start: CoroutineStart,
+    step: CoroutineStep) =
+    determineScope(step).determineCoroutine(this, context, start, step)
 fun LifecycleOwner.launch(
     context: CoroutineContext = Scheduler,
     start: CoroutineStart = CoroutineStart.DEFAULT,
     step: CoroutineStep) =
-    trySafelyForAnnotatedScopeOf(step).run {
-        launch(workerGroupOf(this@launch, context, start, step), start, step) }
+    determineScopeAndCoroutine(this, context, start, step).run {
+        first.launch(second.first, second.second, second.third) }
 fun LifecycleOwner.relaunch(
     instance: JobKProperty,
     context: CoroutineContext = Scheduler,
