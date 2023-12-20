@@ -34,9 +34,11 @@ var netDb: NetworkDatabase? = null
 var session: RuntimeSessionEntity? = null
 lateinit var mainUncaughtExceptionHandler: ExceptionHandler
 @LayoutRes
-var backgroundLayoutResId = R.layout.background
+var backgroundLayoutId = R.layout.background
 @IdRes
-var frameLayoutResId = R.id.layout_background
+var containerViewId = R.id.layout_background
+@LayoutRes
+var frameLayoutId = R.layout.background
 
 val foregroundLifecycleOwner: LifecycleOwner?
     get() = TODO()

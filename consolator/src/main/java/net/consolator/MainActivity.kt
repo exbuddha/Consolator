@@ -14,7 +14,7 @@ open class MainActivity : BaseActivity(), Provider {
         if (savedInstanceState === null)
             supportFragmentManager.commit {
                 setReorderingAllowed(true)
-                add<MainFragment>(frameLayoutResId)
+                add<MainFragment>(containerViewId)
                 setVisible(false)
             }
     }
