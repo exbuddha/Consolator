@@ -8,7 +8,7 @@ open class BaseApplication : Application(), UniqueContext {
     override var startTime = now()
 
     override fun onCreate() {
-        mainUncaughtExceptionHandler = @Tag("uncaught-shared") ExceptionHandler { th, ex ->
+        mainUncaughtExceptionHandler[0] = @Tag("uncaught-shared") ExceptionHandler { th, ex ->
             with(getSharedPreferences("uncaught", MODE_PRIVATE).edit()) {
                 putLong("start", startTime)
                 putLong("now", now())

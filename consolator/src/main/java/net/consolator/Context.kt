@@ -144,11 +144,11 @@ interface UniqueContext { var startTime: Long }
 typealias ContextStep = suspend Context.() -> Unit
 
 private typealias ExceptionHandler = Thread.UncaughtExceptionHandler
-private operator fun ExceptionHandler.plusAssign(other: ExceptionHandler) {}
-private operator fun ExceptionHandler.minusAssign(other: String) {}
-private operator fun ExceptionHandler.plus(other: String): ExceptionHandler = this
-private operator fun ExceptionHandler.minus(other: String): ExceptionHandler = this
-private operator fun ExceptionHandler.set(index: Int, other: ExceptionHandler) {}
+operator fun ExceptionHandler.set(index: Int, other: ExceptionHandler) {}
+operator fun ExceptionHandler.plusAssign(other: ExceptionHandler) {}
+operator fun ExceptionHandler.minusAssign(other: String) {}
+operator fun ExceptionHandler.plus(other: String): ExceptionHandler = this
+operator fun ExceptionHandler.minus(other: String): ExceptionHandler = this
 
 typealias BundleEditor = Bundle.() -> Unit
 
