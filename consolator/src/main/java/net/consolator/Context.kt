@@ -68,7 +68,7 @@ fun Context.stageSessionCreated() {
 }
 
 fun Context.stageLogDbCreated() {
-    mainUncaughtExceptionHandler[0] = @Tag("uncaught-db") ExceptionHandler { th, ex ->
+    mainUncaughtExceptionHandler = @Tag("uncaught-db") ExceptionHandler { th, ex ->
         // record in db safely
     }
     State[2] += Pending
@@ -147,14 +147,6 @@ interface UniqueContext { var startTime: Long }
 typealias ContextStep = suspend Context.() -> Unit
 
 private typealias ExceptionHandler = Thread.UncaughtExceptionHandler
-operator fun ExceptionHandler.set(index: Int, other: ExceptionHandler) {
-    mainUncaughtExceptionHandler = other
-}
-operator fun ExceptionHandler.plusAssign(other: ExceptionHandler) {}
-operator fun ExceptionHandler.minusAssign(other: String) {}
-operator fun ExceptionHandler.plus(other: String): ExceptionHandler = this
-operator fun ExceptionHandler.minus(other: String): ExceptionHandler = this
-
 typealias BundleEditor = Bundle.() -> Unit
 
 typealias AnyArray = Array<out Any?>
