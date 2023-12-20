@@ -9,9 +9,9 @@ import net.consolator.BaseApplication.Companion.ABORT_NAV_MAIN_UI
 import net.consolator.BaseApplication.Companion.COMMIT_NAV_MAIN_UI
 
 class MainFragment : BaseFragment() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         // show animation or progress bar
+        super.onViewCreated(view, savedInstanceState)
         parentFragmentManager.commit {
             show(this@MainFragment)
         }
