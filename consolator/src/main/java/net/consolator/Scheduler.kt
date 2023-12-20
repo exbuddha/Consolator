@@ -319,7 +319,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             val (step, _, async) = work
             try {
                 step().let { step ->
-                    latestStep = step
+                    latestStep = step // buggy!
                     step?.observeForever(observer) ?:
                     return null
                 }
