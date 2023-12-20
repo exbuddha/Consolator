@@ -123,7 +123,9 @@ suspend fun updateNetworkCapabilities(networkCapabilities: NetworkCapabilities) 
 }
 
 fun Context.registerReceiver(filter: IntentFilter) =
-    ContextCompat.registerReceiver(this, receiver, filter, null, Scheduler.clock?.handler, RECEIVER_EXPORTED)
+    ContextCompat.registerReceiver(this, receiver, filter, null,
+        Scheduler.clock!!.alsoStart().handler,
+        RECEIVER_EXPORTED)
 
 val Context.isNetworkStateAccessPermitted
     get() = isPermissionGranted(ACCESS_NETWORK_STATE)
