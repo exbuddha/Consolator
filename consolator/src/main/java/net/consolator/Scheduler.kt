@@ -140,14 +140,22 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             handler = object : Handler(looper) {
                 override fun handleMessage(msg: Message) {
                     super.handleMessage(msg)
-                    commit { turn(msg) }
+                    turn(msg)
                 }
             }
             commit { queue.run() }
         }
         private fun turn(msg: Message) {
-            queue.run(msg) || return
-            msg.callback.run()
+            if (isSynchronized(msg))
+                commit {
+                    queue.run(msg) || return@commit
+                    msg.callback.run()
+                }
+            else
+                msg.callback.run()
+        }
+        private fun isSynchronized(msg: Message): Boolean {
+            return true
         }
         private fun RunnableList.run(msg: Message? = null): Boolean {
             onEach {
@@ -319,7 +327,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             val (step, _, async) = work
             try {
                 step().let { step ->
-                    latestStep = step // buggy!
+                    latestStep = step // buggy! must map to tag on attach
                     step?.observeForever(observer) ?:
                     return null
                 }
@@ -1167,6 +1175,7 @@ private typealias SchedulerNode = KClass<out Annotation>
 private typealias SchedulerPath = Array<KClass<out Throwable>>
 private typealias SchedulerWork = Scheduler.() -> Unit
 private typealias DescriptiveStep = suspend SchedulerScope.(Job) -> Unit
+
 private typealias SequencerWork = Sequencer.() -> Unit
 typealias SequencerScope = LiveDataScope<Step?>
 private typealias SequencerStep = suspend SequencerScope.() -> Unit
