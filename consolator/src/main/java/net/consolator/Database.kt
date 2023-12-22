@@ -17,6 +17,7 @@ abstract class AppDatabase : RoomDatabase() {
         const val CURRENT_TIMESTAMP = "CURRENT_TIMESTAMP"
         const val ID = "_id"
         const val DB_TAG = "DATABASE"
+        const val STAGE_BUILD = "app-db.build"
     }
 }
 
@@ -40,6 +41,7 @@ data class RuntimeSessionEntity(
         const val DB_TIME = "db_time"
         const val BUILD_INFO = "build_info"
         const val TABLE = "sessions"
+        const val STAGE_BUILD = "session.build"
     }
 }
 

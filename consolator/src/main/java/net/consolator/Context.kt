@@ -59,11 +59,13 @@ fun Context.changeGlobally(ref: WeakContext = weakRef()!!, owner: LifecycleOwner
     signal(stage)
 
 @Event(ACTION_MIGRATE_APP)
+@Diverging([AppDatabase.STAGE_BUILD])
 fun Context.stageDbCreated() {
     // bootstrap
 }
 
 @Event(ACTION_MIGRATE_APP)
+@Diverging([RuntimeSessionEntity.STAGE_BUILD])
 fun Context.stageSessionCreated() {
     // update db records
     State[1] = Resolved

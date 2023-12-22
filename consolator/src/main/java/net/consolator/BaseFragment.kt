@@ -83,7 +83,7 @@ abstract class BaseFragment : Fragment(contentLayoutId) {
             pathwise = [ FromLastCancellation::class ]
         ) @Tag("view.attach") {
             registerContext(context)
-        } then @LaunchScope @Parallel @Path("app-db.build") {
+        } then @LaunchScope @Parallel @Path(AppDatabase.STAGE_BUILD) {
             tryCancelingSuspended(retrieveContext(), Context::buildAppDatabase)
         } then @Scope @Signaling {
             change(Context::stageDbCreated)
@@ -91,7 +91,7 @@ abstract class BaseFragment : Fragment(contentLayoutId) {
             db !== null
         } otherwise(
             SchedulerScope::retry
-        ) then @LaunchScope @Path("session.build") {
+        ) then @LaunchScope @Path(RuntimeSessionEntity.STAGE_BUILD) {
             tryCancelingSuspended(::buildSession)
         } then @Scope @Signaling {
             change(Context::stageSessionCreated)
