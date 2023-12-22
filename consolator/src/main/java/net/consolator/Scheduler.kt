@@ -992,7 +992,7 @@ private fun CoroutineScope.determineCoroutine(
     step: CoroutineStep) =
     Triple(
         if (context.isSchedulerContext()) context
-        else Scheduler + context,
+        else Scheduler + context, // buggy! must return background io context by jit reconfiguration
         start,
         step)
 private fun LifecycleOwner.determineScope(step: CoroutineStep) =
