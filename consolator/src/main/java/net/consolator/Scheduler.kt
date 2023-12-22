@@ -143,7 +143,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
                     turn(msg)
                 }
             }
-            commit { queue.run() }
+            queue.run()
         }
         private fun turn(msg: Message) {
             if (isSynchronized(msg))
@@ -151,8 +151,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
                     queue.run(msg) || return@commit
                     msg.callback.run()
                 }
-            else
-                msg.callback.run()
+            else msg.callback.run()
         }
         private fun isSynchronized(msg: Message): Boolean {
             return true
