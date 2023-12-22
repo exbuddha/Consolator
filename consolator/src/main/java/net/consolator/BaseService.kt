@@ -2,7 +2,6 @@ package net.consolator
 
 import android.app.*
 import android.content.*
-import net.consolator.Scheduler.Sequencer
 import net.consolator.Scheduler.clock
 
 open class BaseService : Service(), Scheduler.BaseServiceScope {
@@ -62,3 +61,5 @@ open class BaseService : Service(), Scheduler.BaseServiceScope {
             get() = if (onMainThread()) "SERVICE" else "CLOCK"
     }
 }
+
+typealias Sequencer = Scheduler.Sequencer

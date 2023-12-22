@@ -20,7 +20,7 @@ open class BaseApplication : Application(), UniqueContext {
         super.onCreate()
         instance = this
         Scheduler {
-            clock = Scheduler.Clock("svc", Thread.MAX_PRIORITY)
+            clock = Clock("svc", Thread.MAX_PRIORITY)
                 .alsoStart()
             observe()
         }
@@ -52,3 +52,5 @@ open class BaseApplication : Application(), UniqueContext {
         const val ABORT_NAV_MAIN_UI: Short = 3
     }
 }
+
+typealias Clock = Scheduler.Clock
