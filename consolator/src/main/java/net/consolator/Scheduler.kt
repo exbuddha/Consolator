@@ -981,7 +981,7 @@ private fun CoroutineScope.determineCoroutine(
     context: CoroutineContext,
     start: CoroutineStart,
     step: CoroutineStep) =
-    this to Triple(
+    Triple(
         if (context.isSchedulerContext()) context
         else Scheduler + context,
         start,
@@ -994,13 +994,15 @@ private fun LifecycleOwner.determineScopeAndCoroutine(
     context: CoroutineContext,
     start: CoroutineStart,
     step: CoroutineStep) =
-    determineScope(step).determineCoroutine(this, context, start, step)
+    determineScope(step).run {
+        this to determineCoroutine(this@determineScopeAndCoroutine, context, start, step) }
 fun LifecycleOwner.launch(
     context: CoroutineContext = Scheduler,
     start: CoroutineStart = CoroutineStart.DEFAULT,
     step: CoroutineStep) =
     determineScopeAndCoroutine(this, context, start, step).run {
-        first.launch(second.first, second.second, second.third) }
+        with(second) {
+            this@run.first.launch(first, second, third) } }
 fun LifecycleOwner.relaunch(
     instance: JobKProperty,
     context: CoroutineContext = Scheduler,
