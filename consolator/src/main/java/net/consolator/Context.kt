@@ -17,6 +17,7 @@ import kotlin.reflect.*
 import kotlinx.coroutines.*
 import com.google.gson.Gson
 import net.consolator.Scheduler.Event
+import net.consolator.Scheduler.Path.Diverging
 import net.consolator.Scheduler.EventBus.signal
 import net.consolator.State.Pending
 import net.consolator.State.Resolved
@@ -24,6 +25,7 @@ import android.Manifest.permission.ACCESS_NETWORK_STATE
 import android.Manifest.permission.INTERNET
 import androidx.core.content.ContextCompat.RECEIVER_EXPORTED
 import net.consolator.BaseApplication.Companion.ACTION_MIGRATE_APP
+import net.consolator.Scheduler.clock
 
 var instance: BaseApplication? = null
 var service: BaseService? = null
@@ -67,6 +69,7 @@ fun Context.stageSessionCreated() {
     State[1] = Resolved
 }
 
+@Diverging([LogDatabase.STAGE_BUILD])
 fun Context.stageLogDbCreated() {
     mainUncaughtExceptionHandler = @Tag("uncaught-db") ExceptionHandler { th, ex ->
         // record in db safely
@@ -74,6 +77,7 @@ fun Context.stageLogDbCreated() {
     State[2] += Pending
 }
 
+@Diverging([NetworkDatabase.STAGE_BUILD])
 fun Context.stageNetDbInitialized() {
     // update net function pointers
     State[2] += Pending
@@ -124,7 +128,7 @@ suspend fun updateNetworkCapabilities(networkCapabilities: NetworkCapabilities) 
 
 fun Context.registerReceiver(filter: IntentFilter) =
     ContextCompat.registerReceiver(this, receiver, filter, null,
-        Scheduler.clock!!.alsoStart().handler,
+        clock!!.alsoStart().handler,
         RECEIVER_EXPORTED)
 
 val Context.isNetworkStateAccessPermitted

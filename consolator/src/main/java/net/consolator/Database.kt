@@ -82,6 +82,9 @@ abstract class RuntimeDao {
 @File("log.db")
 abstract class LogDatabase : RoomDatabase() {
     abstract fun logDao(): LogDao
+    companion object {
+        const val STAGE_BUILD = "log-db.build"
+    }
 }
 
 @Entity(tableName = ThreadEntity.TABLE)
@@ -182,6 +185,9 @@ abstract class LogDao
 @File("net.db")
 abstract class NetworkDatabase : RoomDatabase() {
     abstract fun networkDao(): NetworkDao
+    companion object {
+        const val STAGE_BUILD = "net-db.build"
+    }
 }
 
 @Entity(tableName = NetworkStateEntity.TABLE)

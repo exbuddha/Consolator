@@ -24,6 +24,8 @@ import kotlinx.coroutines.Dispatchers.Default
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Dispatchers.Main
 import kotlinx.coroutines.Dispatchers.Unconfined
+import net.consolator.Scheduler.clock
+import net.consolator.Scheduler.sequencer
 
 sealed interface SchedulerScope : CoroutineScope {
     override val coroutineContext
@@ -355,6 +357,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             step?.removeObserver(observer)
             isObserving = false
         }
+        fun resetByTag(tag: String) {}
         fun cancel(ex: Throwable) {
             isCancelled = true
             this.ex = ex
@@ -875,8 +878,8 @@ fun service(step: CoroutineStep) {
         }?.call(scope, step)
     }
 }
-fun clock(callback: Runnable) = Scheduler.clock!!.post(callback)
-fun clockAhead(callback: Runnable) = Scheduler.clock!!.postAhead(callback)
+fun clock(callback: Runnable) = clock!!.post(callback)
+fun clockAhead(callback: Runnable) = clock!!.postAhead(callback)
 fun <T> clock(step: suspend CoroutineScope.() -> T) = clock(runnableOf(step))
 fun <T> clockAhead(step: suspend CoroutineScope.() -> T) = clockAhead(runnableOf(step))
 fun <T> clockSafely(step: suspend CoroutineScope.() -> T) = clock(safeRunnableOf(step))
@@ -924,7 +927,7 @@ inline fun <T, R, S : R> T.commitAsyncBlockingForResult(lock: Any, crossinline p
         }
     else runBlocking { fallback() }
 
-inline fun <R> sequencer(block: Sequencer.() -> R) = Scheduler.sequencer!!.block()
+inline fun <R> sequencer(block: Sequencer.() -> R) = sequencer!!.block()
 fun <T, R> capture(context: CoroutineContext, step: suspend LiveDataScope<T>.() -> Unit, capture: (T) -> R) =
     liveData(context, block = step) to capture
 fun <T, R> ioCapture(step: suspend LiveDataScope<T>.() -> Unit, capture: (T) -> R) =
@@ -960,7 +963,8 @@ private fun <T, R> disposerOf(liveStep: Pair<LiveData<T>, (T) -> R>) = object : 
     }
 }
 
-suspend fun SequencerScope.change(stage: ContextStep) = emitResetting {
+private fun tagOf(stage: ContextStep): String = TODO()
+suspend fun SequencerScope.change(stage: ContextStep) = emitResettingByTag(tagOf(stage)) {
     EventBus.signal(stage)
 }
 suspend fun SequencerScope.change(transit: Short) = emitResetting {
@@ -970,8 +974,14 @@ private suspend inline fun <R> SequencerScope.emitResetting(block: () -> R): R {
     emitReset()
     return block()
 }
+private suspend inline fun <R> SequencerScope.emitResettingByTag(tag: String, block: () -> R): R {
+    emitResetByTag(tag)
+    return block()
+}
 suspend fun SequencerScope.emitReset() = emit { reset() }
-private suspend fun SequencerScope.reset() = Scheduler.sequencer!!.reset()
+suspend fun SequencerScope.emitResetByTag(tag: String) = emit { resetByTag(tag) }
+private suspend fun SequencerScope.reset() = sequencer!!.reset()
+private suspend fun SequencerScope.resetByTag(tag: String) = sequencer!!.resetByTag(tag)
 
 private fun CoroutineContext.isSchedulerContext() =
     this is Scheduler || this[_key] is SchedulerKey
