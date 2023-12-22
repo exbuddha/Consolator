@@ -60,6 +60,7 @@ fun unregisterInternetCallback() {
 }
 private fun clearInternetCallbackObjects() {
     networkCaller = null
+    netCall = null
 }
 
 @JobTreeRoot @NetworkListener @Tag(INET)
@@ -91,7 +92,7 @@ private var networkCallFunction: JobFunction = @Tag(INET_FUNCTION) { scope ->
 }
 
 @Tag(INET_CALL)
-lateinit var netCall: Call
+var netCall: Call? = null
     private set
 private var reactToNetCallResponseReceived: JobResponseFunction = @Tag(INET_SUCCESS) { _, response ->
     with(response) {
@@ -148,7 +149,7 @@ fun buildHttpRequest(
             .method(method, body)
             .build())
 
-private typealias NetCall = KCallable<Call>
+private typealias NetCall = KCallable<Call?>
 operator fun NetCall.get(cmd: String): Any? = when (cmd) {
     INET_CALL -> this
     INET_FUNCTION -> networkCallFunction
@@ -179,7 +180,7 @@ private typealias Respond = (Response) -> Unit
 private fun NetCall.commit(scope: Any?, block: Work) { synchronized(this, block) }
 private fun NetCall.exec(cmd: String = INET_CALL, respond: Respond) {
     markTag()
-    respond(this[cmd].asType<NetCall>()!!.call().execute())
+    respond(this[cmd].asType<NetCall>()!!.call()!!.execute())
 }
 private typealias JobResponseFunction = (Any?, Response) -> Unit
 private fun JobResponseFunction.commit(scope: Any?, response: Response) {
