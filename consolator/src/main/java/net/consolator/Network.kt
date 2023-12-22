@@ -63,7 +63,8 @@ private fun clearInternetCallbackObjects() {
     netCall = null
 }
 
-@JobTreeRoot @NetworkListener @Tag(INET)
+@JobTreeRoot @NetworkListener
+@Tag(INET)
 var networkCaller: Job? = null
     set(value) {
         // update addressable layer?
