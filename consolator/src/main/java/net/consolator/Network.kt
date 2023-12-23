@@ -133,7 +133,7 @@ private val isNetCallTimeIntervalExceeded
     get() = isTimeIntervalExceeded(netCallTimeInterval, lastNetCallResponseTime)
 private var repeatNetCallback = true
 
-private fun buildNetCallRequest(cmd: String) = buildHttpRequest(cmd)
+fun buildNetCallRequest(cmd: String) = buildHttpRequest(cmd)
 fun buildHttpRequest(
     cmd: String,
     method: String = "GET",
