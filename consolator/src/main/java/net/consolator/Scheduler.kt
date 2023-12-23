@@ -205,10 +205,10 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         fun ioResettingLastly(async: Boolean = false, step: SequencerStep) = io(async, resettingLastly(step))
         fun ioResettingFirstly(index: Int, async: Boolean = false, step: SequencerStep) = io(index, async, resettingFirstly(step))
         fun ioResettingLastly(index: Int, async: Boolean = false, step: SequencerStep) = io(index, async, resettingLastly(step))
-        fun ioStartResettingFirstly(step: SequencerStep) = io(false, resettingFirstly(step)).also { start() }
-        fun ioStartResettingLastly(step: SequencerStep) = io(false, resettingLastly(step)).also { start() }
-        fun ioResumeResettingFirstly(async: Boolean = false, step: SequencerStep) = io(async, resettingFirstly(step)).also { resume() }
-        fun ioResumeResettingLastly(async: Boolean = false, step: SequencerStep) = io(async, resettingLastly(step)).also { resume() }
+        fun ioStartResettingFirstly(step: SequencerStep) = ioResettingFirstly(false, step).also { start() }
+        fun ioStartResettingLastly(step: SequencerStep) = ioResettingLastly(false, step).also { start() }
+        fun ioResumeResettingFirstly(async: Boolean = false, step: SequencerStep) = ioResettingFirstly(async, step).also { resume() }
+        fun ioResumeResettingLastly(async: Boolean = false, step: SequencerStep) = ioResettingLastly(async, step).also { resume() }
         fun ioAfterResettingFirstly(async: Boolean = false, step: SequencerStep) = ioAfter(async, resettingFirstly(step))
         fun ioAfterResettingLastly(async: Boolean = false, step: SequencerStep) = ioAfter(async, resettingLastly(step))
         fun ioBeforeResettingFirstly(async: Boolean = false, step: SequencerStep) = ioBefore(async, resettingFirstly(step))
@@ -224,10 +224,10 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         fun mainResettingLastly(async: Boolean = false, step: SequencerStep) = main(async, resettingLastly(step))
         fun mainResettingFirstly(index: Int, async: Boolean = false, step: SequencerStep) = main(index, async, resettingFirstly(step))
         fun mainResettingLastly(index: Int, async: Boolean = false, step: SequencerStep) = main(index, async, resettingLastly(step))
-        fun mainStartResettingFirstly(step: SequencerStep) = main(false, resettingFirstly(step)).also { start() }
-        fun mainStartResettingLastly(step: SequencerStep) = main(false, resettingLastly(step)).also { start() }
-        fun mainResumeResettingFirstly(async: Boolean = false, step: SequencerStep) = main(async, resettingFirstly(step)).also { resume() }
-        fun mainResumeResettingLastly(async: Boolean = false, step: SequencerStep) = main(async, resettingLastly(step)).also { resume() }
+        fun mainStartResettingFirstly(step: SequencerStep) = mainResettingFirstly(false, step).also { start() }
+        fun mainStartResettingLastly(step: SequencerStep) = mainResettingLastly(false, step).also { start() }
+        fun mainResumeResettingFirstly(async: Boolean = false, step: SequencerStep) = mainResettingFirstly(async, step).also { resume() }
+        fun mainResumeResettingLastly(async: Boolean = false, step: SequencerStep) = mainResettingLastly(async, step).also { resume() }
         fun mainAfterResettingFirstly(async: Boolean = false, step: SequencerStep) = mainAfter(async, resettingFirstly(step))
         fun mainAfterResettingLastly(async: Boolean = false, step: SequencerStep) = mainAfter(async, resettingLastly(step))
         fun mainBeforeResettingFirstly(async: Boolean = false, step: SequencerStep) = mainBefore(async, resettingFirstly(step))
@@ -243,10 +243,10 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         fun defaultResettingLastly(async: Boolean = false, step: SequencerStep) = default(async, resettingLastly(step))
         fun defaultResettingFirstly(index: Int, async: Boolean = false, step: SequencerStep) = default(index, async, resettingFirstly(step))
         fun defaultResettingLastly(index: Int, async: Boolean = false, step: SequencerStep) = default(index, async, resettingLastly(step))
-        fun defaultStartResettingFirstly(step: SequencerStep) = default(false, resettingFirstly(step)).also { start() }
-        fun defaultStartResettingLastly(step: SequencerStep) = default(false, resettingLastly(step)).also { start() }
-        fun defaultResumeResettingFirstly(async: Boolean = false, step: SequencerStep) = default(async, resettingFirstly(step)).also { resume() }
-        fun defaultResumeResettingLastly(async: Boolean = false, step: SequencerStep) = default(async, resettingLastly(step)).also { resume() }
+        fun defaultStartResettingFirstly(step: SequencerStep) = defaultResettingFirstly(false, step).also { start() }
+        fun defaultStartResettingLastly(step: SequencerStep) = defaultResettingLastly(false, step).also { start() }
+        fun defaultResumeResettingFirstly(async: Boolean = false, step: SequencerStep) = defaultResettingFirstly(async, step).also { resume() }
+        fun defaultResumeResettingLastly(async: Boolean = false, step: SequencerStep) = defaultResettingLastly(async, step).also { resume() }
         fun defaultAfterResettingFirstly(async: Boolean = false, step: SequencerStep) = defaultAfter(async, resettingFirstly(step))
         fun defaultAfterResettingLastly(async: Boolean = false, step: SequencerStep) = defaultAfter(async, resettingLastly(step))
         fun defaultBeforeResettingFirstly(async: Boolean = false, step: SequencerStep) = defaultBefore(async, resettingFirstly(step))
@@ -262,10 +262,10 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         fun unconfinedResettingLastly(async: Boolean = false, step: SequencerStep) = unconfined(async, resettingLastly(step))
         fun unconfinedResettingFirstly(index: Int, async: Boolean = false, step: SequencerStep) = unconfined(index, async, resettingFirstly(step))
         fun unconfinedResettingLastly(index: Int, async: Boolean = false, step: SequencerStep) = unconfined(index, async, resettingLastly(step))
-        fun unconfinedStartResettingFirstly(step: SequencerStep) = unconfined(false, resettingFirstly(step)).also { start() }
-        fun unconfinedStartResettingLastly(step: SequencerStep) = unconfined(false, resettingLastly(step)).also { start() }
-        fun unconfinedResumeResettingFirstly(async: Boolean = false, step: SequencerStep) = unconfined(async, resettingFirstly(step)).also { resume() }
-        fun unconfinedResumeResettingLastly(async: Boolean = false, step: SequencerStep) = unconfined(async, resettingLastly(step)).also { resume() }
+        fun unconfinedStartResettingFirstly(step: SequencerStep) = unconfinedResettingFirstly(false, step).also { start() }
+        fun unconfinedStartResettingLastly(step: SequencerStep) = unconfinedResettingLastly(false, step).also { start() }
+        fun unconfinedResumeResettingFirstly(async: Boolean = false, step: SequencerStep) = unconfinedResettingFirstly(async, step).also { resume() }
+        fun unconfinedResumeResettingLastly(async: Boolean = false, step: SequencerStep) = unconfinedResettingLastly(async, step).also { resume() }
         fun unconfinedAfterResettingFirstly(async: Boolean = false, step: SequencerStep) = unconfinedAfter(async, resettingFirstly(step))
         fun unconfinedAfterResettingLastly(async: Boolean = false, step: SequencerStep) = unconfinedAfter(async, resettingLastly(step))
         fun unconfinedBeforeResettingFirstly(async: Boolean = false, step: SequencerStep) = unconfinedBefore(async, resettingFirstly(step))
