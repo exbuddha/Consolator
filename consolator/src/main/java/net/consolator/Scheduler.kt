@@ -387,8 +387,9 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
                 exception(ex)
                 throw interrupt(ex)
             }
-        private fun resettingFirstly(step: SequencerStep) = SequencerScope::emitReset then step
-        private fun resettingLastly(step: SequencerStep) = step then SequencerScope::emitReset
+        private fun resettingFirstly(step: SequencerStep) = step after { emitResetByTag(tagOf(step)) }
+        private fun resettingLastly(step: SequencerStep) = step then { emitResetByTag(tagOf(step)) }
+        private fun tagOf(step: SequencerStep): String = TODO()
 
         var isActive = false
         var isObserving = false
@@ -1147,6 +1148,10 @@ infix fun <T, R, S> (suspend T.() -> R).thru(next: suspend (R) -> S): suspend T.
 }
 fun <T, R> (suspend T.() -> R).given(predicate: Predicate, fallback: R): suspend T.() -> R = {
     if (predicate()) this@given() else fallback
+}
+infix fun <T, R, S> (suspend T.() -> R).after(prev: suspend T.() -> S): suspend T.() -> R = {
+    prev()
+    this@after()
 }
 
 infix fun <R, S> (() -> R).then(next: () -> S): () -> S = {
