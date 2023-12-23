@@ -272,7 +272,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         fun unconfinedBeforeResettingLastly(async: Boolean = false, step: SequencerStep) = unconfinedBefore(async, resettingLastly(step))
 
         private fun mark(step: SequencerStep) =
-            step.apply { asCallable().markTag() }
+            step.apply { asCallable().markTag() } // record step <-> tag
         private fun SequencerStep.asCallable(): KCallable<*> = TODO()
 
         private constructor(observer: StepObserver) { this.observer = observer }
@@ -328,7 +328,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             val (step, _, async) = work
             try {
                 step().let { step ->
-                    latestStep = step // buggy! must map to tag on attach
+                    latestStep = step
                     step?.observeForever(observer) ?:
                     return null
                 }
