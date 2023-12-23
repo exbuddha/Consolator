@@ -1168,7 +1168,7 @@ infix fun <T, R, S> ((T) -> R).thru(next: (R) -> S): (T) -> S = {
 fun <R> KCallable<R>.with(vararg args: Any?): () -> R = {
     this@with.call(*args)
 }
-fun <R> with(vararg args: Any?): (KCallable<R>) -> R = {
+fun <R> call(vararg args: Any?): (KCallable<R>) -> R = {
     it.call(*args)
 }
 

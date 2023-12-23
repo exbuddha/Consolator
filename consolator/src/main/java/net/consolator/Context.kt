@@ -85,13 +85,13 @@ fun Context.stageNetDbInitialized() {
     State[2] += Pending
 }
 
-inline fun <reified D : RoomDatabase> Context.buildDatabase() = with(D::class) {
-    Room.databaseBuilder(
-        this@buildDatabase,
-        java,
-        lastAnnotatedFilename()
-    ).build()
-}
+fun <D : RoomDatabase> Context.createDatabase(cls: KClass<D>) =
+    Room.databaseBuilder(this, cls.java, cls.lastAnnotatedFilename()).build()
+inline fun <reified D : RoomDatabase> Context.buildDatabase() =
+    with(D::class, ::createDatabase)
+inline fun <reified D : RoomDatabase> Context.buildDatabaseSync(lock: Any = D::class.lock()) =
+    with(D::class) {
+        synchronized(lock) { createDatabase(this) } }
 fun Context.buildAppDatabase() = commitAsync(AppDatabase, { db === null }) {
     db = buildDatabase()
 }

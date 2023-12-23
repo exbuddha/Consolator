@@ -28,18 +28,24 @@ abstract class BaseEntity(
 
 @Entity(tableName = RuntimeSessionEntity.TABLE)
 data class RuntimeSessionEntity(
+    override val id: Long,
     @ColumnInfo(name = CTX_TIME)
     override var startTime: Long,
     @ColumnInfo(name = DB_TIME, defaultValue = CURRENT_TIMESTAMP)
     var dbTime: String,
-    @ColumnInfo(name = BUILD_INFO, defaultValue = net.consolator.BUILD_INFO)
-    val build: String?,
-    override val id: Long,
+    @ColumnInfo(name = APP_ID, defaultValue = BuildConfig.APPLICATION_ID)
+    val appId: String?,
+    @ColumnInfo(name = BUILD_TYPE, defaultValue = BuildConfig.BUILD_TYPE)
+    val buildType: String?,
+    @ColumnInfo(name = BUILD_VERSION, defaultValue = BuildConfig.VERSION_NAME)
+    val buildVersion: String?,
 ) : BaseEntity(id), UniqueContext {
     companion object {
         const val CTX_TIME = "ctx_time"
         const val DB_TIME = "db_time"
-        const val BUILD_INFO = "build_info"
+        const val APP_ID = "app_id"
+        const val BUILD_TYPE = "build_type"
+        const val BUILD_VERSION = "build_ver"
         const val TABLE = "sessions"
         const val STAGE_BUILD = "session.build"
     }
@@ -51,10 +57,10 @@ abstract class BaseSessionEntity(
 ) : BaseEntity(id)
 
 open class TimeSensitiveSessionEntity(
-    @ColumnInfo(name = RuntimeSessionEntity.DB_TIME, defaultValue = CURRENT_TIMESTAMP)
-    open var dbTime: String,
     override val id: Long,
     override var sid: Long? = session?.startTime,
+    @ColumnInfo(name = RuntimeSessionEntity.DB_TIME, defaultValue = CURRENT_TIMESTAMP)
+    open var dbTime: String,
 ) : BaseSessionEntity(id, sid)
 
 @Dao
@@ -91,14 +97,14 @@ abstract class LogDatabase : RoomDatabase() {
 
 @Entity(tableName = ThreadEntity.TABLE)
 data class ThreadEntity(
+    override val id: Long,
+    override var sid: Long? = session?.startTime,
+    override var dbTime: String,
     @ColumnInfo(name = RUNTIME_ID)
     val rid: Long,
     @ColumnInfo(name = MAIN)
     val main: Boolean,
-    override var dbTime: String,
-    override val id: Long,
-    override var sid: Long? = session?.startTime,
-) : TimeSensitiveSessionEntity(dbTime, id, sid) {
+) : TimeSensitiveSessionEntity(id, sid, dbTime) {
     companion object {
         const val RUNTIME_ID = "rid"
         const val MAIN = "main"
@@ -134,7 +140,7 @@ data class ExceptionEntity(
     override var dbTime: String,
     override val id: Long,
     override var sid: Long? = session?.startTime,
-) : TimeSensitiveSessionEntity(dbTime, id, sid) {
+) : TimeSensitiveSessionEntity(id, sid, dbTime) {
     companion object {
         const val TYPE = "type_id"
         const val UNHANDLED = "unhandled"
@@ -205,7 +211,7 @@ data class NetworkStateEntity(
     override var dbTime: String,
     override val id: Long,
     override var sid: Long? = session?.startTime,
-) : TimeSensitiveSessionEntity(dbTime, id, sid) {
+) : TimeSensitiveSessionEntity(id, sid, dbTime) {
     companion object {
         const val IS_CONNECTED = "is_connected"
         const val HAS_INTERNET = "has_internet"
@@ -228,7 +234,7 @@ data class NetworkCapabilitiesEntity(
     override var dbTime: String,
     override val id: Long,
     override var sid: Long? = session?.startTime,
-) : TimeSensitiveSessionEntity(dbTime, id, sid) {
+) : TimeSensitiveSessionEntity(id, sid, dbTime) {
     companion object {
         const val CAPABILITIES = "capabilities"
         const val DOWNSTREAM = "downstream"
@@ -296,6 +302,7 @@ abstract class NetworkDao {
 }
 
 suspend fun <R> runtimeDao(block: suspend RuntimeDao.() -> R) = db!!.runtimeDao().block()
+suspend fun <R> logDao(block: suspend LogDao.() -> R) = logDb!!.logDao().block()
 suspend fun <R> networkDao(block: suspend NetworkDao.() -> R) = netDb!!.networkDao().block()
 
 private var dateTimeFormat: DateFormat? = null
@@ -329,5 +336,3 @@ fun clearAllDbObjects() {
 fun clearSessionObjects() {
     session = null
 }
-
-private const val BUILD_INFO = "${BuildConfig.APPLICATION_ID} ${BuildConfig.BUILD_TYPE} ${BuildConfig.VERSION_NAME}"
