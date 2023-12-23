@@ -81,7 +81,7 @@ private var networkCallFunction: JobFunction = @Tag(INET_FUNCTION) { scope ->
         if (info.isOn)
             info(INET_TAG, "Trying to send out http request for network caller...")
         ::netCall.commit(scope) {
-            ::netCall[INET_CALL] = ::buildHttpGetRequest.with("https://httpbin.org/delay/1")()
+            ::netCall[INET_CALL] = ::buildNetCallRequest.with("https://httpbin.org/delay/1")()
             tryCancelingForResult({
                 ::netCall.exec { response ->
                     trySafelyCanceling { reactToNetCallResponseReceived.commit(scope, response) } }
@@ -133,7 +133,7 @@ private val isNetCallTimeIntervalExceeded
     get() = isTimeIntervalExceeded(netCallTimeInterval, lastNetCallResponseTime)
 private var repeatNetCallback = true
 
-fun buildHttpGetRequest(cmd: String) = buildHttpRequest(cmd)
+private fun buildNetCallRequest(cmd: String) = buildHttpRequest(cmd)
 fun buildHttpRequest(
     cmd: String,
     method: String = "GET",
