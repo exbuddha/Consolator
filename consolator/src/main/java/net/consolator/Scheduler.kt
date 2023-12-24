@@ -273,7 +273,6 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
 
         private fun mark(step: SequencerStep) =
             step.apply { asCallable().markTag() } // record step <-> tag
-        private fun SequencerStep.asCallable(): KCallable<*> = TODO()
 
         private constructor(observer: StepObserver) { this.observer = observer }
         constructor() : this(Scheduler)
@@ -1104,7 +1103,7 @@ fun KCallable<*>.markTag() {
 }
 fun CoroutineScope.markTags(vararg function: Any?) {
     function.forEach {
-        it?.markTag()
+        it?.asFunction()!!.markTag()
     }
 }
 
@@ -1237,10 +1236,13 @@ interface Expiry : MutableSet<Lifetime> {
 typealias Lifetime = (KMutableProperty<*>) -> Boolean?
 fun KMutableProperty<*>.expire() = setter.call(null)
 
-fun Any.asCallable() = this as KCallable<*>
-fun Any.asFunction() = this as KFunction<*>
-fun Any.asProperty() = this as KProperty<*>
-fun Any.asMutableProperty() = this as KMutableProperty<*>
+private interface ObjectReference<T> { val obj: T }
+fun <T> T.asCallable(): KCallable<T> =
+    object : ObjectReference<T> {
+        override val obj: T
+            get() = this@asCallable }::obj
+fun <T> T.asFunction() = asCallable() as KFunction<T>
+fun <T> T.asProperty() = asCallable() as KProperty<T>
 private typealias JobKProperty = KMutableProperty<Job?>
 private typealias ResolverKClass = KClass<out Resolver>
 private typealias ResolverKProperty = KMutableProperty<out Resolver?>
