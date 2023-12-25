@@ -96,11 +96,11 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
                     step()
                     change(stage!!) } }
         }
-        private fun SequencerScope.commitAsyncOrResetByTag(lock: KProperty<*>, tag: String, block: Step) =
-            commitAsyncBlocking(lock, block) { resetByTag(tag) }
         private suspend fun <D : RoomDatabase> SequencerScope.buildDatabase(instance: KMutableProperty<out D?>) =
             instance.setter.call(ref?.get()?.run {
                 sequencer { resetOnError(::buildDatabase) } })
+        private fun SequencerScope.commitAsyncOrResetByTag(lock: KProperty<*>, tag: String, block: Step) =
+            commitAsyncBlocking(lock, block) { resetByTag(tag) }
 
         override fun commit(step: CoroutineStep) = clockAhead(step::invoke)
 
