@@ -13,10 +13,8 @@ import net.consolator.Scheduler.FromLastCancellation
 import net.consolator.Scheduler.Event.Listening
 import net.consolator.Scheduler.Event.Retrying
 import net.consolator.Scheduler.Event.Signaling
-import net.consolator.Scheduler.LaunchScope
 import net.consolator.Scheduler.Path
 import net.consolator.Scheduler.Path.Parallel
-import net.consolator.Scheduler.Scope
 import net.consolator.State.Pending
 import net.consolator.State.Resolved
 import net.consolator.State.Succeeded
@@ -83,17 +81,17 @@ abstract class BaseFragment : Fragment(contentLayoutId) {
             pathwise = [ FromLastCancellation::class ]
         ) @Tag("view.attach") {
             registerContext(context)
-        } then @LaunchScope @Parallel @Path(AppDatabase.STAGE_BUILD) {
+        } then @Parallel @Path(AppDatabase.STAGE_BUILD) {
             tryCancelingSuspended(retrieveContext(), Context::buildAppDatabase)
-        } then @Scope @Signaling {
+        } then @Signaling {
             change(Context::stageDbCreated)
         } given {
             db !== null
         } otherwise(
             SchedulerScope::retry
-        ) then @LaunchScope @Path(RuntimeSessionEntity.STAGE_BUILD) {
+        ) then @Path(RuntimeSessionEntity.STAGE_BUILD) {
             tryCancelingSuspended(::buildSession)
-        } then @Scope @Signaling {
+        } then @Signaling {
             change(Context::stageSessionCreated)
         } given {
             session !== null
