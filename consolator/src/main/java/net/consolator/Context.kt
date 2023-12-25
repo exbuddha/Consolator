@@ -216,10 +216,8 @@ inline fun <R> tryInterruptingForResult(noinline step: suspend CoroutineScope.()
     try { blockOf(step)() } catch (ex: InterruptedException) { throw InterruptedStepException(step, ex) } catch (ex: Throwable) { exit(ex) }
 
 suspend inline fun whenNotNull(instance: KMutableProperty<*>, block: Step) {
-    if (instance.getter.call() !== null) {
-        block()
-    }
-}
+    if (instance.getter.call() !== null)
+        block() }
 
 @Retention(SOURCE)
 @Target(CLASS)
