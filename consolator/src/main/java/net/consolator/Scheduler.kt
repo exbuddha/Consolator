@@ -1145,11 +1145,12 @@ fun Any.markTag() {}
 fun KCallable<*>.markTag() {
     jobs?.save(trySafelyForAnnotatedTagOf(this), this)
 }
-fun CoroutineScope.markTags(vararg function: Any?) {
+suspend fun CoroutineScope.markTags(vararg function: Any?) {
     function.forEach {
-        it?.asNullable()?.markTag()
+        currentJob() to it?.asNullable()?.markTag()
     }
 }
+suspend fun currentJob() = currentCoroutineContext().job
 
 @Retention(SOURCE)
 @Target(CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)

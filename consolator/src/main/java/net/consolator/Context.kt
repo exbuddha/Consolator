@@ -165,7 +165,7 @@ typealias IntPredicate = (Int) -> Boolean
 
 fun CoroutineScope.retrieveContext(): Context = TODO()
 suspend fun CoroutineScope.registerContext(context: WeakContext) {
-    currentCoroutineContext().job to context
+    currentJob() to context
 }
 
 suspend fun CoroutineScope.repeatSuspended(
