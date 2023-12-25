@@ -24,24 +24,14 @@ open class BaseService : Service(), Scheduler.BaseServiceScope {
                 startTime = getStartTimeExtra(intent)
                 Sequencer {
                     if (logDb === null) with(LogDatabase) {
-                        io(true) @Tag(STAGE_BUILD) {
-                            commitAsyncBlocking(LogDatabase::class.lock(), { logDb === null }, {
-                                logDb = resetOnError(::buildDatabase)
-                                change(Context::stageLogDbCreated)
-                            }, {
-                                resetByTag(STAGE_BUILD)
-                            })
-                        } }
+                        io(true, @Tag(STAGE_BUILD) seqStepBuildDatabase(
+                            ::logDb, STAGE_BUILD,
+                            Context::stageLogDbCreated)) }
                     if (netDb === null) with(NetworkDatabase) {
-                        io(true) @Tag(STAGE_BUILD) {
-                            commitAsyncBlocking(NetworkDatabase::class.lock(), { netDb === null }, {
-                                netDb = resetOnError(::buildDatabase)
-                                // update net db records
-                                change(Context::stageNetDbInitialized)
-                            }, {
-                                resetByTag(STAGE_BUILD)
-                            })
-                        } }
+                        io(true, @Tag(STAGE_BUILD) seqStepBuildDatabase(
+                            ::netDb, STAGE_BUILD,
+                            { /* update net db records */ },
+                            Context::stageNetDbInitialized)) }
                     resume()
                 }
                 if (info.isOn)

@@ -222,6 +222,12 @@ annotation class File(val name: String)
 fun <T : Any> KClass<out T>.lastAnnotatedFile() = annotations.last { it is File } as File
 fun <T : Any> KClass<out T>.lastAnnotatedFilename() = lastAnnotatedFile().name
 
+suspend inline fun whenNotNull(instance: KMutableProperty<*>, block: Step) {
+    if (instance.getter.call() !== null) {
+        block()
+    }
+}
+
 inline fun <reified R : Any> Any?.asType(): R? =
     if (this is R) this else null
 inline fun <reified R : Any> R?.singleton(lock: Any = R::class.lock(), vararg args: Any?) =
@@ -236,13 +242,25 @@ fun <T : Any> KClass<out T>.new(vararg args: Any?) =
     else firstConstructor().call(*args)
 fun <T : Any> KClass<out T>.emptyConstructor() = constructors.first { it.parameters.isEmpty() }
 fun <T : Any> KClass<out T>.firstConstructor() = constructors.first()
-inline fun <reified T : Any> KMutableProperty<out T?>.reconstruct(provider: Any = T::class) = apply {
+inline fun <reified T> KMutableProperty<out T?>.reconstruct(provider: Any = T::class) = apply {
     if (getter.call() === null)
         setter.call(
             if (provider is KClass<*>)
                 provider.emptyConstructor().call()
             else
                 provider.asType<Provider>()?.invoke(T::class))
+}
+fun <T, R, S> T.reconstructAsync(instance: KMutableProperty<out T?>, block: suspend T.() -> R, fallback: suspend T.() -> S) {
+    fun predicate() = instance.getter.call() === null
+    if (predicate())
+        synchronized(instance) {
+            runBlocking {
+                if (predicate()) block()
+                else fallback()
+            }
+        }
+    else
+        runBlocking { fallback() }
 }
 typealias Provider = (KClass<*>) -> Any
 

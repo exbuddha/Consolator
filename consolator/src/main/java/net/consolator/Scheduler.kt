@@ -4,6 +4,7 @@ import android.content.*
 import android.os.*
 import android.os.Process
 import androidx.lifecycle.*
+import androidx.room.*
 import java.io.*
 import java.lang.*
 import kotlin.annotation.AnnotationRetention.*
@@ -72,6 +73,38 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
 
         val hasMoreInitWork
             get() = logDb === null || netDb === null
+
+        fun <D : RoomDatabase> seqStepBuildDatabase(
+            instance: KMutableProperty<D?>,
+            tag: String,
+            stage: ContextStep? = null
+        ): SequencerStep = {
+            reconstructAsync(instance, {
+                buildDatabase(instance)
+                whenNotNull(instance) {
+                    change(stage!!) }
+            }, {
+                resetByTag(tag)
+            })
+        }
+        fun <D : RoomDatabase> seqStepBuildDatabase(
+            instance: KMutableProperty<D?>,
+            tag: String,
+            step: Step,
+            stage: ContextStep? = null
+        ): SequencerStep = {
+            reconstructAsync(instance, {
+                buildDatabase(instance)
+                whenNotNull(instance) {
+                    step()
+                    change(stage!!) }
+            }, {
+                resetByTag(tag)
+            })
+        }
+        private suspend fun <D : RoomDatabase> SequencerScope.buildDatabase(instance: KMutableProperty<D?>) =
+            instance.setter.call(ref?.get()?.run {
+                sequencer { resetOnError(::buildDatabase) } })
 
         override fun commit(step: CoroutineStep) = clockAhead(step::invoke)
 
