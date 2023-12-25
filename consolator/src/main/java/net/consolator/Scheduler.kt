@@ -785,9 +785,9 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     }
     private val KCallable<*>.event
         get() = annotations.find { it is Event } as? Event
-    private fun annotatedEventOf(step: KFunction<*>) =
+    private fun annotatedEventOf(step: KCallable<*>) =
         step.event!!
-    fun trySafelyForAnnotatedEventOf(step: KFunction<*>) =
+    fun trySafelyForAnnotatedEventOf(step: KCallable<*>) =
         trySafelyForResult { annotatedEventOf(step) }
 
     init {
@@ -853,7 +853,7 @@ val Step.transit
 val ContextStep.transit
     get() = annotatedEvent?.transit
 private val Any.annotatedEvent
-    get() = Scheduler.trySafelyForAnnotatedEventOf(asFunction())
+    get() = Scheduler.trySafelyForAnnotatedEventOf(asCallable())
 
 inline fun <reified T : Resolver> LifecycleOwner.defer(member: UnitKFunction, vararg context: Any?) =
     Scheduler.defer(T::class, this, member, *context)
@@ -1086,7 +1086,7 @@ fun <R> SchedulerScope.change(ref: WeakContext, owner: LifecycleOwner, member: K
 private var jobs: JobFunctionSet? = null
 operator fun Job.get(tag: String): Any? = null
 operator fun Job.set(tag: String, value: Any) {
-    jobs?.save(tag, value.asFunction())
+    jobs?.save(tag, value.asCallable())
 }
 typealias JobFunction = suspend (Any?) -> Unit
 private typealias JobFunctionSet = MutableSet<Pair<String, Job>>
@@ -1103,7 +1103,7 @@ fun KCallable<*>.markTag() {
 }
 fun CoroutineScope.markTags(vararg function: Any?) {
     function.forEach {
-        it?.asFunction()!!.markTag()
+        it?.asCallable()!!.markTag()
     }
 }
 
@@ -1241,8 +1241,6 @@ fun <T> T.asCallable(): KCallable<T> =
     object : ObjectReference<T> {
         override val obj: T
             get() = this@asCallable }::obj
-fun <T> T.asFunction() = asCallable() as KFunction<T>
-fun <T> T.asProperty() = asCallable() as KProperty<T>
 private typealias JobKProperty = KMutableProperty<Job?>
 private typealias ResolverKClass = KClass<out Resolver>
 private typealias ResolverKProperty = KMutableProperty<out Resolver?>

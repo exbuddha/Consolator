@@ -151,9 +151,9 @@ fun buildHttpRequest(
             .build())
 
 private typealias NetCall = KCallable<Call?>
-private fun NetCall.asProperty(): NetCall =
+private fun NetCall.asCallable() =
     if (this === ::netCall) ::netCall
-    else call().asProperty()
+    else call().asCallable()
 operator fun NetCall.get(cmd: String): Any? = when (cmd) {
     INET_CALL -> this
     INET_FUNCTION -> networkCallFunction
@@ -166,7 +166,7 @@ operator fun NetCall.get(cmd: String): Any? = when (cmd) {
 }
 operator fun NetCall.set(cmd: String, value: Any?) {
     // keep old value
-    synchronized(asProperty()) {
+    synchronized(asCallable()) {
         when (cmd) {
             INET_CALL -> netCall = take(value)
             INET_FUNCTION -> networkCallFunction = take(value)
