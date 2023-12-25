@@ -215,18 +215,18 @@ inline fun <R> trySafelyInterrupting(noinline step: suspend CoroutineScope.() ->
 inline fun <R> tryInterruptingForResult(noinline step: suspend CoroutineScope.() -> R, blockOf: (suspend CoroutineScope.() -> R) -> () -> R = ::blockOf, exit: (Throwable) -> R? = { null }) =
     try { blockOf(step)() } catch (ex: InterruptedException) { throw InterruptedStepException(step, ex) } catch (ex: Throwable) { exit(ex) }
 
+suspend inline fun whenNotNull(instance: KMutableProperty<*>, block: Step) {
+    if (instance.getter.call() !== null) {
+        block()
+    }
+}
+
 @Retention(SOURCE)
 @Target(CLASS)
 @Repeatable
 annotation class File(val name: String)
 fun <T : Any> KClass<out T>.lastAnnotatedFile() = annotations.last { it is File } as File
 fun <T : Any> KClass<out T>.lastAnnotatedFilename() = lastAnnotatedFile().name
-
-suspend inline fun whenNotNull(instance: KMutableProperty<*>, block: Step) {
-    if (instance.getter.call() !== null) {
-        block()
-    }
-}
 
 inline fun <reified R : Any> Any?.asType(): R? =
     if (this is R) this else null
@@ -252,13 +252,13 @@ inline fun <reified T> KMutableProperty<out T?>.reconstruct(provider: Any = T::c
 }
 typealias Provider = (KClass<*>) -> Any
 
-var jsonConverter: Gson? = null
-    get() = field ?: Gson()
 fun IntArray.toJson() = jsonConverter!!.toJson(this, IntArray::class.java)
 fun String.toIntArray() = jsonConverter!!.fromJson(this, IntArray::class.java)
-
 fun Byte.asPercentage() =
     (this * 100 / Byte.MAX_VALUE).toByte()
+
+var jsonConverter: Gson? = null
+    get() = field ?: Gson()
 
 open class BaseImplementationRestriction(
     msg: String = "Base implementation restricted",
