@@ -240,14 +240,20 @@ fun <T : Any> KClass<out T>.new(vararg args: Any?) =
     else firstConstructor().call(*args)
 fun <T : Any> KClass<out T>.emptyConstructor() = constructors.first { it.parameters.isEmpty() }
 fun <T : Any> KClass<out T>.firstConstructor() = constructors.first()
-inline fun <reified T> KMutableProperty<out T?>.reconstruct(provider: Any = T::class) = apply {
+inline fun <reified T> KMutableProperty<out T?>.reconstruct(provider: Any = T::class) =
+    apply { renew {
+        if (provider is KClass<*>)
+            provider.emptyConstructor().call()
+        else
+            provider.asType<Provider>()?.invoke(T::class) } }
+inline fun <reified T> KMutableProperty<out T?>.renew(constructor: () -> T? = { getter.call() }) {
     if (getter.call() === null)
-        setter.call(
-            if (provider is KClass<*>)
-                provider.emptyConstructor().call()
-            else
-                provider.asType<Provider>()?.invoke(T::class))
-}
+        setter.call(constructor()) }
+inline fun <reified T> KMutableProperty<T?>.require(predicate: (T) -> Boolean = { it === null }, constructor: () -> T? = { getter.call() }) =
+    call().let { old ->
+        if (old === null || predicate(old))
+            constructor().also { setter.call(it) }
+        else old }
 typealias Provider = (KClass<*>) -> Any
 
 fun IntArray.toJson() = jsonConverter!!.toJson(this, IntArray::class.java)

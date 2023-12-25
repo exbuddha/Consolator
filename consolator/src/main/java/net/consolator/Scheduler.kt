@@ -1077,11 +1077,8 @@ private fun relaunch(
     context: CoroutineContext,
     start: CoroutineStart,
     step: CoroutineStep) =
-    instance.getter.call().let { old ->
-        if (old !== null && old.isActive) old
-        else launcher.call(context, start, step).also { new ->
-            instance.setter.call(new)
-        }
+    instance.require({ !it.isActive }) {
+        launcher.call(context, start, step)
     }.also { instance.markTag() }
 fun LifecycleOwner.close(node: SchedulerNode) {}
 fun LifecycleOwner.detach(node: SchedulerNode) {}
