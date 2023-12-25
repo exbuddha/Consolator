@@ -32,7 +32,6 @@ private fun clearNetworkCallbackObjects() {
     connectivityRequest = null
 }
 
-var reactToNetworkCapabilitiesChanged: (Network, NetworkCapabilities) -> Unit = { _, _ -> }
 private var networkCallback: NetworkCallback? = null
     get() = field ?: object : NetworkCallback() {
         override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
@@ -40,6 +39,7 @@ private var networkCallback: NetworkCallback? = null
             trySafely { reactToNetworkCapabilitiesChanged.invoke(network, networkCapabilities) }
         }
     }.also { field = it }
+var reactToNetworkCapabilitiesChanged: (Network, NetworkCapabilities) -> Unit = { _, _ -> }
 
 fun LifecycleOwner.registerInternetCallback() {
     relaunch(::networkCaller, IO, step = ::repeatNetworkCallFunction)
@@ -70,6 +70,11 @@ var networkCaller: Job? = null
         // update addressable layer?
         field = value
     }
+
+@Tag(INET_CALL)
+var netCall: Call? = null
+    private set
+
 private suspend fun repeatNetworkCallFunction(scope: CoroutineScope) {
     scope.repeatSuspended(
         scope::isActive,
@@ -91,10 +96,6 @@ private var networkCallFunction: JobFunction = @Tag(INET_FUNCTION) { scope ->
         }
     }
 }
-
-@Tag(INET_CALL)
-var netCall: Call? = null
-    private set
 private var reactToNetCallResponseReceived: JobResponseFunction = @Tag(INET_SUCCESS) { _, response ->
     with(response) {
         hasInternet = isSuccessful
@@ -180,17 +181,20 @@ operator fun NetCall.set(cmd: String, value: Any?) {
 }
 private fun String.asUrl() = this
 private inline fun <reified T : Any> take(value: Any?): T = value.asType()!!
+
 private typealias Respond = (Response) -> Unit
 private fun NetCall.commit(scope: Any?, block: Work) { synchronized(this, block) }
 private fun NetCall.exec(cmd: String = INET_CALL, respond: Respond) {
     markTag()
     respond(this[cmd].asType<NetCall>()!!.call()!!.execute())
 }
+
 private typealias JobResponseFunction = (Any?, Response) -> Unit
 private fun JobResponseFunction.commit(scope: Any?, response: Response) {
     // mark tag
     invoke(scope, response)
 }
+
 private typealias JobThrowableFunction = (Any?, Throwable) -> Unit
 private fun JobThrowableFunction.commit(scope: Any?, ex: Throwable) {
     // mark tag
