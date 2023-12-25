@@ -302,6 +302,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
 
         private fun mark(step: SequencerStep) =
             step.apply { asCallable().markTag() } // record step <-> tag
+        private fun indexOf(tag: String): Int = TODO()
 
         private constructor(observer: StepObserver) { this.observer = observer }
         constructor() : this(Scheduler)
@@ -326,6 +327,9 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         fun resume(index: Int) {
             ln = index
             resume()
+        }
+        fun resume(tag: String) {
+            resume(indexOf(tag))
         }
         fun resume() {
             isActive = true
@@ -621,7 +625,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
                 seq.noneReversed { it.isSameWork(this) }
         }
         private fun CaptureFunction.isNotAttached() =
-            seq.none { it.isSameCapture(this) }
+            seq.noneReversed { it.isSameCapture(this) }
         private fun CaptureFunction.isNotAttached(range: IntRange): Boolean {
             range.forEach {
                 if (seq[it].isSameCapture(this))
@@ -874,7 +878,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
 
 fun Step.relay(transit: Short? = this.transit) = Relay(transit)
 fun Step.reevaluate(transit: Short? = this.transit) = object : Relay(transit) {
-    override suspend fun invoke() = this@reevaluate.invoke()
+    override suspend fun invoke() = this@reevaluate()
 }
 
 val Step.transit
@@ -1046,15 +1050,15 @@ private fun LifecycleOwner.determineScopeAndCoroutine(
     context: CoroutineContext,
     start: CoroutineStart,
     step: CoroutineStep) =
-    determineScope(step).run {
-        this to determineCoroutine(this@determineScopeAndCoroutine, context, start, step) }
+    determineScope(step).let { scope ->
+        scope to scope.determineCoroutine(this, context, start, step) }
 fun LifecycleOwner.launch(
     context: CoroutineContext = Scheduler,
     start: CoroutineStart = CoroutineStart.DEFAULT,
-    step: CoroutineStep) =
-    determineScopeAndCoroutine(this, context, start, step).run {
-        with(second) {
-            this@run.first.launch(first, second, third) } }
+    step: CoroutineStep): Job {
+    val (scope, task) = determineScopeAndCoroutine(this, context, start, step)
+    val (context, start, step) = task
+    return scope.launch(context, start, step) }
 fun LifecycleOwner.relaunch(
     instance: JobKProperty,
     context: CoroutineContext = Scheduler,
@@ -1073,12 +1077,12 @@ private fun relaunch(
     context: CoroutineContext,
     start: CoroutineStart,
     step: CoroutineStep) =
-        instance.getter.call().let { old ->
-            if (old !== null && old.isActive) old
-            else launcher.call(context, start, step).also { new ->
-                instance.setter.call(new)
-            }
-        }.also { instance.markTag() }
+    instance.getter.call().let { old ->
+        if (old !== null && old.isActive) old
+        else launcher.call(context, start, step).also { new ->
+            instance.setter.call(new)
+        }
+    }.also { instance.markTag() }
 fun LifecycleOwner.close(node: SchedulerNode) {}
 fun LifecycleOwner.detach(node: SchedulerNode) {}
 fun LifecycleOwner.reattach(node: SchedulerNode) {}
@@ -1135,8 +1139,7 @@ private fun JobFunctionSet.save(tag: String, keep: Boolean, function: KCallable<
 private fun JobFunctionSet.save(tag: String, function: KCallable<*>) =
     save(tag, trySafelyForAnnotatedTagOf(function)?.keep ?: true, function)
 private fun JobFunctionSet.save(tag: Tag?, function: KCallable<*>) = tag?.let {
-    save(it.string, it.keep, function)
-}
+    save(it.string, it.keep, function) }
 
 fun Any.markTag() {}
 fun KCallable<*>.markTag() {
@@ -1144,7 +1147,7 @@ fun KCallable<*>.markTag() {
 }
 fun CoroutineScope.markTags(vararg function: Any?) {
     function.forEach {
-        it?.asCallable()!!.markTag()
+        it?.asNullable()?.markTag()
     }
 }
 
@@ -1278,10 +1281,17 @@ typealias Lifetime = (KMutableProperty<*>) -> Boolean?
 fun KMutableProperty<*>.expire() = setter.call(null)
 
 private interface ObjectReference<T> { val obj: T }
-fun <T> T.asCallable(): KCallable<T> =
+private interface NullReference<T> : ObjectReference<T?>
+private fun <T> T.asObjRef() =
     object : ObjectReference<T> {
         override val obj: T
-            get() = this@asCallable }::obj
+            get() = this@asObjRef }
+private fun <T> T?.asNullRef() =
+    object : NullReference<T> {
+        override val obj: T?
+            get() = this@asNullRef }
+fun <T> T.asCallable(): KCallable<T> = asObjRef()::obj
+fun <T> T?.asNullable(): KCallable<T?> = asNullRef()::obj
 private typealias JobKProperty = KMutableProperty<Job?>
 private typealias ResolverKClass = KClass<out Resolver>
 private typealias ResolverKProperty = KMutableProperty<out Resolver?>

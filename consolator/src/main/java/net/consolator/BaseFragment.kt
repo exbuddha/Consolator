@@ -45,12 +45,13 @@ abstract class BaseFragment : Fragment(contentLayoutId) {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        fun transit(action: Short) = transit(view, savedInstanceState) {
+            putShort(ACTION_KEY, action) }
         launch(start = LAZY) @MainViewGroup @Listening {
             EventBus.collectSafely {
                 when (it?.transit) {
                     COMMIT_NAV_MAIN_UI -> {
-                        transit(view, savedInstanceState) {
-                            putShort(ACTION_KEY, COMMIT_NAV_MAIN_UI) }
+                        transit(COMMIT_NAV_MAIN_UI)
                         State[1] = Succeeded
                         close(MainViewGroup::class)
                     }
@@ -59,8 +60,7 @@ abstract class BaseFragment : Fragment(contentLayoutId) {
                 }
             }
         } onError { job ->
-            transit(view, savedInstanceState) {
-                putShort(ACTION_KEY, ABORT_NAV_MAIN_UI) }
+            transit(ABORT_NAV_MAIN_UI)
             State[1] += Pending
             keepAliveOrClose(job)
         } onTimeout {

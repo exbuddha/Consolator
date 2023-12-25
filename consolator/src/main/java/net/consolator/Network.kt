@@ -154,9 +154,9 @@ private fun String.asUrl() = this
 
 private typealias NetCall = KCallable<Call?>
 private typealias Respond = (Response) -> Unit
-private fun NetCall.asCallable() =
+private fun NetCall.asNullable() =
     if (this === ::netCall) ::netCall
-    else call().asCallable()
+    else call().asNullable()
 operator fun NetCall.get(cmd: String): Any? = when (cmd) {
     INET_CALL -> this
     INET_FUNCTION -> networkCallFunction
@@ -169,7 +169,7 @@ operator fun NetCall.get(cmd: String): Any? = when (cmd) {
 }
 operator fun NetCall.set(cmd: String, value: Any?) {
     // keep old value
-    synchronized(asCallable()) {
+    synchronized(asNullable()) {
         when (cmd) {
             INET_CALL -> netCall = take(value)
             INET_FUNCTION -> networkCallFunction = take(value)
