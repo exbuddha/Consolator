@@ -1293,6 +1293,7 @@ private fun <T> T?.asNullRef() =
             get() = this@asNullRef }
 fun <T> T.asCallable(): KCallable<T> = asObjRef()::obj
 fun <T> T?.asNullable(): KCallable<T?> = asNullRef()::obj
+
 private typealias JobKProperty = KMutableProperty<Job?>
 private typealias ResolverKClass = KClass<out Resolver>
 private typealias ResolverKProperty = KMutableProperty<out Resolver?>
