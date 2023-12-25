@@ -1187,13 +1187,12 @@ private fun newThread(group: ThreadGroup, name: String, priority: Int, target: R
 private fun newThread(name: String, priority: Int, target: Runnable) = Thread(target, name).also { it.priority = priority }
 private fun newThread(priority: Int, target: Runnable) = Thread(target).also { it.priority = priority }
 
+private typealias DescriptiveStep = suspend SchedulerScope.(Job) -> Unit
 private typealias JobPredicate = (Job) -> Boolean
 private typealias SchedulerNode = KClass<out Annotation>
 private typealias SchedulerPath = Array<KClass<out Throwable>>
 private typealias SchedulerWork = Scheduler.() -> Unit
-private typealias DescriptiveStep = suspend SchedulerScope.(Job) -> Unit
 
-private typealias SequencerWork = Sequencer.() -> Unit
 typealias SequencerScope = LiveDataScope<Step?>
 private typealias SequencerStep = suspend SequencerScope.() -> Unit
 private typealias StepObserver = Observer<Step?>
@@ -1203,6 +1202,7 @@ private typealias CaptureFunction = AnyFunction
 private typealias LiveWork = Triple<LiveStepFunction, CaptureFunction?, Boolean>
 private typealias LiveSequence = MutableList<LiveWork>
 private typealias LiveWorkPredicate = (LiveWork) -> Boolean
+private typealias SequencerWork = Sequencer.() -> Unit
 
 private typealias RunnableList = MutableList<Runnable>
 private typealias MessageFunction = (Message) -> Any?
