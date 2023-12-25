@@ -20,6 +20,8 @@ class Migration : Resolver {
 
     override fun commit(step: CoroutineStep): Boolean = TODO()
 
+    private companion object
+
     var progress: Byte = 0
         private set
 }

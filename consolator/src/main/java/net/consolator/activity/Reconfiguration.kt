@@ -11,4 +11,6 @@ abstract class Reconfiguration : Resolver {
     }
 
     override fun commit(step: CoroutineStep): Boolean = TODO()
+
+    protected companion object
 }
