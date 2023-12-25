@@ -250,18 +250,6 @@ inline fun <reified T> KMutableProperty<out T?>.reconstruct(provider: Any = T::c
             else
                 provider.asType<Provider>()?.invoke(T::class))
 }
-fun <T, R, S> T.reconstructAsync(instance: KMutableProperty<out T?>, block: suspend T.() -> R, fallback: suspend T.() -> S) {
-    fun predicate() = instance.getter.call() === null
-    if (predicate())
-        synchronized(instance) {
-            runBlocking {
-                if (predicate()) block()
-                else fallback()
-            }
-        }
-    else
-        runBlocking { fallback() }
-}
 typealias Provider = (KClass<*>) -> Any
 
 var jsonConverter: Gson? = null

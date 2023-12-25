@@ -75,34 +75,30 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             get() = logDb === null || netDb === null
 
         fun <D : RoomDatabase> seqStepBuildDatabase(
-            instance: KMutableProperty<D?>,
+            instance: KMutableProperty<out D?>,
             tag: String,
             stage: ContextStep? = null
         ): SequencerStep = {
-            reconstructAsync(instance, {
+            commitAsyncOrResetByTag(instance, tag) {
                 buildDatabase(instance)
                 whenNotNull(instance) {
-                    change(stage!!) }
-            }, {
-                resetByTag(tag)
-            })
+                    change(stage!!) } }
         }
         fun <D : RoomDatabase> seqStepBuildDatabase(
-            instance: KMutableProperty<D?>,
+            instance: KMutableProperty<out D?>,
             tag: String,
             step: Step,
             stage: ContextStep? = null
         ): SequencerStep = {
-            reconstructAsync(instance, {
+            commitAsyncOrResetByTag(instance, tag) {
                 buildDatabase(instance)
                 whenNotNull(instance) {
                     step()
-                    change(stage!!) }
-            }, {
-                resetByTag(tag)
-            })
+                    change(stage!!) } }
         }
-        private suspend fun <D : RoomDatabase> SequencerScope.buildDatabase(instance: KMutableProperty<D?>) =
+        private fun SequencerScope.commitAsyncOrResetByTag(lock: KProperty<*>, tag: String, block: Step) =
+            commitAsyncBlocking(lock, block) { resetByTag(tag) }
+        private suspend fun <D : RoomDatabase> SequencerScope.buildDatabase(instance: KMutableProperty<out D?>) =
             instance.setter.call(ref?.get()?.run {
                 sequencer { resetOnError(::buildDatabase) } })
 
@@ -961,6 +957,18 @@ inline fun <T, R, S : R> T.commitAsyncBlockingForResult(lock: Any, crossinline p
             }
         }
     else runBlocking { fallback() }
+fun <R, S> commitAsyncBlocking(lock: KProperty<*>, block: suspend () -> R, fallback: suspend () -> S) {
+    fun predicate() = lock.getter.call() === null
+    if (predicate())
+        synchronized(lock) {
+            runBlocking {
+                if (predicate()) block()
+                else fallback()
+            }
+        }
+    else
+        runBlocking { fallback() }
+}
 
 inline fun <R> sequencer(block: Sequencer.() -> R) = sequencer!!.block()
 fun <T, R> capture(context: CoroutineContext, step: suspend LiveDataScope<T>.() -> Unit, capture: (T) -> R) =
