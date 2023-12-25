@@ -144,10 +144,9 @@ fun Context.intendFor(cls: KClass<*>) = intendFor(cls.java)
 
 interface SystemContext { val ref: WeakContext? }
 typealias WeakContext = WeakReference<out Context>
-fun Context.weakRef() = when (this) {
-    is SystemContext -> ref
-    else -> WeakReference(this)
-}
+fun Context.weakRef() =
+    if (this is SystemContext) ref
+    else WeakReference(this)
 fun <T : Context> WeakReference<out T>?.unique(context: T) = this ?: WeakReference(context)
 interface UniqueContext { var startTime: Long }
 typealias ContextStep = suspend Context.() -> Unit
