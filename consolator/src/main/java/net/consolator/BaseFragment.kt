@@ -33,7 +33,7 @@ abstract class BaseFragment : Fragment(contentLayoutId) {
     protected abstract var overlay: (View, Bundle?) -> Pair<Fragment?, Int?>
     private inline fun transit(view: View, savedInstanceState: Bundle?, crossinline editor: BundleEditor) {
         val (overlay, transition) =
-            overlay(view, (savedInstanceState ?: Bundle()).apply { editor() })
+            overlay(view, savedInstanceState.reconstruct().apply { editor() })
         if (overlay !== null)
             schedule {
                 parentFragmentManager.commit {

@@ -224,14 +224,16 @@ fun <T : Any> KClass<out T>.lastAnnotatedFilename() = lastAnnotatedFile().name
 
 inline fun <reified R : Any> Any?.asType(): R? =
     if (this is R) this else null
-inline fun <reified R : Any> R?.singleton(lock: Any = R::class.lock()) =
-    commitAsyncForResult(lock, { this === null }, this, R::class::emptyConstructor) as R
+inline fun <reified R : Any> R?.singleton(lock: Any = R::class.lock(), vararg args: Any?) =
+    commitAsyncForResult(lock, { this === null }, this, { R::class.new(*args) }) as R
+inline fun <reified T : Any> T?.reconstruct(vararg args: Any?): T = this ?: T::class.new(*args)
 fun <T : Any> KClass<out T>.lock() = objectInstance ?: this
-fun <T : Any> KClass<out T>.reconstruct(vararg args: Any?): T = when {
-    isCompanion -> objectInstance!!
-    args.isEmpty() -> emptyConstructor().call()
-    else -> firstConstructor().call(*args)
-}
+fun <T : Any> KClass<out T>.reconstruct(vararg args: Any?) =
+    if (isCompanion) objectInstance!!
+    else new(*args)
+fun <T : Any> KClass<out T>.new(vararg args: Any?) =
+    if (args.isEmpty()) emptyConstructor().call()
+    else firstConstructor().call(*args)
 fun <T : Any> KClass<out T>.emptyConstructor() = constructors.first { it.parameters.isEmpty() }
 fun <T : Any> KClass<out T>.firstConstructor() = constructors.first()
 inline fun <reified T : Any> KMutableProperty<out T?>.reconstruct(provider: Any = T::class) = apply {
