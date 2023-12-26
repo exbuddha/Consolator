@@ -1223,6 +1223,7 @@ val currentThread
 val mainThread = currentThread
 fun Thread.isMainThread() = this === mainThread
 fun onMainThread() = currentThread.isMainThread()
+
 private fun newThread(group: ThreadGroup, name: String, priority: Int, target: Runnable) = Thread(group, target, name).also { it.priority = priority }
 private fun newThread(name: String, priority: Int, target: Runnable) = Thread(target, name).also { it.priority = priority }
 private fun newThread(priority: Int, target: Runnable) = Thread(target).also { it.priority = priority }
