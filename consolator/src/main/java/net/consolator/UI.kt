@@ -26,20 +26,20 @@ private open class OverlayFragment(
             }
 
     private fun <R> intercept(member: KFunction<R>, vararg args: Any, postback: Runnable? = null) =
-        interceptor?.invoke(this, member, args, postback).let {
+        interceptor?.invoke(this, member, args, postback).let { result ->
             fun postback(): Boolean {
                 postback?.run() ?: return false
                 return true
             }
-            if (it === null)
+            if (result === null)
                 postback()
-            else
-                with(it) {
-                    if (second != true)
-                        postback()
-                    else
-                        first?.invoke() ?: postback()
-                }
+            else {
+                val (callback, filter) = result
+                if (filter == true)
+                    callback?.invoke() ?: postback()
+                else
+                    postback()
+            }
         }
 }
 
