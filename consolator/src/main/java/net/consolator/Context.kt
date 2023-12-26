@@ -252,7 +252,7 @@ inline fun <reified T> KMutableProperty<out T?>.renew(constructor: () -> T? = { 
 inline fun <reified T> KMutableProperty<T?>.require(predicate: (T) -> Boolean = { it === null }, constructor: () -> T? = { getter.call() }) =
     getter.call().let { old ->
         if (old === null || predicate(old))
-            constructor().also { setter.call(it) }
+            constructor().also { new -> setter.call(new) }
         else old }
 typealias Provider = (KClass<*>) -> Any
 
