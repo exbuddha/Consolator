@@ -153,7 +153,6 @@ fun buildHttpRequest(
 private fun String.asUrl() = this
 
 private typealias NetCall = KCallable<Call?>
-private typealias Respond = (Response) -> Unit
 private fun NetCall.asNullable() =
     if (this === ::netCall) ::netCall
     else call().asNullable()
@@ -182,6 +181,8 @@ operator fun NetCall.set(cmd: String, value: Any?) {
     }
 }
 private inline fun <reified T : Any> take(value: Any?): T = value.asType()!!
+
+private typealias Respond = (Response) -> Unit
 private fun NetCall.commit(scope: Any?, block: Work) { synchronized(this, block) }
 private fun NetCall.exec(cmd: String = INET_CALL, respond: Respond) {
     markTag()
