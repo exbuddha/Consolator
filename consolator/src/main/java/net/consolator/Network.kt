@@ -206,7 +206,7 @@ private fun JobThrowableFunction.commit(scope: Any?, ex: Throwable) {
 private annotation class NetworkListener
 
 private val connectivityManager
-    get() = instance!!.getSystemService(ConnectivityManager::class.java)!!
+    get() = foregroundContext.getSystemService(ConnectivityManager::class.java)!!
 val network
     get() = connectivityManager.activeNetwork
 val networkCapabilities
