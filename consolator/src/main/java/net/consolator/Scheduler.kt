@@ -898,10 +898,10 @@ interface Resolver : SchedulerScope {
     fun commit(vararg context: Any?)
 }
 
-fun scheduleNow(step: Step) { Scheduler.value = step }
 fun schedule(step: Step) = Scheduler.postValue(step)
-fun Context.scheduleNow(ref: ContextStep) = scheduleNow(step = { ref() })
+fun scheduleNow(step: Step) { Scheduler.value = step }
 fun Context.schedule(ref: ContextStep) = schedule(step = { ref() })
+fun Context.scheduleNow(ref: ContextStep) = scheduleNow(step = { ref() })
 
 fun service(step: CoroutineStep) {
     (Scheduler.trySafelyForAnnotatedScopeOf(step) ?:
