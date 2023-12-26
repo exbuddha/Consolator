@@ -95,8 +95,8 @@ inline fun <reified D : RoomDatabase> Context.buildDatabaseSync(lock: Any = D::c
     with(D::class) {
         synchronized(lock) { createDatabase(this) } }
 fun Context.buildAppDatabase() = commitAsync(AppDatabase, { db === null }) {
-    db = buildDatabase()
-}
+    db = buildDatabase() }
+
 suspend fun buildSession() {
     if (session === null)
         buildNewSession()
