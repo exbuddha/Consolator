@@ -735,16 +735,6 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
 
     @Retention(SOURCE)
     @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
-    annotation class LaunchScope
-    private val KCallable<*>.launchScope
-        get() = annotations.find { it is LaunchScope } as? LaunchScope
-    private fun annotatedLaunchScopeOf(step: CoroutineStep) =
-        step.asCallable().launchScope!!
-    fun trySafelyForAnnotatedLaunchScopeOf(step: CoroutineStep) =
-        trySafelyForResult { annotatedLaunchScopeOf(step) }
-
-    @Retention(SOURCE)
-    @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
     annotation class Scope(val type: KClass<out CoroutineScope> = Scheduler::class)
     private val KCallable<*>.schedulerScope
         get() = annotations.find { it is Scope } as? Scope
@@ -752,6 +742,16 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         step.asCallable().schedulerScope!!.type.reconstruct(step)
     fun trySafelyForAnnotatedScopeOf(step: CoroutineStep) =
         trySafelyForResult { annotatedScopeOf(step) }
+
+    @Retention(SOURCE)
+    @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+    annotation class LaunchScope
+    private val KCallable<*>.launchScope
+        get() = annotations.find { it is LaunchScope } as? LaunchScope
+    private fun annotatedLaunchScopeOf(step: CoroutineStep) =
+        step.asCallable().launchScope!!
+    fun trySafelyForAnnotatedLaunchScopeOf(step: CoroutineStep) =
+        trySafelyForResult { annotatedLaunchScopeOf(step) }
 
     @Retention(SOURCE)
     @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
@@ -785,6 +785,34 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     }
     object FromLastCancellation : Throwable()
     object Propagate : Throwable()
+
+    init {
+        _key = object : SchedulerKey {}
+        _element = object : SchedulerElement {
+            override val key
+                get() = _key
+        }
+    }
+
+    override fun <R> fold(initial: R, operation: (R, CoroutineContext.Element) -> R): R {
+        // context expansion by attachment: register operation callback.
+        // return a default state or a new one depending on the initial value.
+        return operation(initial, _element)
+    }
+    override fun <E : CoroutineContext.Element> get(key: CoroutineContext.Key<E>): E? {
+        // context element lookup
+        return null
+    }
+    override fun minusKey(key: CoroutineContext.Key<*>): CoroutineContext {
+        // context convergence by detachment: unregister element and restate.
+        return this
+    }
+
+    override fun onChanged(step: Step?) {
+        if (step !== null) runBlocking { step() }
+    }
+
+    override fun commit(step: CoroutineStep) = clock(step::invoke)
 
     @Retention(SOURCE)
     @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
@@ -822,34 +850,6 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         step.event!!
     fun trySafelyForAnnotatedEventOf(step: KCallable<*>) =
         trySafelyForResult { annotatedEventOf(step) }
-
-    init {
-        _key = object : SchedulerKey {}
-        _element = object : SchedulerElement {
-            override val key
-                get() = _key
-        }
-    }
-
-    override fun <R> fold(initial: R, operation: (R, CoroutineContext.Element) -> R): R {
-        // context expansion by attachment: register operation callback.
-        // return a default state or a new one depending on the initial value.
-        return operation(initial, _element)
-    }
-    override fun <E : CoroutineContext.Element> get(key: CoroutineContext.Key<E>): E? {
-        // context element lookup
-        return null
-    }
-    override fun minusKey(key: CoroutineContext.Key<*>): CoroutineContext {
-        // context convergence by detachment: unregister element and restate.
-        return this
-    }
-
-    override fun onChanged(step: Step?) {
-        if (step !== null) runBlocking { step() }
-    }
-
-    override fun commit(step: CoroutineStep) = clock(step::invoke)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     object EventBus : AbstractFlow<Step?>() {
