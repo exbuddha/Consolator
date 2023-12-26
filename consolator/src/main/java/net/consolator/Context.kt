@@ -250,7 +250,7 @@ inline fun <reified T> KMutableProperty<out T?>.renew(constructor: () -> T? = { 
     if (getter.call() === null)
         setter.call(constructor()) }
 inline fun <reified T> KMutableProperty<T?>.require(predicate: (T) -> Boolean = { it === null }, constructor: () -> T? = { getter.call() }) =
-    call().let { old ->
+    getter.call().let { old ->
         if (old === null || predicate(old))
             constructor().also { setter.call(it) }
         else old }
