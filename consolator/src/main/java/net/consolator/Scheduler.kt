@@ -1030,49 +1030,25 @@ private suspend fun SequencerScope.reset() = sequencer!!.reset()
 private suspend fun SequencerScope.resetByTag(tag: String) = sequencer!!.resetByTag(tag)
 private fun tagOf(stage: ContextStep): String = TODO()
 
-fun CoroutineScope.relaunch(
-    instance: JobKProperty,
-    context: CoroutineContext = Scheduler,
-    start: CoroutineStart = CoroutineStart.DEFAULT,
-    step: CoroutineStep) =
+fun CoroutineScope.relaunch(instance: JobKProperty, context: CoroutineContext = Scheduler, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep) =
     relaunch(::launch, instance, context, start, step)
-fun LifecycleOwner.relaunch(
-    instance: JobKProperty,
-    context: CoroutineContext = Scheduler,
-    start: CoroutineStart = CoroutineStart.DEFAULT,
-    step: CoroutineStep) =
+fun LifecycleOwner.relaunch(instance: JobKProperty, context: CoroutineContext = Scheduler, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep) =
     relaunch(::launch, instance, context, start, step)
-private fun relaunch(
-    launcher: KFunction<Job>,
-    instance: JobKProperty,
-    context: CoroutineContext,
-    start: CoroutineStart,
-    step: CoroutineStep) =
+private fun relaunch(launcher: KFunction<Job>, instance: JobKProperty, context: CoroutineContext, start: CoroutineStart, step: CoroutineStep) =
     instance.require({ !it.isActive }) {
         launcher.call(context, start, step)
     }.also { instance.markTag() }
-fun LifecycleOwner.launch(
-    context: CoroutineContext = Scheduler,
-    start: CoroutineStart = CoroutineStart.DEFAULT,
-    step: CoroutineStep): Job {
+fun LifecycleOwner.launch(context: CoroutineContext = Scheduler, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep): Job {
     val (scope, task) = determineScopeAndCoroutine(this, context, start, step)
     val (context, start, step) = task
     return scope.launch(context, start, step) }
 private fun LifecycleOwner.determineScope(step: CoroutineStep) =
     Scheduler.trySafelyForAnnotatedScopeOf(step) ?:
     lifecycleScope
-private fun LifecycleOwner.determineScopeAndCoroutine(
-    owner: LifecycleOwner,
-    context: CoroutineContext,
-    start: CoroutineStart,
-    step: CoroutineStep) =
+private fun LifecycleOwner.determineScopeAndCoroutine(owner: LifecycleOwner, context: CoroutineContext, start: CoroutineStart, step: CoroutineStep) =
     determineScope(step).let { scope ->
         scope to scope.determineCoroutine(this, context, start, step) }
-private fun CoroutineScope.determineCoroutine(
-    owner: LifecycleOwner,
-    context: CoroutineContext,
-    start: CoroutineStart,
-    step: CoroutineStep) =
+private fun CoroutineScope.determineCoroutine(owner: LifecycleOwner, context: CoroutineContext, start: CoroutineStart, step: CoroutineStep) =
     Triple(
         if (context.isSchedulerContext()) context
         else Scheduler + context, // buggy! must return background io context by jit reconfiguration
@@ -1113,6 +1089,11 @@ fun Job.close(node: SchedulerNode) {}
 fun Job.close() {}
 val Job.node: SchedulerNode
     get() = TODO()
+
+fun CoroutineScope.retrieveContext(): Context = TODO()
+suspend fun CoroutineScope.registerContext(context: WeakContext) {
+    currentJob() to context
+}
 
 fun SchedulerScope.change(stage: ContextStep) =
     EventBus.signal(stage)

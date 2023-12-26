@@ -165,11 +165,6 @@ typealias Predicate = () -> Boolean
 typealias AnyPredicate = (Any?) -> Boolean
 typealias IntPredicate = (Int) -> Boolean
 
-fun CoroutineScope.retrieveContext(): Context = TODO()
-suspend fun CoroutineScope.registerContext(context: WeakContext) {
-    currentJob() to context
-}
-
 suspend fun CoroutineScope.repeatSuspended(
     predicate: Predicate,
     block: JobFunction,
