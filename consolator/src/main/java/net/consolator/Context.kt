@@ -215,7 +215,7 @@ inline fun <R> trySafelyInterrupting(noinline step: suspend CoroutineScope.() ->
 inline fun <R> tryInterruptingForResult(noinline step: suspend CoroutineScope.() -> R, blockOf: (suspend CoroutineScope.() -> R) -> () -> R = ::blockOf, exit: (Throwable) -> R? = { null }) =
     try { blockOf(step)() } catch (ex: InterruptedException) { throw InterruptedStepException(step, ex) } catch (ex: Throwable) { exit(ex) }
 
-suspend inline fun whenNotNull(instance: KMutableProperty<*>, block: Step) {
+suspend inline fun whenNotNull(instance: KProperty<*>, block: Step) {
     if (instance.getter.call() !== null)
         block() }
 
