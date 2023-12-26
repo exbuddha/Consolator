@@ -1134,13 +1134,13 @@ typealias JobFunction = suspend (Any?) -> Unit
 private typealias JobFunctionSet = MutableSet<Pair<String, Job>>
 private fun JobFunctionSet.save(tag: String, keep: Boolean, function: KCallable<*>) {}
 private fun JobFunctionSet.save(tag: String, function: KCallable<*>) =
-    save(tag, trySafelyForAnnotatedTagOf(function)?.keep ?: true, function)
+    save(tag, function.tag?.keep ?: true, function)
 private fun JobFunctionSet.save(tag: Tag?, function: KCallable<*>) = tag?.let {
     save(it.string, it.keep, function) }
 
 fun Any.markTag() {}
 fun KCallable<*>.markTag() {
-    jobs?.save(trySafelyForAnnotatedTagOf(this), this)
+    jobs?.save(tag, this)
 }
 suspend fun CoroutineScope.markTags(vararg function: Any?) {
     function.forEach { fn ->
@@ -1158,10 +1158,6 @@ annotation class Tag(
     val keep: Boolean = true)
 private val KCallable<*>.tag
     get() = annotations.find { it is Tag } as? Tag
-fun annotatedTagOf(item: KCallable<*>) =
-    item.tag
-fun trySafelyForAnnotatedTagOf(item: KCallable<*>) =
-    trySafelyForResult { annotatedTagOf(item) }
 
 @Retention(SOURCE)
 @Target(CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
