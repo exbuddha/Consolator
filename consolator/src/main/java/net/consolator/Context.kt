@@ -138,7 +138,7 @@ fun Context.registerReceiver(filter: IntentFilter) =
 val Context.isNetworkStateAccessPermitted
     get() = isPermissionGranted(ACCESS_NETWORK_STATE)
 val Context.isInternetAccessPermitted
-    get() = isNetworkStateAccessPermitted and isPermissionGranted(INTERNET)
+    get() = isPermissionGranted(INTERNET)
 fun Context.isPermissionGranted(permission: String) =
     ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
 fun Context.intendFor(cls: Class<*>) = Intent(this, cls)
