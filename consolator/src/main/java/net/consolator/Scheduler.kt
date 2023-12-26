@@ -1143,8 +1143,10 @@ fun KCallable<*>.markTag() {
     jobs?.save(trySafelyForAnnotatedTagOf(this), this)
 }
 suspend fun CoroutineScope.markTags(vararg function: Any?) {
-    function.forEach {
-        currentJob() to it?.asNullable()?.markTag()
+    function.forEach { fn ->
+        if (fn !== null)
+            currentJob() to fn
+        fn.asNullable().markTag()
     }
 }
 suspend fun currentJob() = currentCoroutineContext().job
