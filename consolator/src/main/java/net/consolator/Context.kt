@@ -179,12 +179,10 @@ suspend fun CoroutineScope.repeatSuspended(
     while (predicate()) {
         block(scope)
         delayOrYield(delayTime())
-    }
-}
+    } }
 suspend fun delayOrYield(dt: Long = 0L) {
     if (dt > 0) delay(dt)
-    else if (dt == 0L) yield()
-}
+    else if (dt == 0L) yield() }
 
 fun now() = java.util.Calendar.getInstance().timeInMillis
 fun getDelayTime(interval: Long, last: Long) =
