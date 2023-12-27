@@ -99,24 +99,18 @@ fun Context.buildAppDatabase() = commitAsync(AppDatabase, { db === null }) {
 
 suspend fun buildSession() {
     if (session === null)
-        buildNewSession()
-}
+        buildNewSession() }
 suspend fun buildNewSession() {
     runtimeDao {
         session = getSession(
-            newSession(instance!!.startTime))
-    }
-}
+            newSession(instance!!.startTime)) } }
 suspend fun updateNetworkState() {
     networkDao {
         updateNetworkState(
             isConnected,
             hasInternet,
             hasMobile,
-            hasWifi
-        )
-    }
-}
+            hasWifi) } }
 suspend fun updateNetworkCapabilities(networkCapabilities: NetworkCapabilities) {
     networkDao {
         with(networkCapabilities) {
@@ -124,11 +118,7 @@ suspend fun updateNetworkCapabilities(networkCapabilities: NetworkCapabilities) 
                 capabilities.toJson(),
                 linkDownstreamBandwidthKbps,
                 linkUpstreamBandwidthKbps,
-                signalStrength
-            )
-        }
-    }
-}
+                signalStrength) } } }
 
 fun Context.registerReceiver(filter: IntentFilter) =
     ContextCompat.registerReceiver(this, receiver, filter, null,
