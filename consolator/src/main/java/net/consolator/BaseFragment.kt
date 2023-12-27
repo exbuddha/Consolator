@@ -68,9 +68,6 @@ abstract class BaseFragment : Fragment(contentLayoutId) {
             error(it)
         } then
             Job::join
-
-        if (info.isOn)
-            info(UI_TAG, "Main fragment view is created.")
     }
 
     override fun onAttach(context: Context) {

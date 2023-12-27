@@ -18,45 +18,15 @@ open class BaseService : Service(), Scheduler.BaseServiceScope {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         clock?.start()
         mode = super.onStartCommand(intent, flags, startId)
-        mode = getModeExtra(intent)
-        if (hasMoreInitWork)
-            service @Tag("start") {
-                startTime = getStartTimeExtra(intent)
-                Sequencer {
-                    if (logDb === null) with(LogDatabase) {
-                        io(true,
-                            @Tag(STAGE_BUILD)
-                            seqStepBuildDatabase(
-                                ::logDb, STAGE_BUILD,
-                                Context::stageLogDbCreated)) }
-                    if (netDb === null) with(NetworkDatabase) {
-                        io(true,
-                            @Tag(STAGE_BUILD)
-                            seqStepBuildDatabase(
-                                ::netDb, STAGE_BUILD,
-                                { /* update net db records */ },
-                                Context::stageNetDbInitialized)) }
-                    resume()
-                }
-                if (info.isOn)
-                    info(SVC_TAG, "Clock is detected.")
-            }
+        invoke(intent)
         return mode!!
     }
 
-    override fun onBind(intent: Intent?): BaseService {
-        // ...
-        return this
-    }
+    override fun onBind(intent: Intent?) = invoke(intent)
 
     override fun onDestroy() {
         service = null
         super.onDestroy()
-    }
-
-    companion object {
-        val SVC_TAG
-            get() = if (onMainThread()) "SERVICE" else "CLOCK"
     }
 }
 

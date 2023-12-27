@@ -15,6 +15,8 @@ class MainFragment : BaseFragment() {
         parentFragmentManager.commit {
             show(this@MainFragment)
         }
+        if (info.isOn)
+            info(UI_TAG, "Main fragment view is created.")
     }
 
     override var overlay = fun(_: View, bundle: Bundle?): Pair<Fragment?, Int?> =

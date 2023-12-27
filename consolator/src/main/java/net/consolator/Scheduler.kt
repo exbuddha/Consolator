@@ -63,9 +63,9 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     private var activityLocalesChangeManager: LocalesChangeManager? = null
     var applicationMigrationResolver: Migration? = null
 
-    sealed interface BaseServiceScope : IBinder, SchedulerScope, SystemContext, UniqueContext {
+    sealed interface BaseServiceScope : IBinder, (Intent?) -> IBinder, SchedulerScope, SystemContext, UniqueContext {
         fun getStartTimeExtra(intent: Intent?) =
-            intent?.getLongExtra(START_TIME_KEY, instance!!.startTime)!!
+            intent?.getLongExtra(START_TIME_KEY, foregroundContext.asType<UniqueContext>()!!.startTime)!!
 
         var mode: Int?
         fun getModeExtra(intent: Intent?) =
@@ -74,7 +74,33 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         val hasMoreInitWork
             get() = logDb === null || netDb === null
 
-        fun <D : RoomDatabase> seqStepBuildDatabase(
+        override fun invoke(intent: Intent?): IBinder {
+            mode = getModeExtra(intent)
+            if (hasMoreInitWork) commit {
+                startTime = getStartTimeExtra(intent)
+                Sequencer {
+                    if (logDb === null) with(LogDatabase) {
+                        io(true,
+                            @Tag(STAGE_BUILD)
+                            seqStepBuildDatabase(
+                                ::logDb, STAGE_BUILD,
+                                Context::stageLogDbCreated)) }
+                    if (netDb === null) with(NetworkDatabase) {
+                        io(true,
+                            @Tag(STAGE_BUILD)
+                            seqStepBuildDatabase(
+                                ::netDb, STAGE_BUILD,
+                                { /* update net db records */ },
+                                Context::stageNetDbInitialized)) }
+                    resume()
+                }
+                if (info.isOn)
+                    info(SVC_TAG, "Clock is detected.")
+            }
+            return this
+        }
+
+        private fun <D : RoomDatabase> seqStepBuildDatabase(
             instance: KMutableProperty<out D?>,
             tag: String,
             stage: ContextStep? = null
@@ -84,7 +110,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
                 whenNotNull(instance) {
                     change(stage!!) } }
         }
-        fun <D : RoomDatabase> seqStepBuildDatabase(
+        private fun <D : RoomDatabase> seqStepBuildDatabase(
             instance: KMutableProperty<out D?>,
             tag: String,
             step: Step,
@@ -107,6 +133,9 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         fun clearObjects() {
             mode = null
         }
+
+        val SVC_TAG
+            get() = if (onMainThread()) "SERVICE" else "CLOCK"
 
         override fun getInterfaceDescriptor(): String? {
             return null
@@ -903,7 +932,8 @@ fun scheduleNow(step: Step) { Scheduler.value = step }
 fun Context.schedule(ref: ContextStep) = schedule(step = { ref() })
 fun Context.scheduleNow(ref: ContextStep) = scheduleNow(step = { ref() })
 
-fun service(step: CoroutineStep) {
+fun service(task: String) {}
+private fun service(step: CoroutineStep) {
     (Scheduler.trySafelyForAnnotatedScopeOf(step) ?:
     service)?.let { scope ->
         scope::class.memberFunctions.find {
