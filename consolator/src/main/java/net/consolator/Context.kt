@@ -275,8 +275,7 @@ fun bypassWarningLog() { info = bypass }
 fun bypassAllLogs() {
     bypassInfoLog()
     bypassDebugLog()
-    bypassWarningLog()
-}
+    bypassWarningLog() }
 
 const val START_TIME_KEY = "1"
 const val MODE_KEY = "2"
