@@ -329,8 +329,11 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         fun unconfinedBeforeResettingByTagFirstly(async: Boolean = false, step: SequencerStep) = unconfinedBefore(async, resettingByTagFirstly(step))
         fun unconfinedBeforeResettingByTagLastly(async: Boolean = false, step: SequencerStep) = unconfinedBefore(async, resettingByTagLastly(step))
 
-        private fun mark(step: SequencerStep, capture: CaptureFunction? = null) =
-            step.apply { asCallable().markTag() } // record step <-> tag
+        private fun mark(step: SequencerStep, capture: CaptureFunction? = null): SequencerStep {
+            markTags(step, capture)
+            // record ln, tag, step
+            return step
+        }
         private fun indexOf(tag: String): Int = TODO()
 
         private constructor(observer: StepObserver) { this.observer = observer }
@@ -1072,7 +1075,7 @@ private fun CoroutineScope.determineCoroutine(context: CoroutineContext, start: 
         if (context.isSchedulerContext()) context
         else Scheduler + context, // buggy! must return background io context by jit reconfiguration
         start,
-        step)
+        step).also { markTags(context, start, step, owner) }
 private fun CoroutineContext.isSchedulerContext() =
     this is Scheduler || this[_key] is SchedulerKey
 fun LifecycleOwner.close(node: SchedulerNode) {}
@@ -1109,7 +1112,8 @@ fun Job.close() {}
 val Job.node: SchedulerNode
     get() = TODO()
 
-fun CoroutineScope.retrieveContext(): Context = TODO()
+suspend fun CoroutineScope.retrieveContext() =
+    currentJob()["context"].asType<Context>()!!
 suspend fun CoroutineScope.registerContext(context: WeakContext) {
     currentJob()["context"] = context }
 
@@ -1127,15 +1131,14 @@ fun <R> SchedulerScope.change(ref: WeakContext, owner: LifecycleOwner, member: K
 private var jobs: JobFunctionSet? = null
 operator fun Job.get(tag: String): Any? = null
 operator fun Job.set(tag: String, value: Any) {
-    jobs?.save(tag, value.asCallable())
-}
+    jobs?.save(tag, value.asCallable()) }
 typealias JobFunction = suspend (Any?) -> Unit
 private typealias JobFunctionSet = MutableSet<Pair<String, Any>>
-private fun JobFunctionSet.save(tag: String, keep: Boolean, function: KCallable<*>) {}
 private fun JobFunctionSet.save(tag: String, function: KCallable<*>) = function.tag.let { self ->
     save(combineTags(tag, self?.string), self?.keep ?: true, function) }
 private fun JobFunctionSet.save(tag: Tag?, self: KCallable<*>) = tag?.apply {
     save(string, keep, self) }
+private fun JobFunctionSet.save(tag: String, keep: Boolean, function: KCallable<*>) {}
 private fun combineTags(tag: String, self: String?) =
     if (self === null) tag
     else "$tag.$self"
@@ -1143,7 +1146,7 @@ private fun combineTags(tag: String, self: String?) =
 fun Any.markTag() = asCallable().markTag()
 fun KCallable<*>.markTag() {
     jobs?.save(tag, this) }
-suspend fun CoroutineScope.markTags(vararg function: Any?) {
+fun CoroutineScope.markTags(vararg function: Any?) {
     function.forEach {
         it.asNullable().markTag() } }
 
