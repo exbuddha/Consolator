@@ -1138,52 +1138,40 @@ annotation class JobTree(
 
 infix fun <R, S> (suspend () -> R).then(next: suspend () -> S): suspend () -> S = {
     this@then()
-    next()
-}
+    next() }
 infix fun <R, S> (suspend () -> R).thru(next: suspend (R) -> S): suspend () -> S = {
-    next(this@thru())
-}
+    next(this@thru()) }
 fun <R> (suspend () -> R).given(predicate: Predicate, fallback: R): suspend () -> R = {
-    if (predicate()) this@given() else fallback
-}
+    if (predicate()) this@given() else fallback }
 infix fun Step.given(predicate: Predicate): Step = given(predicate, Unit)
+
 infix fun <T, R, S> (suspend T.() -> R).then(next: suspend T.() -> S): suspend T.() -> S = {
     this@then()
-    next()
-}
-infix fun <T, R, S> (suspend T.() -> R).thru(next: suspend (R) -> S): suspend T.() -> S = {
-    next(this@thru())
-}
-fun <T, R> (suspend T.() -> R).given(predicate: Predicate, fallback: R): suspend T.() -> R = {
-    if (predicate()) this@given() else fallback
-}
+    next() }
 infix fun <T, R, S> (suspend T.() -> R).after(prev: suspend T.() -> S): suspend T.() -> R = {
     prev()
-    this@after()
-}
+    this@after() }
+infix fun <T, R, S> (suspend T.() -> R).thru(next: suspend (R) -> S): suspend T.() -> S = {
+    next(this@thru()) }
+fun <T, R> (suspend T.() -> R).given(predicate: Predicate, fallback: R): suspend T.() -> R = {
+    if (predicate()) this@given() else fallback }
 
 infix fun <R, S> (() -> R).then(next: () -> S): () -> S = {
     this@then()
-    next()
-}
+    next() }
 infix fun <R, S> (() -> R).thru(next: (R) -> S): () -> S = {
-    next(this@thru())
-}
+    next(this@thru()) }
 fun <R> (() -> R).given(predicate: Predicate, fallback: R): () -> R = {
-    if (predicate()) this@given() else fallback
-}
+    if (predicate()) this@given() else fallback }
 infix fun AnyFunction.given(predicate: Predicate): AnyFunction = given(predicate, Unit)
 
 infix fun <T, R, S> ((T) -> R).thru(next: (R) -> S): (T) -> S = {
-    next(this@thru(it))
-}
+    next(this@thru(it)) }
 
 fun <R> KCallable<R>.with(vararg args: Any?): () -> R = {
-    this@with.call(*args)
-}
+    this@with.call(*args) }
 fun <R> call(vararg args: Any?): (KCallable<R>) -> R = {
-    it.call(*args)
-}
+    it.call(*args) }
 
 val currentThread
     get() = Thread.currentThread()
