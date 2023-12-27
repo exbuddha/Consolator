@@ -931,35 +931,25 @@ fun <T> safeInterruptingRunnableOf(step: suspend CoroutineScope.() -> T) = Runna
 inline fun <R> commitAsync(lock: Any, crossinline predicate: Predicate, crossinline block: () -> R) {
     if (predicate())
         synchronized(lock) {
-            if (predicate()) block()
-        }
-}
+            if (predicate()) block() } }
 inline fun <R> commitAsyncForResult(lock: Any, crossinline predicate: Predicate, fallback: R? = null, crossinline block: () -> R): R? {
     if (predicate())
         synchronized(lock) {
-            if (predicate()) return block()
-        }
-    return fallback
-}
+            if (predicate()) return block() }
+    return fallback }
 inline fun <T, R, S> T.commitAsyncBlocking(lock: Any, crossinline predicate: Predicate, crossinline block: suspend T.() -> R, crossinline fallback: suspend T.() -> S) {
     if (predicate())
         synchronized(lock) {
             runBlocking {
                 if (predicate()) block()
-                else fallback()
-            }
-        }
-    else
-        runBlocking { fallback() }
-}
+                else fallback() } }
+    else runBlocking { fallback() } }
 inline fun <T, R, S : R> T.commitAsyncBlockingForResult(lock: Any, crossinline predicate: Predicate, crossinline block: suspend T.() -> R, crossinline fallback: suspend T.() -> S? = { null }) =
     if (predicate())
         synchronized(lock) {
             runBlocking {
                 if (predicate()) block()
-                else fallback()
-            }
-        }
+                else fallback() } }
     else runBlocking { fallback() }
 fun <R, S> commitAsyncBlocking(lock: KProperty<*>, block: suspend () -> R, fallback: suspend () -> S) {
     fun predicate() = lock.getter.call() === null
@@ -967,12 +957,8 @@ fun <R, S> commitAsyncBlocking(lock: KProperty<*>, block: suspend () -> R, fallb
         synchronized(lock) {
             runBlocking {
                 if (predicate()) block()
-                else fallback()
-            }
-        }
-    else
-        runBlocking { fallback() }
-}
+                else fallback() } }
+    else runBlocking { fallback() } }
 
 inline fun <R> sequencer(block: Sequencer.() -> R) = sequencer!!.block()
 fun <T, R> capture(context: CoroutineContext, step: suspend LiveDataScope<T>.() -> Unit, capture: (T) -> R) =
