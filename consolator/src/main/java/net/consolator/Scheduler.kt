@@ -1098,7 +1098,7 @@ operator fun Job.set(tag: String, value: Any) {
     jobs?.save(tag, value.asCallable())
 }
 typealias JobFunction = suspend (Any?) -> Unit
-private typealias JobFunctionSet = MutableSet<Pair<String, Job>>
+private typealias JobFunctionSet = MutableSet<Pair<String, Any>>
 private fun JobFunctionSet.save(tag: String, keep: Boolean, function: KCallable<*>) {}
 private fun JobFunctionSet.save(tag: String, function: KCallable<*>) =
     save(tag, function.tag?.keep ?: true, function)
