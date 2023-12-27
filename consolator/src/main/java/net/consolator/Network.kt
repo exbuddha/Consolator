@@ -191,13 +191,13 @@ private fun NetCall.exec(cmd: String = INET_CALL, respond: Respond) {
 
 private typealias JobResponseFunction = (Any?, Response) -> Unit
 private fun JobResponseFunction.commit(scope: Any?, response: Response) {
-    // mark tag
+    markTag()
     invoke(scope, response)
 }
 
 private typealias JobThrowableFunction = (Any?, Throwable) -> Unit
 private fun JobThrowableFunction.commit(scope: Any?, ex: Throwable) {
-    // mark tag
+    markTag()
     invoke(scope, ex)
 }
 

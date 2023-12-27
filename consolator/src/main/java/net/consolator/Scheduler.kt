@@ -1111,8 +1111,7 @@ val Job.node: SchedulerNode
 
 fun CoroutineScope.retrieveContext(): Context = TODO()
 suspend fun CoroutineScope.registerContext(context: WeakContext) {
-    currentJob() to context
-}
+    currentJob()["context"] = context }
 
 fun SchedulerScope.change(stage: ContextStep) =
     EventBus.signal(stage)
@@ -1134,26 +1133,20 @@ typealias JobFunction = suspend (Any?) -> Unit
 private typealias JobFunctionSet = MutableSet<Pair<String, Any>>
 private fun JobFunctionSet.save(tag: String, keep: Boolean, function: KCallable<*>) {}
 private fun JobFunctionSet.save(tag: String, function: KCallable<*>) = function.tag.let { self ->
-    save(combineTags(tag, self?.string), self?.keep ?: true, function)
-}
+    save(combineTags(tag, self?.string), self?.keep ?: true, function) }
 private fun JobFunctionSet.save(tag: Tag?, self: KCallable<*>) = tag?.apply {
-    save(string, keep, self)
-}
+    save(string, keep, self) }
 private fun combineTags(tag: String, self: String?) =
     if (self === null) tag
     else "$tag.$self"
 
-fun Any.markTag() {}
+fun Any.markTag() = asCallable().markTag()
 fun KCallable<*>.markTag() {
-    jobs?.save(tag, this)
-}
+    jobs?.save(tag, this) }
 suspend fun CoroutineScope.markTags(vararg function: Any?) {
-    function.forEach { fn ->
-        if (fn !== null)
-            currentJob() to fn
-        fn.asNullable().markTag()
-    }
-}
+    function.forEach {
+        it.asNullable().markTag() } }
+
 suspend fun currentJob() = currentCoroutineContext().job
 
 @Retention(SOURCE)
