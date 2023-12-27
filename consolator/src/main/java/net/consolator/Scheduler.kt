@@ -1028,12 +1028,12 @@ fun LifecycleOwner.launch(context: CoroutineContext = Scheduler, start: Coroutin
     val (scope, task) = determineScopeAndCoroutine(this, context, start, step)
     val (context, start, step) = task
     return scope.launch(context, start, step) }
-private fun LifecycleOwner.determineScope(step: CoroutineStep) =
-    Scheduler.trySafelyForAnnotatedScopeOf(step) ?:
-    lifecycleScope
 private fun LifecycleOwner.determineScopeAndCoroutine(owner: LifecycleOwner, context: CoroutineContext, start: CoroutineStart, step: CoroutineStep) =
     determineScope(step).let { scope ->
         scope to scope.determineCoroutine(this, context, start, step) }
+private fun LifecycleOwner.determineScope(step: CoroutineStep) =
+    Scheduler.trySafelyForAnnotatedScopeOf(step) ?:
+    lifecycleScope
 private fun CoroutineScope.determineCoroutine(owner: LifecycleOwner, context: CoroutineContext, start: CoroutineStart, step: CoroutineStep) =
     Triple(
         if (context.isSchedulerContext()) context
