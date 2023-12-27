@@ -1058,16 +1058,16 @@ private fun relaunch(launcher: KFunction<Job>, instance: JobKProperty, context: 
 fun launch(context: CoroutineContext = Scheduler, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep) =
     ProcessLifecycleOwner.get().launch(context, start, step)
 fun LifecycleOwner.launch(context: CoroutineContext = Scheduler, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep): Job {
-    val (scope, task) = determineScopeAndCoroutine(this, context, start, step)
+    val (scope, task) = determineScopeAndCoroutine(context, start, step)
     val (context, start, step) = task
     return scope.launch(context, start, step) }
-private fun LifecycleOwner.determineScopeAndCoroutine(owner: LifecycleOwner, context: CoroutineContext, start: CoroutineStart, step: CoroutineStep) =
+private fun LifecycleOwner.determineScopeAndCoroutine(context: CoroutineContext, start: CoroutineStart, step: CoroutineStep) =
     determineScope(step).let { scope ->
-        scope to scope.determineCoroutine(this, context, start, step) }
+        scope to scope.determineCoroutine(context, start, step, this) }
 private fun LifecycleOwner.determineScope(step: CoroutineStep) =
     Scheduler.trySafelyForAnnotatedScopeOf(step) ?:
     lifecycleScope
-private fun CoroutineScope.determineCoroutine(owner: LifecycleOwner, context: CoroutineContext, start: CoroutineStart, step: CoroutineStep) =
+private fun CoroutineScope.determineCoroutine(context: CoroutineContext, start: CoroutineStart, step: CoroutineStep, owner: LifecycleOwner? = foregroundLifecycleOwner) =
     Triple(
         if (context.isSchedulerContext()) context
         else Scheduler + context, // buggy! must return background io context by jit reconfiguration
