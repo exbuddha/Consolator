@@ -1054,6 +1054,9 @@ private fun relaunch(launcher: KFunction<Job>, instance: JobKProperty, context: 
     instance.require({ !it.isActive }) {
         launcher.call(context, start, step)
     }.also { instance.markTag() }
+
+fun launch(context: CoroutineContext = Scheduler, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep) =
+    ProcessLifecycleOwner.get().launch(context, start, step)
 fun LifecycleOwner.launch(context: CoroutineContext = Scheduler, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep): Job {
     val (scope, task) = determineScopeAndCoroutine(this, context, start, step)
     val (context, start, step) = task
