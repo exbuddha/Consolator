@@ -1133,10 +1133,15 @@ operator fun Job.set(tag: String, value: Any) {
 typealias JobFunction = suspend (Any?) -> Unit
 private typealias JobFunctionSet = MutableSet<Pair<String, Any>>
 private fun JobFunctionSet.save(tag: String, keep: Boolean, function: KCallable<*>) {}
-private fun JobFunctionSet.save(tag: String, function: KCallable<*>) =
-    save(tag, function.tag?.keep ?: true, function)
-private fun JobFunctionSet.save(tag: Tag?, function: KCallable<*>) = tag?.let {
-    save(it.string, it.keep, function) }
+private fun JobFunctionSet.save(tag: String, function: KCallable<*>) = function.tag.let { self ->
+    save(combineTags(tag, self?.string), self?.keep ?: true, function)
+}
+private fun JobFunctionSet.save(tag: Tag?, self: KCallable<*>) = tag?.apply {
+    save(string, keep, self)
+}
+private fun combineTags(tag: String, self: String?) =
+    if (self === null) tag
+    else "$tag.$self"
 
 fun Any.markTag() {}
 fun KCallable<*>.markTag() {
