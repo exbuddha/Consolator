@@ -44,10 +44,10 @@ var containerViewId = R.id.layout_background
 @LayoutRes
 var contentLayoutId = R.layout.background
 
-val foregroundLifecycleOwner: LifecycleOwner?
-    get() = TODO()
 val foregroundContext: Context
     get() = instance ?: service!!
+val foregroundLifecycleOwner: LifecycleOwner?
+    get() = TODO()
 
 fun Context.change(stage: ContextStep) =
     signal(stage)
