@@ -330,7 +330,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         fun unconfinedBeforeResettingByTagLastly(async: Boolean = false, step: SequencerStep) = unconfinedBefore(async, resettingByTagLastly(step))
 
         private fun mark(step: SequencerStep, capture: CaptureFunction? = null, context: CoroutineContext? = null): SequencerStep {
-            markTags("seq.attach", step, capture, context)
+            markTagsForSeqAttach(step, capture, context)
             // record ln, tag, step
             return step
         }
@@ -1064,7 +1064,7 @@ fun LifecycleOwner.launch(context: CoroutineContext = Scheduler, start: Coroutin
     val (scope, task) = determineScopeAndCoroutine(context, start, step)
     val (context, start, step) = task
     return scope.launch(context, start, step).also { job ->
-        markTags("job.launch", step, job, context, start) } }
+        markTagsForJobLaunch(step, job, context, start) } }
 private fun LifecycleOwner.determineScopeAndCoroutine(context: CoroutineContext, start: CoroutineStart, step: CoroutineStep) =
     determineScope(step).let { scope ->
         scope to scope.determineCoroutine(context, start, step) }
@@ -1153,31 +1153,37 @@ private fun combineTags(tag: String, self: String?) =
 
 fun Any.markTag() = asCallable().markTag()
 fun KCallable<*>.markTag() = tag.also { jobs?.save(it, this) }
+fun markTagsForJobLaunch(vararg function: Any?, i: Int = 0) =
+    function[i]?.markTag()?.let { step ->
+        val stepTag = step.string
+        function[i + 1]?.let { job ->
+            jobs?.save("${stepTag}.job", step.keep, job.asCallable()) }
+        function[i + 2]?.let { context ->
+            jobs?.save("${stepTag}.context", false, context.asCallable()) }
+        function[i + 3]?.let { start ->
+            jobs?.save("${stepTag}.start", false, start.asCallable()) } }
+fun markTagsForJobRepeat(vararg function: Any?, i: Int = 0) =
+    function[i]?.markTag()?.let { block ->
+        val blockTag = block.string
+        function[i + 1]?.let { delay ->
+            jobs?.save("${blockTag}.delay", delay.asCallable()) }
+        function[i + 2]?.let { predicate ->
+            jobs?.save("${blockTag}.predicate", predicate.asCallable()) } }
+fun markTagsForSeqAttach(vararg function: Any?, i: Int = 0) =
+    function[i]?.markTag()?.let { step ->
+        val stepTag = step.string
+        function[i + 1]?.let { capture ->
+            jobs?.save("${stepTag}.capture", capture.asNullable()) }
+        function[i + 2]?.let { context ->
+            jobs?.save("${stepTag}.context", false, context.asNullable()) } }
 fun markTags(vararg function: Any?) {
     when (function.firstOrNull()) {
         "job.launch" ->
-            function[1]?.markTag()?.let { step ->
-                val stepTag = step.string
-                function[2]?.let { job ->
-                    jobs?.save("${stepTag}.job", step.keep, job.asCallable()) }
-                function[3]?.let { context ->
-                    jobs?.save("${stepTag}.context", false, context.asCallable()) }
-                function[4]?.let { start ->
-                    jobs?.save("${stepTag}.start", false, start.asCallable()) } }
+            markTagsForJobLaunch(*function, i = 1)
         "job.repeat" ->
-            function[1]?.markTag()?.let { block ->
-                val blockTag = block.string
-                function[2]?.let { delay ->
-                    jobs?.save("${blockTag}.delay", delay.asCallable()) }
-                function[3]?.let { predicate ->
-                    jobs?.save("${blockTag}.predicate", predicate.asCallable()) } }
+            markTagsForJobRepeat(*function, i = 1)
         "seq.attach" ->
-            function[1]?.markTag()?.let { step ->
-                val stepTag = step.string
-                function[2]?.let { capture ->
-                    jobs?.save("${stepTag}.capture", capture.asNullable()) }
-                function[3]?.let { context ->
-                    jobs?.save("${stepTag}.context", false, context.asNullable()) } }
+            markTagsForSeqAttach(*function, i = 1)
         else ->
             function.forEach {
                 it.asNullable().markTag() } } }

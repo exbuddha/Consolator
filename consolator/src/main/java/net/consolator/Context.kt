@@ -160,7 +160,7 @@ suspend fun CoroutineScope.repeatSuspended(
     block: JobFunction,
     delayTime: LongFunction = { 0L },
     scope: CoroutineScope = this) {
-    markTags("job.repeat", block, delayTime, predicate)
+    markTagsForJobRepeat(block, delayTime, predicate)
     while (predicate()) {
         block(scope)
         delayOrYield(delayTime()) } }
