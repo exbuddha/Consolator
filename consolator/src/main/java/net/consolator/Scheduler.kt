@@ -1136,9 +1136,10 @@ typealias JobFunction = suspend (Any?) -> Unit
 private typealias JobFunctionSet = MutableSet<Pair<String, Any>>
 private fun JobFunctionSet.save(tag: String, function: KCallable<*>) = function.tag.let { self ->
     save(combineTags(tag, self?.string), self?.keep ?: true, function) }
-private fun JobFunctionSet.save(tag: Tag?, self: KCallable<*>) = tag?.apply {
-    save(string, keep, self) }
-private fun JobFunctionSet.save(tag: String, keep: Boolean, function: KCallable<*>) {}
+private fun JobFunctionSet.save(tag: Tag?, self: KCallable<*>) =
+    if (tag !== null) with(tag) { save(string, keep, self) }
+    else save(null, false, self)
+private fun JobFunctionSet.save(tag: String?, keep: Boolean, function: KCallable<*>) {}
 private fun combineTags(tag: String, self: String?) =
     if (self === null) tag
     else "$tag.$self"
