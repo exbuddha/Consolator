@@ -1151,6 +1151,19 @@ private fun combineTags(tag: String, self: String?) =
 
 fun Any.markTag() = asCallable().markTag()
 fun KCallable<*>.markTag() = tag.also { jobs?.save(it, this) }
+fun markTags(vararg function: Any?) {
+    when (function.firstOrNull()) {
+        "job.launch" ->
+            markTagsForJobLaunch(*function, i = 1)
+        "seq.launch" ->
+            markTagsForSeqLaunch(*function, i = 1)
+        "job.repeat" ->
+            markTagsForJobRepeat(*function, i = 1)
+        "seq.attach" ->
+            markTagsForSeqAttach(*function, i = 1)
+        else ->
+            function.forEach {
+                it.asNullable().markTag() } } }
 private fun markTagsForJobLaunch(vararg function: Any?, i: Int = 0) =
     function[i]?.markTag()?.also { step ->
         val stepTag = step.string
@@ -1181,19 +1194,6 @@ private fun markTagsForSeqLaunch(vararg function: Any?, i: Int = 0) =
             jobs?.save("${stepTag}.capture", capture.asNullable()) } /* capture */
         function[i + 2]?.let { context ->
             jobs?.save("${stepTag}.context", false, context.asNullable()) } /* context */ }
-fun markTags(vararg function: Any?) {
-    when (function.firstOrNull()) {
-        "job.launch" ->
-            markTagsForJobLaunch(*function, i = 1)
-        "seq.launch" ->
-            markTagsForSeqLaunch(*function, i = 1)
-        "job.repeat" ->
-            markTagsForJobRepeat(*function, i = 1)
-        "seq.attach" ->
-            markTagsForSeqAttach(*function, i = 1)
-        else ->
-            function.forEach {
-                it.asNullable().markTag() } } }
 
 suspend fun currentJob() = currentCoroutineContext().job
 
