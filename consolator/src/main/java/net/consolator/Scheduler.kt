@@ -1154,7 +1154,7 @@ private fun combineTags(tag: String, self: String?) =
 fun Any.markTag() = asCallable().markTag()
 fun KCallable<*>.markTag() = tag.also { jobs?.save(it, this) }
 fun markTagsForJobLaunch(vararg function: Any?, i: Int = 0) =
-    function[i]?.markTag()?.let { step ->
+    function[i]?.markTag()?.also { step ->
         val stepTag = step.string
         function[i + 1]?.let { job ->
             jobs?.save("${stepTag}.job", step.keep, job.asCallable()) }
@@ -1163,14 +1163,14 @@ fun markTagsForJobLaunch(vararg function: Any?, i: Int = 0) =
         function[i + 3]?.let { start ->
             jobs?.save("${stepTag}.start", false, start.asCallable()) } }
 fun markTagsForJobRepeat(vararg function: Any?, i: Int = 0) =
-    function[i]?.markTag()?.let { block ->
+    function[i]?.markTag()?.also { block ->
         val blockTag = block.string
         function[i + 1]?.let { delay ->
             jobs?.save("${blockTag}.delay", delay.asCallable()) }
         function[i + 2]?.let { predicate ->
             jobs?.save("${blockTag}.predicate", predicate.asCallable()) } }
 fun markTagsForSeqAttach(vararg function: Any?, i: Int = 0) =
-    function[i]?.markTag()?.let { step ->
+    function[i]?.markTag()?.also { step ->
         val stepTag = step.string
         function[i + 1]?.let { capture ->
             jobs?.save("${stepTag}.capture", capture.asNullable()) }
