@@ -1186,7 +1186,7 @@ private fun markTagsForSeqAttach(vararg function: Any?, i: Int = 0) =
             val stepTag = stepTag.string
             jobs?.save("${stepTag}.work", false, work.asNullable())
             function[i + 1]?.let { ln ->
-                jobs?.save("${stepTag}.ln", ln.asNullable()) } /* ln */ } /* work & ln */ }
+                jobs?.save("${stepTag}.ln", ln.asNullable()) } } /* work & ln */ }
 private fun markTagsForSeqLaunch(vararg function: Any?, i: Int = 0) =
     function[i]?.markTag()?.also { step ->
         val stepTag = step.string
