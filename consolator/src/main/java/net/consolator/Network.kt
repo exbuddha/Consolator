@@ -186,20 +186,17 @@ private typealias Respond = (Response) -> Unit
 private fun NetCall.commit(scope: Any?, block: Work) { synchronized(this, block) }
 private fun NetCall.exec(cmd: String = INET_CALL, respond: Respond) {
     markTag()
-    respond(this[cmd].asType<NetCall>()!!.call()!!.execute())
-}
+    respond(this[cmd].asType<NetCall>()!!.call()!!.execute()) }
 
 private typealias JobResponseFunction = (Any?, Response) -> Unit
 private fun JobResponseFunction.commit(scope: Any?, response: Response) {
     markTag()
-    invoke(scope, response)
-}
+    invoke(scope, response) }
 
 private typealias JobThrowableFunction = (Any?, Throwable) -> Unit
 private fun JobThrowableFunction.commit(scope: Any?, ex: Throwable) {
     markTag()
-    invoke(scope, ex)
-}
+    invoke(scope, ex) }
 
 @Retention(SOURCE)
 @Target(FUNCTION, PROPERTY)
