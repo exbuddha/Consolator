@@ -1129,12 +1129,16 @@ fun <R> SchedulerScope.change(ref: WeakContext, member: KFunction<R>, stage: Con
 fun <R> SchedulerScope.change(ref: WeakContext, owner: LifecycleOwner, member: KFunction<R>, stage: ContextStep) =
     EventBus.signal(stage)
 
-private var jobs: JobFunctionSet? = null
-operator fun Job.get(tag: String) = jobs?.find { tag == it.first }?.second
-operator fun Job.set(tag: String, value: Any) {
-    jobs?.save(tag, value.asCallable()) }
 typealias JobFunction = suspend (Any?) -> Unit
 private typealias JobFunctionSet = MutableSet<Pair<String, Any>>
+private var jobs: JobFunctionSet? = null
+
+operator fun Job.get(tag: String) =
+    jobs?.find { tag == it.first }?.second.asType<AnyArray>()?.get(1)
+operator fun Job.set(tag: String, value: Any) {
+    // addressable layer work
+    jobs?.save(tag, value.asCallable()) }
+
 private fun JobFunctionSet.save(tag: String, function: KCallable<*>) = function.tag.let { self ->
     save(combineTags(tag, self?.string), self?.keep ?: true, function) }
 private fun JobFunctionSet.save(tag: Tag?, self: KCallable<*>) =
@@ -1148,8 +1152,7 @@ private fun combineTags(tag: String, self: String?) =
     else "$tag.$self"
 
 fun Any.markTag() = asCallable().markTag()
-fun KCallable<*>.markTag() = tag.also {
-    jobs?.save(it, this) }
+fun KCallable<*>.markTag() = tag.also { jobs?.save(it, this) }
 fun markTags(vararg function: Any?) {
     when (function.firstOrNull()) {
         "job.launch" ->
