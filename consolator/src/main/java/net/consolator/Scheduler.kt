@@ -329,8 +329,8 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         fun unconfinedBeforeResettingByTagFirstly(async: Boolean = false, step: SequencerStep) = unconfinedBefore(async, resettingByTagFirstly(step))
         fun unconfinedBeforeResettingByTagLastly(async: Boolean = false, step: SequencerStep) = unconfinedBefore(async, resettingByTagLastly(step))
 
-        private fun mark(step: SequencerStep, capture: CaptureFunction? = null): SequencerStep {
-            markTags(step, capture)
+        private fun mark(step: SequencerStep, capture: CaptureFunction? = null, context: CoroutineContext? = null): SequencerStep {
+            markTags("seq.attach", step, capture, context)
             // record ln, tag, step
             return step
         }
@@ -541,33 +541,33 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         fun attach(async: Boolean = false, step: SequencerStep, capture: CaptureFunction) =
             Triple({ liveData(block = mark(step, capture)) }, capture, async).also { attach(it) }
         fun attach(context: CoroutineContext, async: Boolean = false, step: SequencerStep) =
-            stepToNull(async) { liveData(context, block = mark(step)) }.also { attach(it) }
+            stepToNull(async) { liveData(context, block = mark(step, context = context)) }.also { attach(it) }
         fun attach(context: CoroutineContext, async: Boolean = false, step: SequencerStep, capture: CaptureFunction) =
-            Triple({ liveData(context, block = mark(step, capture)) }, capture, async).also { attach(it) }
+            Triple({ liveData(context, block = mark(step, capture, context)) }, capture, async).also { attach(it) }
         fun attach(index: Int, async: Boolean = false, step: SequencerStep) =
             stepToNull(async) { liveData(block = mark(step)) }.also { attach(index, it) }
         fun attach(index: Int, async: Boolean = false, step: SequencerStep, capture: CaptureFunction) =
             Triple({ liveData(block = mark(step, capture)) }, capture, async).also { attach(index, it) }
         fun attach(index: Int, context: CoroutineContext, async: Boolean = false, step: SequencerStep) =
-            stepToNull(async) { liveData(context, block = mark(step)) }.also { attach(index, it) }
+            stepToNull(async) { liveData(context, block = mark(step, context = context)) }.also { attach(index, it) }
         fun attach(index: Int, context: CoroutineContext, async: Boolean = false, step: SequencerStep, capture: CaptureFunction) =
-            Triple({ liveData(context, block = mark(step, capture)) }, capture, async).also { attach(index, it) }
+            Triple({ liveData(context, block = mark(step, capture, context)) }, capture, async).also { attach(index, it) }
         fun attachAfter(async: Boolean = false, step: SequencerStep) =
             stepToNull(async) { liveData(block = mark(step)) }.also { attachAfter(it) }
         fun attachAfter(async: Boolean = false, step: SequencerStep, capture: CaptureFunction) =
             Triple({ liveData(block = mark(step, capture)) }, capture, async).also { attachAfter(it) }
         fun attachAfter(context: CoroutineContext, async: Boolean = false, step: SequencerStep) =
-            stepToNull(async) { liveData(context, block = mark(step)) }.also { attachAfter(it) }
+            stepToNull(async) { liveData(context, block = mark(step, context = context)) }.also { attachAfter(it) }
         fun attachAfter(context: CoroutineContext, async: Boolean = false, step: SequencerStep, capture: CaptureFunction) =
-            Triple({ liveData(context, block = mark(step, capture)) }, capture, async).also { attachAfter(it) }
+            Triple({ liveData(context, block = mark(step, capture, context)) }, capture, async).also { attachAfter(it) }
         fun attachBefore(async: Boolean = false, step: SequencerStep) =
             stepToNull(async) { liveData(block = mark(step)) }.also { attachBefore(it) }
         fun attachBefore(async: Boolean = false, step: SequencerStep, capture: CaptureFunction) =
             Triple({ liveData(block = mark(step, capture)) }, capture, async).also { attachBefore(it) }
         fun attachBefore(context: CoroutineContext, async: Boolean = false, step: SequencerStep) =
-            stepToNull(async) { liveData(context, block = mark(step)) }.also { attachBefore(it) }
+            stepToNull(async) { liveData(context, block = mark(step, context = context)) }.also { attachBefore(it) }
         fun attachBefore(context: CoroutineContext, async: Boolean = false, step: SequencerStep, capture: CaptureFunction) =
-            Triple({ liveData(context, block = mark(step, capture)) }, capture, async).also { attachBefore(it) }
+            Triple({ liveData(context, block = mark(step, capture, context)) }, capture, async).also { attachBefore(it) }
 
         fun capture(block: CaptureFunction) {
             attach(nullStepTo(block))
@@ -1063,19 +1063,20 @@ fun launch(context: CoroutineContext = Scheduler, start: CoroutineStart = Corout
 fun LifecycleOwner.launch(context: CoroutineContext = Scheduler, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep): Job {
     val (scope, task) = determineScopeAndCoroutine(context, start, step)
     val (context, start, step) = task
-    return scope.launch(context, start, step) }
+    return scope.launch(context, start, step).also { job ->
+        scope.markTags("job.launch", step, job, context, start) } }
 private fun LifecycleOwner.determineScopeAndCoroutine(context: CoroutineContext, start: CoroutineStart, step: CoroutineStep) =
     determineScope(step).let { scope ->
-        scope to scope.determineCoroutine(context, start, step, this) }
+        scope to scope.determineCoroutine(context, start, step) }
 private fun LifecycleOwner.determineScope(step: CoroutineStep) =
     Scheduler.trySafelyForAnnotatedScopeOf(step) ?:
     lifecycleScope
-private fun CoroutineScope.determineCoroutine(context: CoroutineContext, start: CoroutineStart, step: CoroutineStep, owner: LifecycleOwner? = foregroundLifecycleOwner) =
+private fun CoroutineScope.determineCoroutine(context: CoroutineContext, start: CoroutineStart, step: CoroutineStep) =
     Triple(
         if (context.isSchedulerContext()) context
         else Scheduler + context, // buggy! must return background io context by jit reconfiguration
         start,
-        step).also { markTags(context, start, step, owner) }
+        step)
 private fun CoroutineContext.isSchedulerContext() =
     this is Scheduler || this[_key] is SchedulerKey
 fun LifecycleOwner.close(node: SchedulerNode) {}
@@ -1129,7 +1130,7 @@ fun <R> SchedulerScope.change(ref: WeakContext, owner: LifecycleOwner, member: K
     EventBus.signal(stage)
 
 private var jobs: JobFunctionSet? = null
-operator fun Job.get(tag: String): Any? = null
+operator fun Job.get(tag: String): Any? = jobs?.any { tag == it.first }
 operator fun Job.set(tag: String, value: Any) {
     jobs?.save(tag, value.asCallable()) }
 typealias JobFunction = suspend (Any?) -> Unit
@@ -1139,17 +1140,42 @@ private fun JobFunctionSet.save(tag: String, function: KCallable<*>) = function.
 private fun JobFunctionSet.save(tag: Tag?, self: KCallable<*>) =
     if (tag !== null) with(tag) { save(string, keep, self) }
     else save(null, false, self)
-private fun JobFunctionSet.save(tag: String?, keep: Boolean, function: KCallable<*>) {}
+private fun JobFunctionSet.save(tag: String?, keep: Boolean, function: KCallable<*>) {
+    // rewire related parts
+    add((tag ?: currentThread.name) to arrayOf(keep, function)) }
 private fun combineTags(tag: String, self: String?) =
     if (self === null) tag
     else "$tag.$self"
 
 fun Any.markTag() = asCallable().markTag()
-fun KCallable<*>.markTag() {
-    jobs?.save(tag, this) }
+fun KCallable<*>.markTag() = tag.let {
+    jobs?.save(it, this)
+    it?.string }
 fun CoroutineScope.markTags(vararg function: Any?) {
-    function.forEach {
-        it.asNullable().markTag() } }
+    when (function.firstOrNull()) {
+        "job.launch" ->
+            function[1]!!.markTag()?.let { step ->
+                function[2]?.let { job ->
+                    jobs?.save("${step}.job", true, job.asCallable()) }
+                function[3]?.let { context ->
+                    jobs?.save("${step}.context", false, context.asCallable()) }
+                function[4]?.let { start ->
+                    jobs?.save("${step}.start", false, start.asCallable()) } }
+        "job.repeat" ->
+            function[1]!!.markTag()?.let { block ->
+                function[2]?.let { delay ->
+                    jobs?.save("${block}.delay", delay.asCallable()) }
+                function[3]?.let { predicate ->
+                    jobs?.save("${block}.predicate", predicate.asCallable()) } }
+        "seq.attach" ->
+            function[1]!!.markTag()?.let { step ->
+                function[2]?.let { capture ->
+                    jobs?.save("${step}.capture", capture.asNullable()) }
+                function[3]?.let { context ->
+                    jobs?.save("${step}.context", false, context.asNullable()) } }
+        else ->
+            function.forEach {
+                it.asNullable().markTag() } } }
 
 suspend fun currentJob() = currentCoroutineContext().job
 
