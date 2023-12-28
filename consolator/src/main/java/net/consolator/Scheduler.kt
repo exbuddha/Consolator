@@ -613,7 +613,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         }
         private fun nullStepTo(block: CaptureFunction) = Triple(nullStep, block, false)
         private fun stepToNull(async: Boolean = false, step: LiveStepFunction) = Triple(step, nullBlock, async)
-        private val nullStep: LiveStepFunction = { null }
+        private val nullStep: LiveStepFunction = @Tag("null-step") { null }
         private val nullBlock: CaptureFunction? = null
 
         private fun LiveWork.isSameWork(work: LiveWork) =
@@ -1064,7 +1064,7 @@ fun LifecycleOwner.launch(context: CoroutineContext = Scheduler, start: Coroutin
     val (scope, task) = determineScopeAndCoroutine(context, start, step)
     val (context, start, step) = task
     return scope.launch(context, start, step).also { job ->
-        scope.markTags("job.launch", step, job, context, start) } }
+        markTags("job.launch", step, job, context, start) } }
 private fun LifecycleOwner.determineScopeAndCoroutine(context: CoroutineContext, start: CoroutineStart, step: CoroutineStep) =
     determineScope(step).let { scope ->
         scope to scope.determineCoroutine(context, start, step) }
@@ -1130,7 +1130,7 @@ fun <R> SchedulerScope.change(ref: WeakContext, owner: LifecycleOwner, member: K
     EventBus.signal(stage)
 
 private var jobs: JobFunctionSet? = null
-operator fun Job.get(tag: String): Any? = jobs?.any { tag == it.first }
+operator fun Job.get(tag: String) = jobs?.find { tag == it.first }?.second
 operator fun Job.set(tag: String, value: Any) {
     jobs?.save(tag, value.asCallable()) }
 typealias JobFunction = suspend (Any?) -> Unit
@@ -1148,31 +1148,33 @@ private fun combineTags(tag: String, self: String?) =
     else "$tag.$self"
 
 fun Any.markTag() = asCallable().markTag()
-fun KCallable<*>.markTag() = tag.let {
-    jobs?.save(it, this)
-    it?.string }
-fun CoroutineScope.markTags(vararg function: Any?) {
+fun KCallable<*>.markTag() = tag.also {
+    jobs?.save(it, this) }
+fun markTags(vararg function: Any?) {
     when (function.firstOrNull()) {
         "job.launch" ->
-            function[1]!!.markTag()?.let { step ->
+            function[1]?.markTag()?.let { step ->
+                val stepTag = step.string
                 function[2]?.let { job ->
-                    jobs?.save("${step}.job", true, job.asCallable()) }
+                    jobs?.save("${stepTag}.job", step.keep, job.asCallable()) }
                 function[3]?.let { context ->
-                    jobs?.save("${step}.context", false, context.asCallable()) }
+                    jobs?.save("${stepTag}.context", false, context.asCallable()) }
                 function[4]?.let { start ->
-                    jobs?.save("${step}.start", false, start.asCallable()) } }
+                    jobs?.save("${stepTag}.start", false, start.asCallable()) } }
         "job.repeat" ->
-            function[1]!!.markTag()?.let { block ->
+            function[1]?.markTag()?.let { block ->
+                val blockTag = block.string
                 function[2]?.let { delay ->
-                    jobs?.save("${block}.delay", delay.asCallable()) }
+                    jobs?.save("${blockTag}.delay", delay.asCallable()) }
                 function[3]?.let { predicate ->
-                    jobs?.save("${block}.predicate", predicate.asCallable()) } }
+                    jobs?.save("${blockTag}.predicate", predicate.asCallable()) } }
         "seq.attach" ->
-            function[1]!!.markTag()?.let { step ->
+            function[1]?.markTag()?.let { step ->
+                val stepTag = step.string
                 function[2]?.let { capture ->
-                    jobs?.save("${step}.capture", capture.asNullable()) }
+                    jobs?.save("${stepTag}.capture", capture.asNullable()) }
                 function[3]?.let { context ->
-                    jobs?.save("${step}.context", false, context.asNullable()) } }
+                    jobs?.save("${stepTag}.context", false, context.asNullable()) } }
         else ->
             function.forEach {
                 it.asNullable().markTag() } } }

@@ -122,7 +122,7 @@ suspend fun updateNetworkCapabilities(networkCapabilities: NetworkCapabilities) 
 
 fun Context.registerReceiver(filter: IntentFilter) =
     ContextCompat.registerReceiver(this, receiver, filter, null,
-        clock!!.alsoStart().handler,
+        clock?.alsoStart()?.handler,
         RECEIVER_EXPORTED)
 
 val Context.isNetworkStateAccessPermitted
@@ -160,7 +160,7 @@ suspend fun CoroutineScope.repeatSuspended(
     block: JobFunction,
     delayTime: LongFunction = { 0L },
     scope: CoroutineScope = this) {
-    scope.markTags("job.repeat", block, delayTime, predicate)
+    markTags("job.repeat", block, delayTime, predicate)
     while (predicate()) {
         block(scope)
         delayOrYield(delayTime()) } }
