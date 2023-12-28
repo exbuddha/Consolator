@@ -405,7 +405,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         fun capture(work: LiveWork): Boolean {
             work.second.let { capture ->
                 latestCapture = capture
-                capture?.invoke(capture.asNullable())?.let { async ->
+                capture?.invoke(work.asCallable())?.let { async ->
                     if (async is Boolean) return async
                 }
             }
