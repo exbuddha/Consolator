@@ -67,7 +67,7 @@ private fun clearInternetCallbackObjects() {
 @Tag(INET)
 var networkCaller: Job? = null
     set(value) {
-        // update addressable layer?
+        // update addressable layer
         field = value
     }
 
