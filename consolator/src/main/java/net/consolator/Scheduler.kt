@@ -1185,12 +1185,12 @@ fun markTags(vararg function: Any?) {
     when (function.firstOrNull()) {
         "job.launch" ->
             markTagsForJobLaunch(*function, i = 1)
+        "seq.launch" ->
+            markTagsForSeqLaunch(*function, i = 1)
         "job.repeat" ->
             markTagsForJobRepeat(*function, i = 1)
         "seq.attach" ->
             markTagsForSeqAttach(*function, i = 1)
-        "seq.launch" ->
-            markTagsForSeqLaunch(*function, i = 1)
         else ->
             function.forEach {
                 it.asNullable().markTag() } } }
