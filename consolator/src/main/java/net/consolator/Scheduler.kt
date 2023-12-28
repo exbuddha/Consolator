@@ -1155,32 +1155,32 @@ private fun markTagsForJobLaunch(vararg function: Any?, i: Int = 0) =
     function[i]?.markTag()?.also { step ->
         val stepTag = step.string
         function[i + 1]?.let { job ->
-            jobs?.save("${stepTag}.job", step.keep, job.asCallable()) }
+            jobs?.save("${stepTag}.job", step.keep, job.asCallable()) } /* job */
         function[i + 2]?.let { context ->
-            jobs?.save("${stepTag}.context", false, context.asCallable()) }
+            jobs?.save("${stepTag}.context", false, context.asCallable()) } /* context */
         function[i + 3]?.let { start ->
-            jobs?.save("${stepTag}.start", false, start.asCallable()) } }
+            jobs?.save("${stepTag}.start", false, start.asCallable()) } /* start */ }
 private fun markTagsForJobRepeat(vararg function: Any?, i: Int = 0) =
     function[i]?.markTag()?.also { block ->
         val blockTag = block.string
         function[i + 1]?.let { delay ->
-            jobs?.save("${blockTag}.delay", delay.asCallable()) }
+            jobs?.save("${blockTag}.delay", delay.asCallable()) } /* delay */
         function[i + 2]?.let { predicate ->
-            jobs?.save("${blockTag}.predicate", predicate.asCallable()) } }
+            jobs?.save("${blockTag}.predicate", predicate.asCallable()) } /* predicate */ }
 private fun markTagsForSeqAttach(vararg function: Any?, i: Int = 0) =
     function[i]?.asType<LiveWork>()?.let { work ->
         work.first.markTag()?.also { stepTag ->
             val stepTag = stepTag.string
             jobs?.save("${stepTag}.work", false, work.asNullable())
             function[i + 1]?.let { ln ->
-                jobs?.save("${stepTag}.ln", ln.asNullable()) } } }
+                jobs?.save("${stepTag}.ln", ln.asNullable()) } /* ln */ } /* work & ln */ }
 private fun markTagsForSeqLaunch(vararg function: Any?, i: Int = 0) =
     function[i]?.markTag()?.also { step ->
         val stepTag = step.string
         function[i + 1]?.let { capture ->
-            jobs?.save("${stepTag}.capture", capture.asNullable()) }
+            jobs?.save("${stepTag}.capture", capture.asNullable()) } /* capture */
         function[i + 2]?.let { context ->
-            jobs?.save("${stepTag}.context", false, context.asNullable()) } }
+            jobs?.save("${stepTag}.context", false, context.asNullable()) } /* context */ }
 fun markTags(vararg function: Any?) {
     when (function.firstOrNull()) {
         "job.launch" ->
