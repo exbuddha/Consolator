@@ -83,8 +83,7 @@ private suspend fun repeatNetworkCallFunction(scope: CoroutineScope) {
 }
 private var networkCallFunction: JobFunction = @Tag(INET_FUNCTION) { scope ->
     if (repeatNetCallback && isNetCallTimeIntervalExceeded) {
-        if (info.isOn)
-            info(INET_TAG, "Trying to send out http request for network caller...")
+        info(INET_TAG, "Trying to send out http request for network caller...")
         ::netCall.commit(scope) {
             ::netCall[INET_CALL] = ::buildNetCallRequest.with("https://httpbin.org/delay/1")()
             tryCancelingForResult({
@@ -104,13 +103,11 @@ private var reactToNetCallResponseReceived: JobResponseFunction = @Tag(INET_SUCC
         netCallDelayTime = -1L
         close()
     }
-    if (info.isOn)
-        info(INET_TAG, "Received response for internet availability.")
+    info(INET_TAG, "Received response for internet availability.")
 }
 private var reactToNetCallRequestFailed: JobThrowableFunction = @Tag(INET_ERROR) { _, _ ->
     hasInternet = false
-    if (warning.isOn)
-        warning(INET_TAG, "Failed to send http request for internet availability.")
+    warning(INET_TAG, "Failed to send http request for internet availability.")
 }
 
 @Tag(INET_DELAY)

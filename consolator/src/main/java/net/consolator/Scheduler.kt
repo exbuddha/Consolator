@@ -94,8 +94,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
                                 Context::stageNetDbInitialized)) }
                     resume()
                 }
-                if (info.isOn)
-                    info(SVC_TAG, "Clock is detected.")
+                info(SVC_TAG, "Clock is detected.")
             }
             return this
         }
