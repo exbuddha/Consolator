@@ -30,10 +30,12 @@ var instance: BaseApplication? = null
 var service: BaseService? = null
 var receiver: BaseReceiver? = null
     get() = field.singleton()
+
 var db: AppDatabase? = null
 var logDb: LogDatabase? = null
 var netDb: NetworkDatabase? = null
 var session: RuntimeSessionEntity? = null
+
 lateinit var mainUncaughtExceptionHandler: ExceptionHandler
 
 @LayoutRes
