@@ -1053,7 +1053,6 @@ private fun combineTags(tag: String, self: String?) =
     if (self === null) tag
     else "$tag.$self"
 
-private fun returnItsTag(it: Any?) = it.asNullable().tag!!.string
 fun Any.markTag() = asCallable().markTag()
 fun KCallable<*>.markTag() = tag.also { jobs?.save(it, this) }
 fun markTags(vararg function: Any?) {
@@ -1099,6 +1098,7 @@ private fun markTagsForSeqLaunch(vararg function: Any?, i: Int = 0) =
             jobs?.save("${stepTag}.capture", capture.asNullable()) } /* capture */
         function[i + 2]?.let { context ->
             jobs?.save("${stepTag}.context", false, context.asNullable()) } /* context */ }
+private fun returnItsTag(it: Any?) = it.asNullable().tag!!.string
 
 suspend fun currentJob() = currentCoroutineContext().job
 
