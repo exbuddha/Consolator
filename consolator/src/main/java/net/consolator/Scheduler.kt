@@ -116,15 +116,15 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
                 scope.commitStageBuildDatabase(instance, tag(this), step, stage) } }
         private suspend fun <D : RoomDatabase> SequencerScope.commitStageBuildDatabase(instance: KMutableProperty<out D?>, tag: String, stage: ContextStep?, action: Step = { change(stage!!) }) =
             commitAsyncOrResetByTag(instance, tag, {
-                buildDatabase(instance) },
+                buildDatabaseOrResetByTag(instance, tag) },
                 post = action)
         private suspend fun <D : RoomDatabase> SequencerScope.commitStageBuildDatabase(instance: KMutableProperty<out D?>, tag: String, step: Step, stage: ContextStep?, action: Step = { step(); change(stage!!) }) =
             commitAsyncOrResetByTag(instance, tag, {
-                buildDatabase(instance) },
+                buildDatabaseOrResetByTag(instance, tag) },
                 post = action)
-        private suspend fun <D : RoomDatabase> SequencerScope.buildDatabase(instance: KMutableProperty<out D?>) =
+        private suspend fun <D : RoomDatabase> SequencerScope.buildDatabaseOrResetByTag(instance: KMutableProperty<out D?>, tag: String) =
             instance.setter.call(ref?.get()?.run {
-                sequencer { resetOnError(::buildDatabase) } })
+                sequencer { resetOnError(tag, ::buildDatabase) } })
 
         private fun SequencerScope.commitAsyncOrResetByTag(lock: KProperty<*>, tag: String, block: Step) =
             commitAsyncBlocking(lock, block) { resetByTag(tag) }
@@ -442,17 +442,17 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
                 error(ex)
         }
         var interrupt = fun(ex: Throwable) = ex
-        suspend inline fun <R> SequencerScope.resetOnCancel(block: () -> R) =
+        suspend inline fun <R> SequencerScope.resetOnCancel(tag: String, block: () -> R) =
             try { block() }
             catch (ex: CancellationException) {
-                emitReset()
+                emitResetByTag(tag)
                 exception(ex)
                 throw interrupt(ex)
             }
-        suspend inline fun <R> SequencerScope.resetOnError(block: () -> R) =
+        suspend inline fun <R> SequencerScope.resetOnError(tag: String, block: () -> R) =
             try { block() }
             catch (ex: Throwable) {
-                emitReset()
+                emitResetByTag(tag)
                 exception(ex)
                 throw interrupt(ex)
             }
