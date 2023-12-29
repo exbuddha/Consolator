@@ -16,8 +16,7 @@ import kotlin.annotation.AnnotationTarget.*
 import kotlin.reflect.*
 import kotlinx.coroutines.*
 import com.google.gson.Gson
-import net.consolator.Scheduler.Event
-import net.consolator.Scheduler.Path.Diverging
+import net.consolator.Path.Diverging
 import net.consolator.Scheduler.EventBus.signal
 import net.consolator.State.Pending
 import net.consolator.State.Resolved

@@ -8,13 +8,11 @@ import androidx.fragment.app.FragmentTransaction.*
 import kotlin.annotation.AnnotationRetention.*
 import kotlin.annotation.AnnotationTarget.*
 import kotlinx.coroutines.*
+import net.consolator.Event.Listening
+import net.consolator.Event.Retrying
+import net.consolator.Event.Signaling
+import net.consolator.Path.Parallel
 import net.consolator.Scheduler.EventBus
-import net.consolator.Scheduler.FromLastCancellation
-import net.consolator.Scheduler.Event.Listening
-import net.consolator.Scheduler.Event.Retrying
-import net.consolator.Scheduler.Event.Signaling
-import net.consolator.Scheduler.Path
-import net.consolator.Scheduler.Path.Parallel
 import net.consolator.State.Pending
 import net.consolator.State.Resolved
 import net.consolator.State.Succeeded

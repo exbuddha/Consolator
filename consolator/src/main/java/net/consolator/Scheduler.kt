@@ -763,59 +763,6 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         sequencer = null
     }
 
-    @Retention(SOURCE)
-    @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
-    annotation class Scope(val type: KClass<out CoroutineScope> = Scheduler::class)
-    private val KCallable<*>.schedulerScope
-        get() = annotations.find { it is Scope } as? Scope
-    private fun annotatedScopeOf(step: CoroutineStep) =
-        step.asCallable().schedulerScope!!.type.reconstruct(step)
-    fun trySafelyForAnnotatedScopeOf(step: CoroutineStep) =
-        trySafelyForResult { annotatedScopeOf(step) }
-
-    @Retention(SOURCE)
-    @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
-    annotation class LaunchScope
-    private val KCallable<*>.launchScope
-        get() = annotations.find { it is LaunchScope } as? LaunchScope
-    private fun annotatedLaunchScopeOf(step: CoroutineStep) =
-        step.asCallable().launchScope!!
-    fun trySafelyForAnnotatedLaunchScopeOf(step: CoroutineStep) =
-        trySafelyForResult { annotatedLaunchScopeOf(step) }
-
-    @Retention(SOURCE)
-    @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
-    annotation class Path(
-        val name: String = "",
-        val route: SchedulerPath = [],
-        val blacklist: SchedulerPath = []) {
-        @Retention(SOURCE)
-        @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
-        annotation class Adjacent(val paths: Array<String> = [])
-
-        @Retention(SOURCE)
-        @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
-        annotation class Converging(val paths: Array<String> = [])
-
-        @Retention(SOURCE)
-        @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
-        annotation class Diverging(val paths: Array<String> = [])
-
-        @Retention(SOURCE)
-        @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
-        annotation class Parallel(val paths: Array<String> = [])
-
-        @Retention(SOURCE)
-        @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
-        annotation class Preceding(val paths: Array<String> = [])
-
-        @Retention(SOURCE)
-        @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
-        annotation class Proceeding(val paths: Array<String> = [])
-    }
-    object FromLastCancellation : Throwable()
-    object Propagate : Throwable()
-
     init {
         _key = object : SchedulerKey {}
         _element = object : SchedulerElement {
@@ -843,43 +790,6 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     }
 
     override fun commit(step: CoroutineStep) = clock(step::invoke)
-
-    @Retention(SOURCE)
-    @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
-    annotation class Event(val transit: Short = 0) {
-        @Retention(SOURCE)
-        @Target(FUNCTION, EXPRESSION)
-        annotation class Listening(
-            val timeout: Long = 0L,
-            val channel: Short = 0)
-
-        @Retention(SOURCE)
-        @Target(FUNCTION, EXPRESSION)
-        annotation class Signaling(val channel: Short = 0)
-
-        @Retention(SOURCE)
-        @Target(FUNCTION, EXPRESSION)
-        annotation class Retrying(
-            val delay: Long = 0L,
-            val timeout: Long = -1L,
-            val channel: Short = 0,
-            val pathwise: SchedulerPath = [])
-
-        @Retention(SOURCE)
-        @Target(FUNCTION, EXPRESSION)
-        annotation class Repeating(
-            val count: Int = 0,
-            val delay: Long = 0L,
-            val timeout: Long = -1L,
-            val channel: Short = 0,
-            val pathwise: SchedulerPath = [])
-    }
-    private val KCallable<*>.event
-        get() = annotations.find { it is Event } as? Event
-    private fun annotatedEventOf(step: KCallable<*>) =
-        step.event!!
-    fun trySafelyForAnnotatedEventOf(step: KCallable<*>) =
-        trySafelyForResult { annotatedEventOf(step) }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     object EventBus : AbstractFlow<Step?>() {
@@ -912,11 +822,7 @@ fun Step.reevaluate(transit: Short? = this.transit) = object : Relay(transit) {
 }
 
 val Step.transit
-    get() = if (this is Relay) transit else annotatedEvent?.transit
-val ContextStep.transit
-    get() = annotatedEvent?.transit
-private val Any.annotatedEvent
-    get() = Scheduler.trySafelyForAnnotatedEventOf(asCallable())
+    get() = if (this is Relay) transit else asCallable().event?.transit
 
 inline fun <reified T : Resolver> LifecycleOwner.defer(member: UnitKFunction, vararg context: Any?) =
     Scheduler.defer(T::class, this, member, *context)
@@ -935,7 +841,7 @@ fun Context.scheduleNow(ref: ContextStep) = scheduleNow(step = { ref() })
 
 fun service(task: String) {}
 private fun service(step: CoroutineStep) {
-    (Scheduler.trySafelyForAnnotatedScopeOf(step) ?:
+    (annotatedScopeOf(step) ?:
     service)?.let { scope ->
         scope::class.memberFunctions.find {
             it.name == "commit" &&
@@ -1067,8 +973,7 @@ private fun LifecycleOwner.determineScopeAndCoroutine(context: CoroutineContext,
     determineScope(step).let { scope ->
         scope to scope.determineCoroutine(context, start, step) }
 private fun LifecycleOwner.determineScope(step: CoroutineStep) =
-    Scheduler.trySafelyForAnnotatedScopeOf(step) ?:
-    lifecycleScope
+    annotatedScopeOf(step) ?: lifecycleScope
 private fun CoroutineScope.determineCoroutine(context: CoroutineContext, start: CoroutineStart, step: CoroutineStep) =
     Triple(
         if (context.isSchedulerContext()) context
@@ -1197,24 +1102,6 @@ private fun markTagsForSeqLaunch(vararg function: Any?, i: Int = 0) =
 
 suspend fun currentJob() = currentCoroutineContext().job
 
-@Retention(SOURCE)
-@Target(CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
-annotation class Tag(
-    val string: String,
-    val keep: Boolean = true)
-private val KCallable<*>.tag
-    get() = annotations.find { it is Tag } as? Tag
-
-@Retention(SOURCE)
-@Target(CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
-annotation class JobTreeRoot
-
-@Retention(SOURCE)
-@Target(CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
-annotation class JobTree(
-    val branch: String = "",
-    val level: UByte = 0u)
-
 infix fun <R, S> (suspend () -> R).then(next: suspend () -> S): suspend () -> S = {
     this@then()
     next() }
@@ -1261,6 +1148,106 @@ fun onMainThread() = currentThread.isMainThread()
 private fun newThread(group: ThreadGroup, name: String, priority: Int, target: Runnable) = Thread(group, target, name).also { it.priority = priority }
 private fun newThread(name: String, priority: Int, target: Runnable) = Thread(target, name).also { it.priority = priority }
 private fun newThread(priority: Int, target: Runnable) = Thread(target).also { it.priority = priority }
+
+@Retention(SOURCE)
+@Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+annotation class Event(val transit: Short = 0) {
+    @Retention(SOURCE)
+    @Target(FUNCTION, EXPRESSION)
+    annotation class Listening(
+        val timeout: Long = 0L,
+        val channel: Short = 0)
+
+    @Retention(SOURCE)
+    @Target(FUNCTION, EXPRESSION)
+    annotation class Signaling(val channel: Short = 0)
+
+    @Retention(SOURCE)
+    @Target(FUNCTION, EXPRESSION)
+    annotation class Retrying(
+        val delay: Long = 0L,
+        val timeout: Long = -1L,
+        val channel: Short = 0,
+        val pathwise: SchedulerPath = [])
+
+    @Retention(SOURCE)
+    @Target(FUNCTION, EXPRESSION)
+    annotation class Repeating(
+        val count: Int = 0,
+        val delay: Long = 0L,
+        val timeout: Long = -1L,
+        val channel: Short = 0,
+        val pathwise: SchedulerPath = [])
+}
+
+@Retention(SOURCE)
+@Target(CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+annotation class Tag(
+    val string: String,
+    val keep: Boolean = true)
+
+@Retention(SOURCE)
+@Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+annotation class Path(
+    val name: String = "",
+    val route: SchedulerPath = [],
+    val blacklist: SchedulerPath = []) {
+    @Retention(SOURCE)
+    @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+    annotation class Adjacent(val paths: Array<String> = [])
+
+    @Retention(SOURCE)
+    @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+    annotation class Converging(val paths: Array<String> = [])
+
+    @Retention(SOURCE)
+    @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+    annotation class Diverging(val paths: Array<String> = [])
+
+    @Retention(SOURCE)
+    @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+    annotation class Parallel(val paths: Array<String> = [])
+
+    @Retention(SOURCE)
+    @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+    annotation class Preceding(val paths: Array<String> = [])
+
+    @Retention(SOURCE)
+    @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+    annotation class Proceeding(val paths: Array<String> = [])
+}
+
+object FromLastCancellation : Throwable()
+object Propagate : Throwable()
+
+@Retention(SOURCE)
+@Target(CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+annotation class JobTreeRoot
+
+@Retention(SOURCE)
+@Target(CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+annotation class JobTree(
+    val branch: String = "",
+    val level: UByte = 0u)
+
+@Retention(SOURCE)
+@Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+annotation class Scope(val type: KClass<out CoroutineScope> = Scheduler::class)
+
+@Retention(SOURCE)
+@Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+annotation class LaunchScope
+
+private val KCallable<*>.tag
+    get() = annotations.find { it is Tag } as? Tag
+private val KCallable<*>.event
+    get() = annotations.find { it is Event } as? Event
+private val KCallable<*>.schedulerScope
+    get() = annotations.find { it is Scope } as? Scope
+private fun annotatedScopeOf(step: CoroutineStep) =
+    trySafelyForResult { step.asCallable().schedulerScope!!.type.reconstruct(step) }
+private val KCallable<*>.launchScope
+    get() = annotations.find { it is LaunchScope } as? LaunchScope
 
 private typealias DescriptiveStep = suspend SchedulerScope.(Job) -> Unit
 private typealias JobPredicate = (Job) -> Boolean
