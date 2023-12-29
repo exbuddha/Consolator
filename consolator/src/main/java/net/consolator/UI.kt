@@ -14,8 +14,8 @@ object UI : (Context, ScreenEventInterceptor?) -> Pair<Fragment, Int?> {
 
 private open class OverlayFragment(
     private val context: WeakContext,
-    private val interceptor: ScreenEventInterceptor?
-) : Fragment(),
+    private val interceptor: ScreenEventInterceptor?)
+    : Fragment(),
     OnContextClickListener {
     override fun onContextClick(event: MotionEvent) =
         intercept(
