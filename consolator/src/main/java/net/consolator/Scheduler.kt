@@ -105,7 +105,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             stage: ContextStep? = null
         ): SequencerStep = object : SequencerStep {
             override suspend fun invoke(scope: SequencerScope) {
-                scope.commitStageBuildDatabase(instance, { tag(this) }, stage) } }
+                scope.commitStageBuildDatabase(instance, tag(this), stage) } }
         private fun <D : RoomDatabase> seqStepBuildDatabase(
             instance: KMutableProperty<out D?>,
             tag: StringFunction = ::returnItsTag,
@@ -113,13 +113,13 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             stage: ContextStep? = null
         ): SequencerStep = object : SequencerStep {
             override suspend fun invoke(scope: SequencerScope) {
-                scope.commitStageBuildDatabase(instance, { tag(this) }, step, stage) } }
-        private suspend fun <D : RoomDatabase> SequencerScope.commitStageBuildDatabase(instance: KMutableProperty<out D?>, tag: StringFunction, stage: ContextStep?, action: Step = { change(stage!!) }) =
-            commitAsyncOrResetByTag(instance, tag(this), {
+                scope.commitStageBuildDatabase(instance, tag(this), step, stage) } }
+        private suspend fun <D : RoomDatabase> SequencerScope.commitStageBuildDatabase(instance: KMutableProperty<out D?>, tag: String, stage: ContextStep?, action: Step = { change(stage!!) }) =
+            commitAsyncOrResetByTag(instance, tag, {
                 buildDatabase(instance) },
                 post = action)
-        private suspend fun <D : RoomDatabase> SequencerScope.commitStageBuildDatabase(instance: KMutableProperty<out D?>, tag: StringFunction, step: Step, stage: ContextStep?, action: Step = { step(); change(stage!!) }) =
-            commitAsyncOrResetByTag(instance, tag(this), {
+        private suspend fun <D : RoomDatabase> SequencerScope.commitStageBuildDatabase(instance: KMutableProperty<out D?>, tag: String, step: Step, stage: ContextStep?, action: Step = { step(); change(stage!!) }) =
+            commitAsyncOrResetByTag(instance, tag, {
                 buildDatabase(instance) },
                 post = action)
         private suspend fun <D : RoomDatabase> SequencerScope.buildDatabase(instance: KMutableProperty<out D?>) =
