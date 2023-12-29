@@ -83,15 +83,15 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
                         io(true,
                             @Tag(STAGE_BUILD)
                             seqStepBuildDatabase(
-                                ::logDb, STAGE_BUILD,
-                                Context::stageLogDbCreated)) }
+                                ::logDb,
+                                stage = Context::stageLogDbCreated)) }
                     if (netDb === null) with(NetworkDatabase) {
                         io(true,
                             @Tag(STAGE_BUILD)
                             seqStepBuildDatabase(
-                                ::netDb, STAGE_BUILD,
-                                { /* update net db records */ },
-                                Context::stageNetDbInitialized)) }
+                                ::netDb,
+                                step = { /* update net db records */ },
+                                stage = Context::stageNetDbInitialized)) }
                     resume()
                 }
                 info(SVC_TAG, "Clock is detected.")
@@ -101,26 +101,28 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
 
         private fun <D : RoomDatabase> seqStepBuildDatabase(
             instance: KMutableProperty<out D?>,
-            tag: String,
+            tag: StringFunction = ::returnItsTag,
             stage: ContextStep? = null
-        ): SequencerStep = {
-            commitAsyncOrResetByTag(instance, tag) {
-                buildDatabase(instance)
-                whenNotNull(instance) {
-                    change(stage!!) } }
-        }
+        ): SequencerStep = object : SequencerStep {
+            override suspend fun invoke(scope: SequencerScope) {
+                with(scope) {
+                    commitAsyncOrResetByTag(instance, tag(this)) {
+                        buildDatabase(instance)
+                        whenNotNull(instance) {
+                            change(stage!!) } } } } }
         private fun <D : RoomDatabase> seqStepBuildDatabase(
             instance: KMutableProperty<out D?>,
-            tag: String,
+            tag: StringFunction = ::returnItsTag,
             step: Step,
             stage: ContextStep? = null
-        ): SequencerStep = {
-            commitAsyncOrResetByTag(instance, tag) {
-                buildDatabase(instance)
-                whenNotNull(instance) {
-                    step()
-                    change(stage!!) } }
-        }
+        ): SequencerStep = object : SequencerStep {
+            override suspend fun invoke(scope: SequencerScope) {
+                with(scope) {
+                    commitAsyncOrResetByTag(instance, tag(this)) {
+                        buildDatabase(instance)
+                        whenNotNull(instance) {
+                            step()
+                            change(stage!!) } } } } }
         private suspend fun <D : RoomDatabase> SequencerScope.buildDatabase(instance: KMutableProperty<out D?>) =
             instance.setter.call(ref?.get()?.run {
                 sequencer { resetOnError(::buildDatabase) } })
@@ -1054,6 +1056,7 @@ private fun combineTags(tag: String, self: String?) =
     if (self === null) tag
     else "$tag.$self"
 
+private fun returnItsTag(it: Any?) = it.asNullable().tag!!.string
 fun Any.markTag() = asCallable().markTag()
 fun KCallable<*>.markTag() = tag.also { jobs?.save(it, this) }
 fun markTags(vararg function: Any?) {
