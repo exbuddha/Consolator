@@ -820,8 +820,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
 
 fun Step.relay(transit: Short? = this.transit) = Relay(transit)
 fun Step.reevaluate(transit: Short? = this.transit) = object : Relay(transit) {
-    override suspend fun invoke() = this@reevaluate()
-}
+    override suspend fun invoke() = this@reevaluate() }
 
 val Step.transit
     get() = if (this is Relay) transit else asCallable().event?.transit
@@ -912,12 +911,10 @@ fun <T, R> unconfinedCapture(step: suspend LiveDataScope<T>.() -> Unit, capture:
     capture(Unconfined, step, capture)
 fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(owner: LifecycleOwner, observer: Observer<T> = disposerOf(this)): Observer<T> {
     first.observe(owner, observer)
-    return observer
-}
+    return observer }
 fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(observer: Observer<T> = disposerOf(this)): Observer<T> {
     first.observeForever(observer)
-    return observer
-}
+    return observer }
 fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(owner: LifecycleOwner, observerOf: (Pair<LiveData<T>, (T) -> R>) -> Observer<T> = ::disposerOf) =
     observe(owner, observerOf(this))
 fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(observerOf: (Pair<LiveData<T>, (T) -> R>) -> Observer<T> = ::disposerOf) =
@@ -926,14 +923,14 @@ fun <T, R> Pair<LiveData<T>, (T) -> R>.removeObserver(observer: Observer<T>) =
     first.removeObserver(observer)
 fun <T, R> Pair<LiveData<T>, (T) -> R>.removeObservers(owner: LifecycleOwner) =
     first.removeObservers(owner)
-fun <T, R> captureOf(liveStep: Pair<LiveData<T>, (T) -> R>) = Observer<T> { liveStep.second(it) }
-private fun <T, R> disposerOf(liveStep: Pair<LiveData<T>, (T) -> R>) = object : Observer<T> {
-    override fun onChanged(value: T) {
-        val (step, capture) = liveStep
-        step.removeObserver(this)
-        capture(value)
-    }
-}
+fun <T, R> captureOf(liveStep: Pair<LiveData<T>, (T) -> R>) =
+    Observer<T> { liveStep.second(it) }
+private fun <T, R> disposerOf(liveStep: Pair<LiveData<T>, (T) -> R>) =
+    object : Observer<T> {
+        override fun onChanged(value: T) {
+            val (step, capture) = liveStep
+            step.removeObserver(this)
+            capture(value) } }
 
 suspend fun SequencerScope.change(stage: ContextStep) = emitResettingByTag(tagOf(stage)) {
     EventBus.signal(stage)
