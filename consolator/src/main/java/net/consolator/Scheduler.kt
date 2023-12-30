@@ -905,23 +905,23 @@ fun <T, R> defaultCapture(step: suspend LiveDataScope<T>.() -> Unit, capture: (T
     capture(Default, step, capture)
 fun <T, R> unconfinedCapture(step: suspend LiveDataScope<T>.() -> Unit, capture: (T) -> R) =
     capture(Unconfined, step, capture)
-fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(owner: LifecycleOwner, observer: Observer<T> = disposerOf(this)): Observer<T> {
+fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(owner: LifecycleOwner, observer: Observer<T> = disposer(this)): Observer<T> {
     first.observe(owner, observer)
     return observer }
-fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(observer: Observer<T> = disposerOf(this)): Observer<T> {
+fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(observer: Observer<T> = disposer(this)): Observer<T> {
     first.observeForever(observer)
     return observer }
-fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(owner: LifecycleOwner, observerOf: (Pair<LiveData<T>, (T) -> R>) -> Observer<T> = ::disposerOf) =
-    observe(owner, observerOf(this))
-fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(observerOf: (Pair<LiveData<T>, (T) -> R>) -> Observer<T> = ::disposerOf) =
-    observe(observerOf(this))
+fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(owner: LifecycleOwner, observer: (Pair<LiveData<T>, (T) -> R>) -> Observer<T> = ::disposer) =
+    observe(owner, observer(this))
+fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(observer: (Pair<LiveData<T>, (T) -> R>) -> Observer<T> = ::disposer) =
+    observe(observer(this))
 fun <T, R> Pair<LiveData<T>, (T) -> R>.removeObserver(observer: Observer<T>) =
     first.removeObserver(observer)
 fun <T, R> Pair<LiveData<T>, (T) -> R>.removeObservers(owner: LifecycleOwner) =
     first.removeObservers(owner)
-fun <T, R> captureOf(liveStep: Pair<LiveData<T>, (T) -> R>) =
+fun <T, R> captor(liveStep: Pair<LiveData<T>, (T) -> R>) =
     Observer<T> { liveStep.second(it) }
-private fun <T, R> disposerOf(liveStep: Pair<LiveData<T>, (T) -> R>) =
+private fun <T, R> disposer(liveStep: Pair<LiveData<T>, (T) -> R>) =
     object : Observer<T> {
         override fun onChanged(value: T) {
             val (step, capture) = liveStep
