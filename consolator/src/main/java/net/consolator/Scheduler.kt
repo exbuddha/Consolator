@@ -125,13 +125,12 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
                 post = action)
         private suspend fun <D : RoomDatabase> SequencerScope.buildDatabaseOrResetByTag(instance: KMutableProperty<out D?>, tag: String) =
             instance.setter.call(ref?.get()?.run {
-                sequencer { resetOnError(tag, ::buildDatabase) } })
+                sequencer { resetByTagOnError(tag, ::buildDatabase) } })
 
         private fun SequencerScope.commitAsyncOrResetByTag(lock: KProperty<*>, tag: String, block: Step, condition: PropertyCondition = ::whenNotNull, post: Step = emptyStep) =
             commitAsyncOrResetByTag(lock, tag) {
                 block()
-                condition(lock, post)
-            }
+                condition(lock, post) }
         private fun SequencerScope.commitAsyncOrResetByTag(lock: KProperty<*>, tag: String, block: Step) =
             commitAsyncBlocking(lock, block) { resetByTag(tag) }
 
@@ -350,7 +349,6 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         fun <R> commit(block: () -> R) = synchronized(mLock, block)
         private val mLock: Any
             get() = seq // lock resolution may interrupt thread here
-        private var sync = fun(lock: Any, block: AnyFunction) = synchronized(lock, block)
 
         private fun init() {
             ln = -1
@@ -443,20 +441,31 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
                 error(ex)
         }
         var interrupt = fun(ex: Throwable) = ex
-        suspend inline fun <R> SequencerScope.resetOnCancel(tag: String, block: () -> R) =
+
+        suspend inline fun <R> SequencerScope.resetOnCancel(block: () -> R) =
+            try { block() }
+            catch (ex: CancellationException) {
+                emitReset()
+                exception(ex)
+                throw interrupt(ex) }
+        suspend inline fun <R> SequencerScope.resetOnError(block: () -> R) =
+            try { block() }
+            catch (ex: Throwable) {
+                emitReset()
+                exception(ex)
+                throw interrupt(ex) }
+        suspend inline fun <R> SequencerScope.resetByTagOnCancel(tag: String, block: () -> R) =
             try { block() }
             catch (ex: CancellationException) {
                 emitResetByTag(tag)
                 exception(ex)
-                throw interrupt(ex)
-            }
-        suspend inline fun <R> SequencerScope.resetOnError(tag: String, block: () -> R) =
+                throw interrupt(ex) }
+        suspend inline fun <R> SequencerScope.resetByTagOnError(tag: String, block: () -> R) =
             try { block() }
             catch (ex: Throwable) {
                 emitResetByTag(tag)
                 exception(ex)
-                throw interrupt(ex)
-            }
+                throw interrupt(ex) }
         private fun resettingFirstly(step: SequencerStep) = SequencerScope::emitReset then step
         private fun resettingLastly(step: SequencerStep) = step then SequencerScope::emitReset
         private fun resettingByTagFirstly(step: SequencerStep) = step after { emitResetByTag(tagOf(step)) }
@@ -636,16 +645,13 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         private fun LiveWork.isNotAttached(range: IntRange): Boolean {
             range.forEach {
                 if (seq[it].isSameWork(this))
-                    return false
-            }
-            return true
-        }
+                    return false }
+            return true }
         private fun LiveWork.isNotAttached(first: Int, last: Int): Boolean {
             for (i in first..last)
                 if (seq[i].isSameWork(this))
                     return false
-            return true
-        }
+            return true }
         private fun LiveWork.isNotAttached(index: Int) =
             none(index) { it.isSameWork(this) }
         private fun LiveWork.isNotAttached(range: IntRange, index: Int) = when {
@@ -653,30 +659,25 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             index - range.first <= range.last - index ->
                 range.none { seq[it].isSameWork(this) }
             else ->
-                range.noneReversed { seq[it].isSameWork(this) }
-        }
+                range.noneReversed { seq[it].isSameWork(this) } }
         private fun LiveWork.isNotAttached(first: Int, last: Int, index: Int) = when {
             first < last -> true
             index - first <= last - index ->
                 seq.none { it.isSameWork(this) }
             else ->
-                seq.noneReversed { it.isSameWork(this) }
-        }
+                seq.noneReversed { it.isSameWork(this) } }
         private fun CaptureFunction.isNotAttached() =
             seq.noneReversed { it.isSameCapture(this) }
         private fun CaptureFunction.isNotAttached(range: IntRange): Boolean {
             range.forEach {
                 if (seq[it].isSameCapture(this))
-                    return false
-            }
-            return true
-        }
+                    return false }
+            return true }
         private fun CaptureFunction.isNotAttached(first: Int, last: Int): Boolean {
             for (i in first..last)
                 if (seq[i].isSameCapture(this))
                     return false
-            return true
-        }
+            return true }
         private fun CaptureFunction.isNotAttached(index: Int) =
             none(index) { it.isSameCapture(this) }
         private fun CaptureFunction.isNotAttached(range: IntRange, index: Int) = when {
@@ -684,37 +685,30 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             index - range.first <= range.last - index ->
                 range.none { seq[it].isSameCapture(this) }
             else ->
-                range.noneReversed { seq[it].isSameCapture(this) }
-        }
+                range.noneReversed { seq[it].isSameCapture(this) } }
         private fun CaptureFunction.isNotAttached(first: Int, last: Int, index: Int) = when {
             first < last -> true
             index - first <= last - index ->
                 seq.none { it.isSameCapture(this) }
             else ->
-                seq.noneReversed { it.isSameCapture(this) }
-        }
+                seq.noneReversed { it.isSameCapture(this) } }
         private inline fun none(index: Int, predicate: LiveWorkPredicate) = with(seq) {
             when {
                 index < size / 2 ->
                     none(predicate)
                 else ->
-                    noneReversed(predicate)
-            }
-        }
+                    noneReversed(predicate) } }
         private inline fun LiveSequence.noneReversed(predicate: LiveWorkPredicate): Boolean {
             if (size == 0) return true
             for (i in (size - 1) downTo 0)
                 if (predicate(this[i]))
                     return false
-            return true
-        }
+            return true }
         private inline fun IntRange.noneReversed(predicate: IntPredicate): Boolean {
             reversed().forEach {
                 if (predicate(it))
-                    return false
-            }
-            return true
-        }
+                    return false }
+            return true }
 
         val leading
             get() = 0 until with(seq) { if (ln < size) ln else size }
@@ -725,14 +719,12 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             get() = when {
                 ln <= 0 -> 0
                 ln < seq.size -> ln - 1
-                else -> seq.size
-            }
+                else -> seq.size }
         private val after
             get() = when {
                 ln < 0 -> 0
                 ln < seq.size -> ln + 1
-                else -> seq.size
-            }
+                else -> seq.size }
     }
 
     fun observe() = observeForever(this)
@@ -946,12 +938,10 @@ suspend fun SequencerScope.change(transit: Short) = emitResetting {
 }
 private suspend inline fun <R> SequencerScope.emitResetting(block: () -> R): R {
     emitReset()
-    return block()
-}
+    return block() }
 private suspend inline fun <R> SequencerScope.emitResettingByTag(tag: String, block: () -> R): R {
     emitResetByTag(tag)
-    return block()
-}
+    return block() }
 suspend fun SequencerScope.emitReset() = emit { reset() }
 suspend fun SequencerScope.emitResetByTag(tag: String) = emit { resetByTag(tag) }
 private suspend fun SequencerScope.reset() = sequencer!!.reset()
