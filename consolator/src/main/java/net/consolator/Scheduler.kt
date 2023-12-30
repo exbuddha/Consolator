@@ -115,17 +115,31 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             override suspend fun invoke(scope: SequencerScope) {
                 scope.commitStageBuildDatabase(instance, tag(this), step, stage) } }
 
-        private suspend fun <D : RoomDatabase> SequencerScope.commitStageBuildDatabase(instance: KMutableProperty<out D?>, tag: String, stage: ContextStep?, action: Step = { change(stage!!) }) =
+        private suspend fun <D : RoomDatabase> SequencerScope.commitStageBuildDatabase(instance: KMutableProperty<out D?>, tag: String, stage: ContextStep?, action: Step = role(tag, stage)) =
             commitAsyncOrResetByTag(instance, tag, {
                 buildDatabaseOrResetByTag(instance, tag) },
                 post = action)
-        private suspend fun <D : RoomDatabase> SequencerScope.commitStageBuildDatabase(instance: KMutableProperty<out D?>, tag: String, step: Step, stage: ContextStep?, action: Step = { step(); change(stage!!) }) =
+        private suspend fun <D : RoomDatabase> SequencerScope.commitStageBuildDatabase(instance: KMutableProperty<out D?>, tag: String, step: Step, stage: ContextStep?, action: Step = role(tag, step, stage)) =
             commitAsyncOrResetByTag(instance, tag, {
                 buildDatabaseOrResetByTag(instance, tag) },
                 post = action)
         private suspend fun <D : RoomDatabase> SequencerScope.buildDatabaseOrResetByTag(instance: KMutableProperty<out D?>, tag: String) =
             instance.setter.call(ref?.get()?.run {
                 sequencer { resetByTagOnError(tag, ::buildDatabase) } })
+
+        private fun SequencerScope.role(tag: String, stage: ContextStep?): Step =
+            synchronize(tag, stage).form()
+        private fun SequencerScope.role(tag: String, step: Step, stage: ContextStep?): Step =
+            synchronize(tag, step, stage).form()
+        private fun synchronize(tag: String, stage: ContextStep?): ContextStep =
+            if (stage === null) ignore
+            else stage
+        private fun synchronize(tag: String, step: Step, stage: ContextStep?): ContextStep =
+            if (stage === null) ignore
+            else stage
+        private val ignore: ContextStep get() = @Tag("ignore") {}
+        private fun ContextStep.form(): Step = { change(this) }
+        private fun ContextStep.form(step: Step): Step = { step(); change(this) }
 
         private fun SequencerScope.commitAsyncOrResetByTag(lock: AnyKProperty, tag: String, block: Step, condition: PropertyCondition = ::whenNotNull, post: Step = emptyStep) =
             commitAsyncOrResetByTag(lock, tag) {
