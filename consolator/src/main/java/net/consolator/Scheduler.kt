@@ -127,11 +127,11 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             instance.setter.call(ref?.get()?.run {
                 sequencer { resetByTagOnError(tag, ::buildDatabase) } })
 
-        private fun SequencerScope.commitAsyncOrResetByTag(lock: KProperty<*>, tag: String, block: Step, condition: PropertyCondition = ::whenNotNull, post: Step = emptyStep) =
+        private fun SequencerScope.commitAsyncOrResetByTag(lock: AnyProperty, tag: String, block: Step, condition: PropertyCondition = ::whenNotNull, post: Step = emptyStep) =
             commitAsyncOrResetByTag(lock, tag) {
                 block()
                 condition(lock, post) }
-        private fun SequencerScope.commitAsyncOrResetByTag(lock: KProperty<*>, tag: String, block: Step) =
+        private fun SequencerScope.commitAsyncOrResetByTag(lock: AnyProperty, tag: String, block: Step) =
             commitAsyncBlocking(lock, block) { resetByTag(tag) }
 
         override fun commit(step: CoroutineStep) = clockAhead(step::invoke)
@@ -887,7 +887,7 @@ inline fun <T, R, S : R> T.commitAsyncBlockingForResult(lock: Any, crossinline p
                 if (predicate()) block()
                 else fallback() } }
     else runBlocking { fallback() }
-fun <R, S> commitAsyncBlocking(lock: KProperty<*>, block: suspend () -> R, fallback: suspend () -> S) {
+fun <R, S> commitAsyncBlocking(lock: AnyProperty, block: suspend () -> R, fallback: suspend () -> S) {
     fun predicate() = lock.getter.call() === null
     if (predicate())
         synchronized(lock) {
@@ -1037,12 +1037,12 @@ operator fun Job.set(tag: String, value: Any) {
     // addressable layer work
     jobs?.save(tag, value.asCallable()) }
 
-private fun JobFunctionSet.save(tag: String, function: KCallable<*>) = function.tag.let { self ->
+private fun JobFunctionSet.save(tag: String, function: AnyCallable) = function.tag.let { self ->
     save(combineTags(tag, self?.string), self?.keep ?: true, function) }
-private fun JobFunctionSet.save(tag: Tag?, self: KCallable<*>) =
+private fun JobFunctionSet.save(tag: Tag?, self: AnyCallable) =
     if (tag !== null) with(tag) { save(string, keep, self) }
     else save(null, false, self)
-private fun JobFunctionSet.save(tag: String?, keep: Boolean, function: KCallable<*>) {
+private fun JobFunctionSet.save(tag: String?, keep: Boolean, function: AnyCallable) {
     // rewire related parts
     add((tag ?: currentThread.name) to arrayOf(keep, function)) }
 private fun combineTags(tag: String, self: String?) =
@@ -1050,7 +1050,7 @@ private fun combineTags(tag: String, self: String?) =
     else "$tag.$self"
 
 fun Any.markTag() = asCallable().markTag()
-fun KCallable<*>.markTag() = tag.also { jobs?.save(it, this) }
+fun AnyCallable.markTag() = tag.also { jobs?.save(it, this) }
 fun markTags(vararg function: Any?) {
     when (function.firstOrNull()) {
         "job.launch" ->
@@ -1234,15 +1234,15 @@ annotation class Scope(val type: KClass<out CoroutineScope> = Scheduler::class)
 @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
 annotation class LaunchScope
 
-private val KCallable<*>.tag
+private val AnyCallable.tag
     get() = annotations.find { it is Tag } as? Tag
-private val KCallable<*>.event
+private val AnyCallable.event
     get() = annotations.find { it is Event } as? Event
-private val KCallable<*>.schedulerScope
+private val AnyCallable.schedulerScope
     get() = annotations.find { it is Scope } as? Scope
 private fun annotatedScopeOf(step: CoroutineStep) =
     trySafelyForResult { step.asCallable().schedulerScope!!.type.reconstruct(step) }
-private val KCallable<*>.launchScope
+private val AnyCallable.launchScope
     get() = annotations.find { it is LaunchScope } as? LaunchScope
 
 private typealias DescriptiveStep = suspend SchedulerScope.(Job) -> Unit
@@ -1262,8 +1262,8 @@ private typealias LiveSequence = MutableList<LiveWork>
 private typealias LiveWorkPredicate = (LiveWork) -> Boolean
 private typealias SequencerWork = Sequencer.() -> Unit
 
-typealias PropertyPredicate = suspend (KProperty<*>) -> Boolean
-typealias PropertyCondition = suspend (KProperty<*>, Step) -> Unit
+typealias PropertyPredicate = suspend (AnyProperty) -> Boolean
+typealias PropertyCondition = suspend (AnyProperty, Step) -> Unit
 
 private typealias RunnableList = MutableList<Runnable>
 private typealias MessageFunction = (Message) -> Any?
@@ -1274,7 +1274,7 @@ typealias CoroutineStep = suspend CoroutineScope.() -> Unit
 val emptyStep: Step = {}
 
 interface Expiry : MutableSet<Lifetime> {
-    fun unsetAll(property: KMutableProperty<*>) {
+    fun unsetAll(property: AnyMutableProperty) {
         // must be strengthened by connecting to other expiry sets
         forEach { alive ->
             if (alive(property) == false)
@@ -1296,8 +1296,8 @@ interface Expiry : MutableSet<Lifetime> {
         override fun isEmpty() = true
     }
 }
-typealias Lifetime = (KMutableProperty<*>) -> Boolean?
-fun KMutableProperty<*>.expire() = setter.call(null)
+typealias Lifetime = (AnyMutableProperty) -> Boolean?
+fun AnyMutableProperty.expire() = setter.call(null)
 
 private interface ObjectReference<T> { val obj: T }
 private interface NullReference<T> : ObjectReference<T?>
