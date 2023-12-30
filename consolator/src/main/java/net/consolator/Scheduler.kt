@@ -786,9 +786,8 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     }
 
     override fun onChanged(step: Step?) {
-        step.markTagForSchExec()
-        if (step !== null) runBlocking { step() }
-    }
+        step.markTagForSchExec()?.exec() }
+    private fun Step.exec() = runBlocking { invoke() }
 
     override fun commit(step: CoroutineStep) = clock(step.markTagForSchCommit()::invoke)
 
@@ -1053,8 +1052,9 @@ fun Any.markTag() = asCallable().markTag()
 fun AnyKCallable.markTag() = tag.also { jobs?.save(it, this) }
 private fun returnItsTag(it: Any?) = it.asNullable().tag!!.string
 
-private fun Step?.markTagForSchExec() {
-    jobs?.save("sch.exec", asCallable()) }
+private fun Step?.markTagForSchExec(): Step? {
+    jobs?.save("sch.exec", asCallable())
+    return this }
 private fun CoroutineStep.markTagForSchCommit(): CoroutineStep {
     jobs?.save("sch.commit", asCallable())
     return this }
