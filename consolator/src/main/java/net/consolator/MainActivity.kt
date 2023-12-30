@@ -8,7 +8,7 @@ import androidx.fragment.app.add
 import androidx.fragment.app.commit
 import kotlin.reflect.KClass
 
-open class MainActivity : BaseActivity(), Provider {
+open class MainActivity : BaseActivity(), ObjectProvider {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (savedInstanceState === null)

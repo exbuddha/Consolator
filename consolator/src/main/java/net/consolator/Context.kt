@@ -231,7 +231,7 @@ inline fun <reified T> KMutableProperty<out T?>.reconstruct(provider: Any = T::c
         if (provider is KClass<*>)
             provider.emptyConstructor().call()
         else
-            provider.asType<Provider>()?.invoke(T::class) } }
+            provider.asType<ObjectProvider>()?.invoke(T::class) } }
 inline fun <reified T> KMutableProperty<out T?>.renew(constructor: () -> T? = { getter.call() }) {
     if (getter.call() === null)
         setter.call(constructor()) }
@@ -240,7 +240,7 @@ inline fun <reified T> KMutableProperty<T?>.require(predicate: (T) -> Boolean = 
         if (old === null || predicate(old))
             constructor().also { new -> setter.call(new) }
         else old }
-typealias Provider = (KClass<*>) -> Any
+typealias ObjectProvider = (KClass<*>) -> Any
 
 fun IntArray.toJson() = jsonConverter!!.toJson(this, IntArray::class.java)
 fun String.toIntArray() = jsonConverter!!.fromJson(this, IntArray::class.java)
