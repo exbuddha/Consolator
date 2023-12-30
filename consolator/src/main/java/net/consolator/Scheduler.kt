@@ -846,7 +846,7 @@ private fun service(step: CoroutineStep) {
             it.name == "commit" &&
             it.parameters.size == 2 &&
             it.parameters[1].name == "step"
-        }?.call(scope, step.markTagForSvcCommit(scope)) } }
+        }?.call(scope, step.markTagForSvcCommit(scope)) } } // message queue reconfiguration
 fun clock(callback: Runnable) = clock!!.post(callback)
 fun clockAhead(callback: Runnable) = clock!!.postAhead(callback)
 fun <T> clock(step: suspend CoroutineScope.() -> T) = clock(runnableOf(step))
