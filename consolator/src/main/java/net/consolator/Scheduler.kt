@@ -134,7 +134,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         private fun SequencerScope.commitAsyncOrResetByTag(lock: AnyKProperty, tag: String, block: Step) =
             commitAsyncBlocking(lock, block) { resetByTag(tag) }
 
-        override fun commit(step: CoroutineStep) = clockAhead(step::invoke)
+        override fun commit(step: CoroutineStep) = clockAhead(step.markTagForSvcCommit()::invoke)
 
         fun clearObjects() {
             mode = null
@@ -786,10 +786,11 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     }
 
     override fun onChanged(step: Step?) {
+        step.markTagForSchExec()
         if (step !== null) runBlocking { step() }
     }
 
-    override fun commit(step: CoroutineStep) = clock(step::invoke)
+    override fun commit(step: CoroutineStep) = clock(step.markTagForSchCommit()::invoke)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     object EventBus : AbstractFlow<Step?>() {
@@ -846,9 +847,7 @@ private fun service(step: CoroutineStep) {
             it.name == "commit" &&
             it.parameters.size == 2 &&
             it.parameters[1].name == "step"
-        }?.call(scope, step)
-    }
-}
+        }?.call(scope, step.markTagForSvcCommit(scope)) } }
 fun clock(callback: Runnable) = clock!!.post(callback)
 fun clockAhead(callback: Runnable) = clock!!.postAhead(callback)
 fun <T> clock(step: suspend CoroutineScope.() -> T) = clock(runnableOf(step))
@@ -1037,8 +1036,9 @@ operator fun Job.set(tag: String, value: Any) {
     // addressable layer work
     jobs?.save(tag, value.asCallable()) }
 
-private fun JobFunctionSet.save(tag: String, function: AnyKCallable) = function.tag.let { self ->
-    save(combineTags(tag, self?.string), self?.keep ?: true, function) }
+private fun JobFunctionSet.save(tag: String, function: AnyKCallable) = function.tag.apply {
+    save(combineTags(tag, this?.string), this?.keep ?: true, function) }
+private fun JobFunctionSet.save(tag: String, unit: String, function: AnyKCallable) {}
 private fun JobFunctionSet.save(tag: Tag?, self: AnyKCallable) =
     if (tag !== null) with(tag) { save(string, keep, self) }
     else save(null, false, self)
@@ -1051,6 +1051,19 @@ private fun combineTags(tag: String, self: String?) =
 
 fun Any.markTag() = asCallable().markTag()
 fun AnyKCallable.markTag() = tag.also { jobs?.save(it, this) }
+private fun returnItsTag(it: Any?) = it.asNullable().tag!!.string
+
+private fun Step?.markTagForSchExec() {
+    jobs?.save("sch.exec", asCallable()) }
+private fun CoroutineStep.markTagForSchCommit(): CoroutineStep {
+    jobs?.save("sch.commit", asCallable())
+    return this }
+private fun CoroutineStep.markTagForSvcCommit(scope: CoroutineScope? = null): CoroutineStep {
+    jobs?.save("svc.commit", asCallable())?.apply {
+        if (scope !== null)
+            jobs?.save("svc.scope", string, scope.asCallable()) }
+    return this }
+
 fun markTags(vararg function: Any?) {
     when (function.firstOrNull()) {
         "job.launch" ->
@@ -1094,7 +1107,6 @@ private fun markTagsForSeqLaunch(vararg function: Any?, i: Int = 0) =
             jobs?.save("${stepTag}.capture", capture.asNullable()) } /* capture */
         function[i + 2]?.let { context ->
             jobs?.save("${stepTag}.context", false, context.asNullable()) } /* context */ }
-private fun returnItsTag(it: Any?) = it.asNullable().tag!!.string
 
 suspend fun currentJob() = currentCoroutineContext().job
 
