@@ -908,6 +908,8 @@ fun <T, R> unconfinedCapture(step: suspend LiveDataScope<T>.() -> Unit, capture:
 fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(owner: LifecycleOwner, observer: Observer<T> = disposer(this)): Observer<T> {
     first.observe(owner, observer)
     return observer }
+fun <T, R> Pair<LiveData<T>, (T) -> R>.dispose(owner: LifecycleOwner, disposer: Observer<T> = owner.disposer(this)) =
+    observe(owner, disposer)
 fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(observer: Observer<T> = disposer(this)): Observer<T> {
     first.observeForever(observer)
     return observer }
@@ -927,6 +929,11 @@ private fun <T, R> disposer(liveStep: Pair<LiveData<T>, (T) -> R>) =
             val (step, capture) = liveStep
             step.removeObserver(this)
             capture(value) } }
+private fun <T, R> LifecycleOwner.disposer(liveStep: Pair<LiveData<T>, (T) -> R>) =
+    Observer<T> { value ->
+        val (step, capture) = liveStep
+        step.removeObservers(this)
+        capture(value) }
 
 suspend fun SequencerScope.change(stage: ContextStep) = emitResettingByTag(tagOf(stage)) {
     EventBus.signal(stage)
