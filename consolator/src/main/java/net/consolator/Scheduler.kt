@@ -1134,6 +1134,9 @@ suspend fun currentJob() = currentCoroutineContext().job
 infix fun <R, S> (suspend () -> R).then(next: suspend () -> S): suspend () -> S = {
     this@then()
     next() }
+infix fun <R, S> (suspend () -> R).after(prev: suspend () -> S): suspend () -> R = {
+    prev()
+    this@after() }
 infix fun <R, S> (suspend () -> R).thru(next: suspend (R) -> S): suspend () -> S = {
     next(this@thru()) }
 fun <R> (suspend () -> R).given(predicate: Predicate, fallback: R): suspend () -> R = {
@@ -1154,6 +1157,9 @@ fun <T, R> (suspend T.() -> R).given(predicate: Predicate, fallback: R): suspend
 infix fun <R, S> (() -> R).then(next: () -> S): () -> S = {
     this@then()
     next() }
+infix fun <R, S> (() -> R).after(prev: () -> S): () -> R = {
+    prev()
+    this@after() }
 infix fun <R, S> (() -> R).thru(next: (R) -> S): () -> S = {
     next(this@thru()) }
 fun <R> (() -> R).given(predicate: Predicate, fallback: R): () -> R = {
