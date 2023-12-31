@@ -167,16 +167,19 @@ inline fun <R> trySafely(block: () -> R) =
     try { block() } catch (_: Throwable) {}
 inline fun <R> trySafelyForResult(block: () -> R) =
     try { block() } catch (_: Throwable) { null }
+
 inline fun <R> tryCanceling(block: () -> R) =
     try { block() } catch (ex: Throwable) { throw CancellationException(null, ex) }
 inline fun <R> trySafelyCanceling(block: () -> R) =
     try { block() } catch (ex: CancellationException) { throw ex } catch (_: Throwable) {}
 inline fun <R> tryCancelingForResult(block: () -> R, exit: (Throwable) -> R? = { null }) =
     try { block() } catch (ex: CancellationException) { throw ex } catch (ex: Throwable) { exit(ex) }
+
 suspend inline fun <R> tryCancelingSuspended(crossinline block: suspend () -> R) =
     tryCanceling { block() }
 suspend inline fun <T, R> tryCancelingSuspended(scope: T, crossinline block: suspend T.() -> R) =
     tryCanceling { block(scope) }
+
 inline fun <R> tryInterrupting(block: () -> R) =
     try { block() } catch (ex: Throwable) { throw InterruptedException() }
 inline fun <R> tryInterrupting(noinline step: suspend CoroutineScope.() -> R, blockOf: (suspend CoroutineScope.() -> R) -> () -> R = ::blockOf) =
