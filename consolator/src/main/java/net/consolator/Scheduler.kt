@@ -139,7 +139,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             else stage
         private val ignore: ContextStep get() = @Tag("ignore") {}
         private fun ContextStep.form(): Step = { change(this) }
-        private fun ContextStep.form(step: Step): Step = { step(); change(this) }
+        private fun ContextStep.form(step: Step): Step = step then form()
 
         private fun SequencerScope.commitAsyncOrResetByTag(lock: AnyKProperty, tag: String, block: Step, condition: PropertyCondition = ::whenNotNull, post: Step = emptyStep) =
             commitAsyncOrResetByTag(lock, tag) {
