@@ -157,19 +157,6 @@ typealias Predicate = () -> Boolean
 typealias AnyPredicate = (Any?) -> Boolean
 typealias IntPredicate = (Int) -> Boolean
 
-suspend fun CoroutineScope.repeatSuspended(
-    predicate: Predicate,
-    block: JobFunction,
-    delayTime: LongFunction = { 0L },
-    scope: CoroutineScope = this) {
-    markTags("job.repeat", block, delayTime, predicate)
-    while (predicate()) {
-        block(scope)
-        delayOrYield(delayTime()) } }
-suspend fun delayOrYield(dt: Long = 0L) {
-    if (dt > 0) delay(dt)
-    else if (dt == 0L) yield() }
-
 fun now() = java.util.Calendar.getInstance().timeInMillis
 fun getDelayTime(interval: Long, last: Long) =
     last + interval - now()
@@ -200,10 +187,6 @@ inline fun <R> trySafelyInterrupting(noinline step: suspend CoroutineScope.() ->
     try { blockOf(step)() } catch (ex: InterruptedException) { throw InterruptedStepException(step, ex) } catch (_: Throwable) {}
 inline fun <R> tryInterruptingForResult(noinline step: suspend CoroutineScope.() -> R, blockOf: (suspend CoroutineScope.() -> R) -> () -> R = ::blockOf, exit: (Throwable) -> R? = { null }) =
     try { blockOf(step)() } catch (ex: InterruptedException) { throw InterruptedStepException(step, ex) } catch (ex: Throwable) { exit(ex) }
-
-suspend inline fun whenNotNull(instance: AnyKProperty, block: Step) {
-    if (instance.getter.call() !== null)
-        block() }
 
 @Retention(SOURCE)
 @Target(CLASS)

@@ -137,14 +137,14 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         private fun synchronize(tag: String, step: Step, stage: ContextStep?): ContextStep =
             if (stage === null) ignore
             else stage
-        private val ignore: ContextStep get() = @Tag("ignore") {}
         private fun ContextStep.form(): Step = { change(this) }
         private fun ContextStep.form(step: Step): Step = step then form()
+        private val ignore: ContextStep get() = @Tag("ignore") {}
 
-        private fun SequencerScope.commitAsyncOrResetByTag(lock: AnyKProperty, tag: String, block: Step, condition: PropertyCondition = ::whenNotNull, post: Step = emptyStep) =
+        private fun SequencerScope.commitAsyncOrResetByTag(lock: AnyKProperty, tag: String, block: Step, condition: PropertyCondition = ::whenNotNullOrResetByTag, post: Step = @Tag("empty") emptyStep) =
             commitAsyncOrResetByTag(lock, tag) {
                 block()
-                condition(lock, post) }
+                condition(lock, tag, post) }
         private fun SequencerScope.commitAsyncOrResetByTag(lock: AnyKProperty, tag: String, block: Step) =
             commitAsyncBlocking(lock, block) { resetByTag(tag) }
 
@@ -963,8 +963,8 @@ private suspend inline fun <R> SequencerScope.emitResettingByTag(tag: String, bl
     return block() }
 suspend fun SequencerScope.emitReset() = emit { reset() }
 suspend fun SequencerScope.emitResetByTag(tag: String) = emit { resetByTag(tag) }
-private suspend fun SequencerScope.reset() = sequencer!!.reset()
-private suspend fun SequencerScope.resetByTag(tag: String) = sequencer!!.resetByTag(tag)
+private suspend fun SequencerScope.reset() = sequencer?.reset()
+private suspend fun SequencerScope.resetByTag(tag: String) = sequencer?.resetByTag(tag)
 private fun tagOf(stage: ContextStep): String = TODO()
 
 fun CoroutineScope.relaunch(instance: JobKProperty, context: CoroutineContext = Scheduler, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep) =
@@ -1045,6 +1045,27 @@ fun <R> SchedulerScope.change(ref: WeakContext, member: KFunction<R>, stage: Con
     EventBus.signal(stage)
 fun <R> SchedulerScope.change(ref: WeakContext, owner: LifecycleOwner, member: KFunction<R>, stage: ContextStep) =
     EventBus.signal(stage)
+
+suspend inline fun whenNotNull(instance: AnyKProperty, stage: String, block: Step) {
+    if (instance.getter.call() !== null)
+        block() }
+suspend inline fun whenNotNullOrResetByTag(instance: AnyKProperty, stage: String, block: Step) {
+    if (instance.getter.call() !== null)
+        block()
+    else sequencer?.resetByTag(stage) }
+
+suspend fun CoroutineScope.repeatSuspended(
+    predicate: Predicate,
+    block: JobFunction,
+    delayTime: LongFunction = { 0L },
+    scope: CoroutineScope = this) {
+    markTags("job.repeat", block, delayTime, predicate)
+    while (predicate()) {
+        block(scope)
+        delayOrYield(delayTime()) } }
+suspend fun delayOrYield(dt: Long = 0L) {
+    if (dt > 0) delay(dt)
+    else if (dt == 0L) yield() }
 
 typealias JobFunction = suspend (Any?) -> Unit
 private typealias JobFunctionSet = MutableSet<Pair<String, Any>>
@@ -1302,7 +1323,7 @@ private typealias LiveWorkPredicate = (LiveWork) -> Boolean
 private typealias SequencerWork = Sequencer.() -> Unit
 
 typealias PropertyPredicate = suspend (AnyKProperty) -> Boolean
-typealias PropertyCondition = suspend (AnyKProperty, Step) -> Unit
+typealias PropertyCondition = suspend (AnyKProperty, String, Step) -> Unit
 
 private typealias RunnableList = MutableList<Runnable>
 private typealias MessageFunction = (Message) -> Any?
