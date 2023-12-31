@@ -188,18 +188,12 @@ inline fun <R> trySafelyInterrupting(noinline step: suspend CoroutineScope.() ->
 inline fun <R> tryInterruptingForResult(noinline step: suspend CoroutineScope.() -> R, blockOf: (suspend CoroutineScope.() -> R) -> () -> R = ::blockOf, exit: (Throwable) -> R? = { null }) =
     try { blockOf(step)() } catch (ex: InterruptedException) { throw InterruptedStepException(step, ex) } catch (ex: Throwable) { exit(ex) }
 
-@Retention(SOURCE)
-@Target(CLASS)
-@Repeatable
-annotation class File(val name: String)
-fun <T : Any> KClass<out T>.lastAnnotatedFile() = annotations.last { it is File } as File
-fun <T : Any> KClass<out T>.lastAnnotatedFilename() = lastAnnotatedFile().name
-
 inline fun <reified R : Any> Any?.asType(): R? =
     if (this is R) this else null
 inline fun <reified R : Any> R?.singleton(lock: Any = R::class.lock(), vararg args: Any?) =
     commitAsyncForResult(lock, { this === null }, this, { R::class.new(*args) }) as R
 inline fun <reified T : Any> T?.reconstruct(vararg args: Any?): T = this ?: T::class.new(*args)
+
 fun <T : Any> KClass<out T>.lock() = objectInstance ?: this
 fun <T : Any> KClass<out T>.reconstruct(vararg args: Any?) =
     if (isCompanion) objectInstance!!
@@ -209,6 +203,8 @@ fun <T : Any> KClass<out T>.new(vararg args: Any?) =
     else firstConstructor().call(*args)
 fun <T : Any> KClass<out T>.emptyConstructor() = constructors.first { it.parameters.isEmpty() }
 fun <T : Any> KClass<out T>.firstConstructor() = constructors.first()
+
+typealias ObjectProvider = (KClass<*>) -> Any
 inline fun <reified T> KMutableProperty<out T?>.reconstruct(provider: Any = T::class) =
     apply { renew {
         if (provider is KClass<*>)
@@ -223,7 +219,13 @@ inline fun <reified T> KMutableProperty<T?>.require(predicate: (T) -> Boolean = 
         if (old === null || predicate(old))
             constructor().also { new -> setter.call(new) }
         else old }
-typealias ObjectProvider = (KClass<*>) -> Any
+
+@Retention(SOURCE)
+@Target(CLASS)
+@Repeatable
+annotation class File(val name: String)
+fun <T : Any> KClass<out T>.lastAnnotatedFile() = annotations.last { it is File } as File
+fun <T : Any> KClass<out T>.lastAnnotatedFilename() = lastAnnotatedFile().name
 
 fun IntArray.toJson() = jsonConverter!!.toJson(this, IntArray::class.java)
 fun String.toIntArray() = jsonConverter!!.fromJson(this, IntArray::class.java)
