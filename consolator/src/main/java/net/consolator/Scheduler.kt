@@ -967,6 +967,14 @@ private suspend fun SequencerScope.reset() = sequencer?.reset()
 private suspend fun SequencerScope.resetByTag(tag: String) = sequencer?.resetByTag(tag)
 private fun tagOf(stage: ContextStep): String = TODO()
 
+private suspend inline fun whenNotNull(instance: AnyKProperty, stage: String, block: Step) {
+    if (instance.getter.call() !== null)
+        block() }
+private suspend inline fun whenNotNullOrResetByTag(instance: AnyKProperty, stage: String, block: Step) {
+    if (instance.getter.call() !== null)
+        block()
+    else sequencer?.resetByTag(stage) }
+
 fun CoroutineScope.relaunch(instance: JobKProperty, context: CoroutineContext = Scheduler, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep) =
     relaunch(::launch, instance, context, start, step)
 fun LifecycleOwner.relaunch(instance: JobKProperty, context: CoroutineContext = Scheduler, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep) =
@@ -1045,14 +1053,6 @@ fun <R> SchedulerScope.change(ref: WeakContext, member: KFunction<R>, stage: Con
     EventBus.signal(stage)
 fun <R> SchedulerScope.change(ref: WeakContext, owner: LifecycleOwner, member: KFunction<R>, stage: ContextStep) =
     EventBus.signal(stage)
-
-suspend inline fun whenNotNull(instance: AnyKProperty, stage: String, block: Step) {
-    if (instance.getter.call() !== null)
-        block() }
-suspend inline fun whenNotNullOrResetByTag(instance: AnyKProperty, stage: String, block: Step) {
-    if (instance.getter.call() !== null)
-        block()
-    else sequencer?.resetByTag(stage) }
 
 suspend fun CoroutineScope.repeatSuspended(predicate: Predicate, block: JobFunction, delayTime: LongFunction = { 0L }, scope: CoroutineScope = this) {
     markTags("job.repeat", block, delayTime, predicate)
