@@ -1054,11 +1054,7 @@ suspend inline fun whenNotNullOrResetByTag(instance: AnyKProperty, stage: String
         block()
     else sequencer?.resetByTag(stage) }
 
-suspend fun CoroutineScope.repeatSuspended(
-    predicate: Predicate,
-    block: JobFunction,
-    delayTime: LongFunction = { 0L },
-    scope: CoroutineScope = this) {
+suspend fun CoroutineScope.repeatSuspended(predicate: Predicate, block: JobFunction, delayTime: LongFunction = { 0L }, scope: CoroutineScope = this) {
     markTags("job.repeat", block, delayTime, predicate)
     while (predicate()) {
         block(scope)
