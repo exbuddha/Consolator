@@ -31,7 +31,7 @@ import net.consolator.Scheduler.sequencer
 sealed interface SchedulerScope : CoroutineScope {
     override val coroutineContext
         get() = Scheduler
-    fun commit(step: CoroutineStep): Boolean
+    fun commit(step: CoroutineStep): Any?
 }
 
 private interface SchedulerKey : CoroutineContext.Key<SchedulerElement>
