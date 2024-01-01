@@ -127,6 +127,13 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             instance.setter.call(ref?.get()?.run {
                 sequencer { resetByTagOnError(tag, ::buildDatabase) } })
 
+        private fun SequencerScope.commitAsyncOrResetByTag(lock: AnyKProperty, tag: String, block: Step, condition: PropertyCondition = ::whenNotNullOrResetByTag, post: Step = @Tag("empty") emptyStep) =
+            commitAsyncOrResetByTag(lock, tag) {
+                block()
+                condition(lock, tag, post) }
+        private fun SequencerScope.commitAsyncOrResetByTag(lock: AnyKProperty, tag: String, block: Step) =
+            commitAsyncBlocking(lock, block) { resetByTag(tag) }
+
         private fun markTagsForReform(tag: String, stage: ContextStep?, form: Step, job: Job): Step =
             form.also { markTagsForCtxReform(tag, stage, form, job) }
 
@@ -141,13 +148,6 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         private fun ContextStep.form(): Step = { change(this) }
         private fun ContextStep.form(step: Step): Step = step then form()
         private val ignore: ContextStep get() = @Tag("ignore") {}
-
-        private fun SequencerScope.commitAsyncOrResetByTag(lock: AnyKProperty, tag: String, block: Step, condition: PropertyCondition = ::whenNotNullOrResetByTag, post: Step = @Tag("empty") emptyStep) =
-            commitAsyncOrResetByTag(lock, tag) {
-                block()
-                condition(lock, tag, post) }
-        private fun SequencerScope.commitAsyncOrResetByTag(lock: AnyKProperty, tag: String, block: Step) =
-            commitAsyncBlocking(lock, block) { resetByTag(tag) }
 
         override fun commit(step: CoroutineStep) = clockAhead(step.markTagForSvcCommit()::invoke)
 
