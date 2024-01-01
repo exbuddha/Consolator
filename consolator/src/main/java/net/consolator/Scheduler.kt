@@ -1087,7 +1087,7 @@ private fun JobFunctionSet.save(tag: Tag?, self: AnyKCallable) =
     else save(null, false, self)
 private fun JobFunctionSet.save(tag: String?, keep: Boolean, function: AnyKCallable) {
     // rewire related parts
-    add((tag ?: currentThread.name) to arrayOf(keep, function)) }
+    add((tag ?: currentThreadJob().hashCode().toString()) to arrayOf(keep, function)) }
 private fun combineTags(tag: String, self: String?) =
     if (self === null) tag
     else "$tag.$self"
