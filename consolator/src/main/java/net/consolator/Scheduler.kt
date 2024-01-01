@@ -836,6 +836,7 @@ inline fun <reified T : Resolver> LifecycleOwner.defer(member: UnitKFunction, va
     Scheduler.defer(T::class, this, member, *context, `super`)
 inline fun <reified T : Resolver> Context.defer(member: UnitKFunction, vararg context: Any?, noinline `super`: Work) =
     Scheduler.defer(T::class, this, member, *context, `super`)
+
 interface Resolver : SchedulerScope {
     fun commit(vararg context: Any?)
 }
@@ -854,8 +855,10 @@ private fun service(step: CoroutineStep) {
             it.parameters.size == 2 &&
             it.parameters[1].name == "step"
         }?.call(scope, step.markTagForSvcCommit(scope)) } } // message queue reconfiguration
+
 fun clock(callback: Runnable) = clock!!.post(callback)
 fun clockAhead(callback: Runnable) = clock!!.postAhead(callback)
+
 fun <T> clock(step: suspend CoroutineScope.() -> T) = clock(runnableOf(step))
 fun <T> clockAhead(step: suspend CoroutineScope.() -> T) = clockAhead(runnableOf(step))
 fun <T> clockSafely(step: suspend CoroutineScope.() -> T) = clock(safeRunnableOf(step))
@@ -864,11 +867,13 @@ fun <T> clockInterrupting(step: suspend CoroutineScope.() -> T) = clock(interrup
 fun <T> clockAheadInterrupting(step: suspend CoroutineScope.() -> T) = clockAhead(interruptingRunnableOf(step))
 fun <T> clockSafelyInterrupting(step: suspend CoroutineScope.() -> T) = clock(safeInterruptingRunnableOf(step))
 fun <T> clockAheadSafelyInterrupting(step: suspend CoroutineScope.() -> T) = clockAhead(safeInterruptingRunnableOf(step))
+
 fun <T> blockOf(step: suspend CoroutineScope.() -> T): () -> T = { runBlocking(block = step) }
 fun <T> runnableOf(step: suspend CoroutineScope.() -> T) = Runnable { runBlocking(block = step) }
 fun <T> safeRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { trySafely(blockOf(step)) }
 fun <T> interruptingRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { tryInterrupting(step) }
 fun <T> safeInterruptingRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { trySafelyInterrupting(step) }
+
 inline fun <R> commitAsync(lock: Any, crossinline predicate: Predicate, crossinline block: () -> R) {
     if (predicate())
         synchronized(lock) {
@@ -912,6 +917,7 @@ fun <T, R> defaultCapture(step: suspend LiveDataScope<T>.() -> Unit, capture: (T
     capture(Default, step, capture)
 fun <T, R> unconfinedCapture(step: suspend LiveDataScope<T>.() -> Unit, capture: (T) -> R) =
     capture(Unconfined, step, capture)
+
 fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(owner: LifecycleOwner, observer: Observer<T> = disposer(this)): Observer<T> {
     first.observe(owner, observer)
     return observer }
@@ -928,6 +934,7 @@ fun <T, R> Pair<LiveData<T>, (T) -> R>.removeObserver(observer: Observer<T>) =
     first.removeObserver(observer)
 fun <T, R> Pair<LiveData<T>, (T) -> R>.removeObservers(owner: LifecycleOwner) =
     first.removeObservers(owner)
+
 fun <T, R> captor(liveStep: Pair<LiveData<T>, (T) -> R>) =
     Observer<T> { liveStep.second(it) }
 private fun <T, R> disposer(liveStep: Pair<LiveData<T>, (T) -> R>) =
@@ -948,6 +955,7 @@ suspend fun SequencerScope.change(stage: ContextStep) = emitResettingByTag(tagOf
 suspend fun SequencerScope.change(transit: Short) = emitResetting {
     EventBus.signal(transit)
 }
+
 private suspend inline fun <R> SequencerScope.emitResetting(block: () -> R): R {
     emitReset()
     return block() }
@@ -984,6 +992,7 @@ fun LifecycleOwner.launch(context: CoroutineContext = Scheduler, start: Coroutin
     val (context, start, step) = task
     return scope.launch(context, start, step).also { job ->
         markTagsForJobLaunch(context, start, step, job) } }
+
 private fun LifecycleOwner.determineScopeAndCoroutine(context: CoroutineContext, start: CoroutineStart, step: CoroutineStep) =
     determineScope(step).let { scope ->
         scope to scope.determineCoroutine(context, start, step) }
@@ -997,6 +1006,7 @@ private fun CoroutineScope.determineCoroutine(context: CoroutineContext, start: 
         step)
 private fun CoroutineContext.isSchedulerContext() =
     this is Scheduler || this[_key] is SchedulerKey
+
 fun LifecycleOwner.close(node: SchedulerNode) {}
 fun LifecycleOwner.detach(node: SchedulerNode) {}
 fun LifecycleOwner.reattach(node: SchedulerNode) {}
@@ -1107,6 +1117,8 @@ fun markTags(vararg function: Any?) {
             markTagsForJobRepeat(*function, i = 1)
         "seq.attach" ->
             markTagsForSeqAttach(*function, i = 1)
+        "ctx.reform" ->
+            markTagsForCtxReform(*function, i = 1)
         else ->
             function.forEach {
                 it.asNullable().markTag() } } }
@@ -1145,12 +1157,14 @@ private fun markTagsForSeqLaunch(vararg function: Any?, i: Int = 0) =
             jobs?.save("${stepTag}[${jobId}].context", false, context.asNullable()) } /* context */ }
 private fun markTagsForCtxReform(vararg function: Any?, i: Int = 0) =
     function[i + 1].markSequentialTag(function[i].asType<String>())?.also { stageTag ->
-        function[i + 2]?.let { job ->
-            jobs?.save("${stageTag}.job", false, job.asCallable()) } /* job */
-        function[i + 3]?.let { start ->
-            jobs?.save("${stageTag}.form", false, start.asCallable()) } /* form */ }
+        val jobId = function[i + 2]?.let { job ->
+            jobs?.save("${stageTag}.job", false, job.asCallable())
+            job.asType<Job>().hashCode() } /* job */
+        function[i + 3]?.let { form ->
+            jobs?.save("${stageTag}[${jobId}].form", false, form.asCallable()) } /* form */ }
 
 suspend fun currentJob() = currentCoroutineContext().job
+fun currentThreadJob() = runBlocking { currentJob() }
 
 infix fun <R, S> (suspend () -> R).then(next: suspend () -> S): suspend () -> S = {
     this@then()
