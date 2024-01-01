@@ -99,19 +99,10 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             return this
         }
 
-        private fun <D : RoomDatabase> seqStepBuildDatabase(
-            instance: KMutableProperty<out D?>,
-            tag: StringFunction = ::returnItsTag,
-            stage: ContextStep? = null
-        ): SequencerStep = object : SequencerStep {
+        private fun <D : RoomDatabase> seqStepBuildDatabase(instance: KMutableProperty<out D?>, tag: StringFunction = ::returnItsTag, stage: ContextStep? = null): SequencerStep = object : SequencerStep {
             override suspend fun invoke(scope: SequencerScope) {
                 scope.commitStageBuildDatabase(instance, tag(this), stage) } }
-        private fun <D : RoomDatabase> seqStepBuildDatabase(
-            instance: KMutableProperty<out D?>,
-            tag: StringFunction = ::returnItsTag,
-            step: Step,
-            stage: ContextStep? = null
-        ): SequencerStep = object : SequencerStep {
+        private fun <D : RoomDatabase> seqStepBuildDatabase(instance: KMutableProperty<out D?>, tag: StringFunction = ::returnItsTag, step: Step, stage: ContextStep? = null): SequencerStep = object : SequencerStep {
             override suspend fun invoke(scope: SequencerScope) {
                 scope.commitStageBuildDatabase(instance, tag(this), step, stage) } }
 
