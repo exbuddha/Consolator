@@ -242,8 +242,7 @@ open class BaseImplementationRestriction(
     msg: String = "Base implementation restricted",
     cause: Throwable? = null
 ) : UnsupportedOperationException(msg, cause) {
-    companion object : BaseImplementationRestriction()
-}
+    companion object : BaseImplementationRestriction() }
 open class InterruptedStepException(
     val step: Any,
     override val cause: Throwable? = null
