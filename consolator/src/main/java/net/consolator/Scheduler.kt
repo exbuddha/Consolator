@@ -1159,10 +1159,10 @@ private fun markTagsForSeqLaunch(vararg function: Any?, i: Int = 0) =
             jobs?.save("${stepTag}[${jobId}].context", false, context.asNullable()) } /* context */ }
 private fun markTagsForCtxReform(vararg function: Any?, i: Int = 0) =
     function[i + 1].markSequentialTag(function[i].asType<String>())?.also { stageTag ->
-        val jobId = function[i + 2]?.let { job ->
+        val jobId = function[i + 3]?.let { job ->
             jobs?.save("${stageTag}.job", false, job.asCallable())
             job.asType<Job>().hashCode() } /* job */
-        function[i + 3]?.let { form ->
+        function[i + 2]?.let { form ->
             jobs?.save("${stageTag}[${jobId}].form", false, form.asCallable()) } /* form */ }
 
 suspend fun currentJob() = currentCoroutineContext().job
