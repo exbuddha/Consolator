@@ -118,19 +118,22 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         private suspend fun <D : RoomDatabase> SequencerScope.commitStageBuildDatabase(instance: KMutableProperty<out D?>, tag: String, stage: ContextStep?) =
             commitAsyncOrResetByTag(instance, tag, {
                 buildDatabaseOrResetByTag(instance, tag) },
-                post = role(currentJob(), tag, stage))
+                post = role(tag, stage, currentJob()))
         private suspend fun <D : RoomDatabase> SequencerScope.commitStageBuildDatabase(instance: KMutableProperty<out D?>, tag: String, step: Step, stage: ContextStep?) =
             commitAsyncOrResetByTag(instance, tag, {
                 buildDatabaseOrResetByTag(instance, tag) },
-                post = role(currentJob(), tag, step, stage))
+                post = role(tag, step, stage, currentJob()))
         private suspend fun <D : RoomDatabase> SequencerScope.buildDatabaseOrResetByTag(instance: KMutableProperty<out D?>, tag: String) =
             instance.setter.call(ref?.get()?.run {
                 sequencer { resetByTagOnError(tag, ::buildDatabase) } })
 
-        private fun SequencerScope.role(job: Job, tag: String, stage: ContextStep?): Step =
-            synchronize(tag, stage).form()
-        private fun SequencerScope.role(job: Job, tag: String, step: Step, stage: ContextStep?): Step =
-            synchronize(tag, step, stage).form(step)
+        private fun markTagsForReform(tag: String, stage: ContextStep?, form: Step, job: Job): Step =
+            form.also { markTagsForCtxReform(tag, stage, form, job) }
+
+        private fun SequencerScope.role(tag: String, stage: ContextStep?, job: Job): Step =
+            markTagsForReform(tag, stage, synchronize(tag, stage).form(), job)
+        private fun SequencerScope.role(tag: String, step: Step, stage: ContextStep?, job: Job): Step =
+            markTagsForReform(tag, stage, synchronize(tag, step, stage).form(step), job)
         private fun synchronize(tag: String, stage: ContextStep?): ContextStep =
             stage ?: ignore
         private fun synchronize(tag: String, step: Step, stage: ContextStep?): ContextStep =
@@ -567,7 +570,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             attachOnce(before, work)
 
         private fun markTagsForLaunch(step: SequencerStep, capture: CaptureFunction? = null, context: CoroutineContext? = null) =
-            step after { markTagsForSeqLaunch(step, capture, context) }
+            step after { markTagsForSeqLaunch(step, capture, context, currentJob()) }
 
         fun attach(async: Boolean = false, step: SequencerStep) =
             stepToNull(async) { liveData(block = markTagsForLaunch(step)) }.also { attach(it) }
@@ -989,7 +992,7 @@ fun LifecycleOwner.launch(context: CoroutineContext = Scheduler, start: Coroutin
     val (scope, task) = determineScopeAndCoroutine(context, start, step)
     val (context, start, step) = task
     return scope.launch(context, start, step).also { job ->
-        markTagsForJobLaunch(step, job, context, start) } }
+        markTagsForJobLaunch(context, start, step, job) } }
 private fun LifecycleOwner.determineScopeAndCoroutine(context: CoroutineContext, start: CoroutineStart, step: CoroutineStep) =
     determineScope(step).let { scope ->
         scope to scope.determineCoroutine(context, start, step) }
@@ -1055,7 +1058,7 @@ fun <R> SchedulerScope.change(ref: WeakContext, owner: LifecycleOwner, member: K
     EventBus.signal(stage)
 
 suspend fun CoroutineScope.repeatSuspended(predicate: Predicate, block: JobFunction, delayTime: LongFunction = { 0L }, scope: CoroutineScope = this) {
-    markTags("job.repeat", block, delayTime, predicate)
+    markTags("job.repeat", predicate, block, delayTime, currentJob())
     while (predicate()) {
         block(scope)
         delayOrYield(delayTime()) } }
@@ -1088,11 +1091,12 @@ private fun combineTags(tag: String, self: String?) =
 
 fun Any.markTag() = asCallable().markTag()
 fun AnyKCallable.markTag() = tag.also { jobs?.save(it, this) }
+private fun Any?.markSequentialTag(vararg tag: String?): String? = TODO()
 private fun returnItsTag(it: Any?) = it.asNullable().tag!!.string
 
 private fun Step?.markTagForSchExec(): Step? {
     jobs?.save("sch.exec", asCallable())
-    return this }
+    return this } // or apply capture function
 private fun CoroutineStep.markTagForSchCommit(): CoroutineStep {
     jobs?.save("sch.commit", asCallable())
     return this }
@@ -1116,21 +1120,23 @@ fun markTags(vararg function: Any?) {
             function.forEach {
                 it.asNullable().markTag() } } }
 private fun markTagsForJobLaunch(vararg function: Any?, i: Int = 0) =
-    function[i]?.markTag()?.also { step ->
+    function[i + 2]?.markTag()?.also { step ->
         val stepTag = step.string
-        function[i + 1]?.let { job ->
-            jobs?.save("${stepTag}.job", step.keep, job.asCallable()) } /* job */
-        function[i + 2]?.let { context ->
-            jobs?.save("${stepTag}.context", false, context.asCallable()) } /* context */
-        function[i + 3]?.let { start ->
-            jobs?.save("${stepTag}.start", false, start.asCallable()) } /* start */ }
+        val jobId = function[i + 4]?.let { job ->
+            jobs?.save("${stepTag}.job", step.keep, job.asCallable())
+            job.asType<Job>().hashCode() } /* job */
+        function[i]?.let { context ->
+            jobs?.save("${stepTag}[${jobId}].context", false, context.asCallable()) } /* context */
+        function[i + 1]?.let { start ->
+            jobs?.save("${stepTag}[${jobId}].start", false, start.asCallable()) } /* start */ }
 private fun markTagsForJobRepeat(vararg function: Any?, i: Int = 0) =
-    function[i]?.markTag()?.also { block ->
-        val blockTag = block.string
-        function[i + 1]?.let { delay ->
-            jobs?.save("${blockTag}.delay", delay.asCallable()) } /* delay */
-        function[i + 2]?.let { predicate ->
-            jobs?.save("${blockTag}.predicate", predicate.asCallable()) } /* predicate */ }
+    function[i + 1]?.markTag()?.also { blockTag ->
+        val blockTag = blockTag.string
+        val jobId = function[i + 3].asType<Int>()
+        function[i + 2]?.let { delay ->
+            jobs?.save("${blockTag}[${jobId}].delay", delay.asCallable()) } /* delay */
+        function[i]?.let { predicate ->
+            jobs?.save("${blockTag}[${jobId}].predicate", predicate.asCallable()) } /* predicate */ }
 private fun markTagsForSeqAttach(vararg function: Any?, i: Int = 0) =
     function[i]?.asType<LiveWork>()?.let { work ->
         work.first.markTag()?.also { stepTag ->
@@ -1139,12 +1145,19 @@ private fun markTagsForSeqAttach(vararg function: Any?, i: Int = 0) =
             function[i + 1]?.let { ln ->
                 jobs?.save("${stepTag}.ln", ln.asNullable()) } } /* work & ln */ }
 private fun markTagsForSeqLaunch(vararg function: Any?, i: Int = 0) =
-    function[i]?.markTag()?.also { step ->
-        val stepTag = step.string
+    function[i]?.markTag()?.also { stepTag ->
+        val stepTag = stepTag.string
+        val jobId = function[i + 3].asType<Int>()
         function[i + 1]?.let { capture ->
-            jobs?.save("${stepTag}.capture", capture.asNullable()) } /* capture */
+            jobs?.save("${stepTag}[${jobId}].capture", capture.asNullable()) } /* capture */
         function[i + 2]?.let { context ->
-            jobs?.save("${stepTag}.context", false, context.asNullable()) } /* context */ }
+            jobs?.save("${stepTag}[${jobId}].context", false, context.asNullable()) } /* context */ }
+private fun markTagsForCtxReform(vararg function: Any?, i: Int = 0) =
+    function[i + 1].markSequentialTag(function[i].asType<String>())?.also { stageTag ->
+        function[i + 2]?.let { job ->
+            jobs?.save("${stageTag}.job", false, job.asCallable()) } /* job */
+        function[i + 3]?.let { start ->
+            jobs?.save("${stageTag}.form", false, start.asCallable()) } /* form */ }
 
 suspend fun currentJob() = currentCoroutineContext().job
 
