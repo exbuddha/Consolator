@@ -222,6 +222,14 @@ inline fun <reified T> KMutableProperty<T?>.require(predicate: (T) -> Boolean = 
         if (old === null || predicate(old))
             constructor().also { new -> setter.call(new) }
         else old }
+inline fun <reified T> KMutableProperty<T?>.requireAsync(predicate: (T) -> Boolean = { it === null }, constructor: () -> T? = { getter.call() }) =
+    getter.call().let { old ->
+        if (old === null || predicate(old))
+            synchronized(this) {
+                if (old === null || predicate(old))
+                    constructor().also { new -> setter.call(new) }
+                else old }
+        else old }
 
 @Retention(SOURCE)
 @Target(CLASS)
