@@ -115,14 +115,14 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             override suspend fun invoke(scope: SequencerScope) {
                 scope.commitStageBuildDatabase(instance, tag(this), step, stage) } }
 
-        private suspend fun <D : RoomDatabase> SequencerScope.commitStageBuildDatabase(instance: KMutableProperty<out D?>, tag: String, stage: ContextStep?, action: Step? = null) =
+        private suspend fun <D : RoomDatabase> SequencerScope.commitStageBuildDatabase(instance: KMutableProperty<out D?>, tag: String, stage: ContextStep?) =
             commitAsyncOrResetByTag(instance, tag, {
                 buildDatabaseOrResetByTag(instance, tag) },
-                post = action ?: role(currentJob(), tag, stage))
-        private suspend fun <D : RoomDatabase> SequencerScope.commitStageBuildDatabase(instance: KMutableProperty<out D?>, tag: String, step: Step, stage: ContextStep?, action: Step? = null) =
+                post = role(currentJob(), tag, stage))
+        private suspend fun <D : RoomDatabase> SequencerScope.commitStageBuildDatabase(instance: KMutableProperty<out D?>, tag: String, step: Step, stage: ContextStep?) =
             commitAsyncOrResetByTag(instance, tag, {
                 buildDatabaseOrResetByTag(instance, tag) },
-                post = action ?: role(currentJob(), tag, step, stage))
+                post = role(currentJob(), tag, step, stage))
         private suspend fun <D : RoomDatabase> SequencerScope.buildDatabaseOrResetByTag(instance: KMutableProperty<out D?>, tag: String) =
             instance.setter.call(ref?.get()?.run {
                 sequencer { resetByTagOnError(tag, ::buildDatabase) } })
@@ -132,11 +132,9 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         private fun SequencerScope.role(job: Job, tag: String, step: Step, stage: ContextStep?): Step =
             synchronize(tag, step, stage).form(step)
         private fun synchronize(tag: String, stage: ContextStep?): ContextStep =
-            if (stage === null) ignore
-            else stage
+            stage ?: ignore
         private fun synchronize(tag: String, step: Step, stage: ContextStep?): ContextStep =
-            if (stage === null) ignore
-            else stage
+            stage ?: ignore
         private fun ContextStep.form(): Step = { change(this) }
         private fun ContextStep.form(step: Step): Step = step then form()
         private val ignore: ContextStep get() = @Tag("ignore") {}
