@@ -423,7 +423,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         fun capture(work: LiveWork): Boolean {
             work.second.let { capture ->
                 latestCapture = capture
-                capture?.invoke(work.asCallable())?.let { async ->
+                capture?.invoke(work)?.let { async ->
                     if (async is Boolean) return async
                 }
             }
@@ -567,7 +567,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             attachOnce(before, work)
 
         private fun markTagsForLaunch(step: SequencerStep, capture: CaptureFunction? = null, context: CoroutineContext? = null) =
-            step.also { markTagsForSeqLaunch(it, capture, context) }
+            step after { markTagsForSeqLaunch(step, capture, context) }
 
         fun attach(async: Boolean = false, step: SequencerStep) =
             stepToNull(async) { liveData(block = markTagsForLaunch(step)) }.also { attach(it) }
@@ -743,6 +743,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     fun observeAsync() = commitAsync(this, { !hasObservers() }, ::observe)
     fun observe(owner: LifecycleOwner) = observe(owner, this)
     fun ignore() = removeObserver(this)
+
     val observeScheduler = Runnable(::observe)
     val ignoreScheduler = Runnable(::ignore)
     val startSequencer = Runnable { sequencer?.start() }
@@ -1026,8 +1027,7 @@ fun SchedulerScope.keepAlive(node: SchedulerNode): Boolean = false
 fun SchedulerScope.keepAlive(job: Job) = keepAlive(job.node)
 fun SchedulerScope.keepAliveOrClose(node: SchedulerNode, job: Job) {
     keepAlive(node) && return
-    job.close(node)
-}
+    job.close(node) }
 fun SchedulerScope.keepAliveOrClose(job: Job) {}
 fun SchedulerScope.close(job: Job, exit: ThrowableFunction? = null) {}
 fun SchedulerScope.enact(job: Job, exit: ThrowableFunction? = null) {}
