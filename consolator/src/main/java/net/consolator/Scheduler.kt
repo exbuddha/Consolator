@@ -108,6 +108,15 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
                 override suspend fun invoke(scope: SequencerScope) {
                     scope.commitStageBuildDatabase(instance, tag(this), step, stage) } }
 
+        private fun <D : RoomDatabase> safeSeqStepBuildDatabase(instance: KMutableProperty<out D?>, tag: StringFunction = ::returnItsTag, stage: ContextStep? = null) =
+            object : SequencerStep {
+                override suspend fun invoke(scope: SequencerScope) {
+                    trySafely { scope.commitStageBuildDatabase(instance, tag(this), stage) } } }
+        private fun <D : RoomDatabase> safeSeqStepBuildDatabase(instance: KMutableProperty<out D?>, tag: StringFunction = ::returnItsTag, step: Step, stage: ContextStep? = null) =
+            object : SequencerStep {
+                override suspend fun invoke(scope: SequencerScope) {
+                    trySafely { scope.commitStageBuildDatabase(instance, tag(this), step, stage) } } }
+
         private suspend fun <D : RoomDatabase> SequencerScope.commitStageBuildDatabase(instance: KMutableProperty<out D?>, tag: String, stage: ContextStep?) =
             commitAsyncOrResetByTag(instance, tag, {
                 buildDatabaseOrResetByTag(instance, tag) },
@@ -435,10 +444,12 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             isCancelled = true
             this.ex = ex
         }
+        fun cancelByTag(tag: String, ex: Throwable) {}
         fun error(ex: Throwable) {
             hasError = true
             this.ex = ex
         }
+        fun errorByTag(tag: String, ex: Throwable) {}
         var exception = fun(ex: Throwable) = when (ex) {
             is CancellationException ->
                 cancel(ex)
@@ -446,6 +457,8 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
                 error(ex)
         }
         var interrupt = fun(ex: Throwable) = ex
+        var exceptionByTag = fun(tag: String, ex: Throwable) = exception(ex)
+        var interruptByTag = fun(tag: String, ex: Throwable) = ex
 
         suspend inline fun <R> SequencerScope.resetOnCancel(block: () -> R) =
             try { block() }
@@ -463,14 +476,14 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             try { block() }
             catch (ex: CancellationException) {
                 emitResetByTag(tag)
-                exception(ex)
-                throw interrupt(ex) }
+                exceptionByTag(tag, ex)
+                throw interruptByTag(tag, ex) }
         suspend inline fun <R> SequencerScope.resetByTagOnError(tag: String, block: () -> R) =
             try { block() }
             catch (ex: Throwable) {
                 emitResetByTag(tag)
-                exception(ex)
-                throw interrupt(ex) }
+                exceptionByTag(tag, ex)
+                throw interruptByTag(tag, ex) }
         private fun resettingFirstly(step: SequencerStep) = SequencerScope::emitReset then step
         private fun resettingLastly(step: SequencerStep) = step then SequencerScope::emitReset
         private fun resettingByTagFirstly(step: SequencerStep) = step after { emitResetByTag(tagOf(step)) }
