@@ -153,6 +153,7 @@ private typealias NetCall = KCallable<Call?>
 private fun NetCall.asNullable() =
     if (this === ::netCall) ::netCall
     else call().asNullable()
+private fun <R> NetCall.lock(cmd: String, block: () -> R) = synchronized(asNullable(), block)
 operator fun NetCall.get(cmd: String): Any? = when (cmd) {
     INET_CALL -> this
     INET_FUNCTION -> networkCallFunction
@@ -165,7 +166,7 @@ operator fun NetCall.get(cmd: String): Any? = when (cmd) {
 }
 operator fun NetCall.set(cmd: String, value: Any?) {
     // keep old value
-    synchronized(asNullable()) {
+    lock(cmd) {
         when (cmd) {
             INET_CALL -> netCall = take(value)
             INET_FUNCTION -> networkCallFunction = take(value)
@@ -180,7 +181,7 @@ operator fun NetCall.set(cmd: String, value: Any?) {
 private inline fun <reified T : Any> take(value: Any?): T = value.asType()!!
 
 private typealias Respond = (Response) -> Unit
-private fun NetCall.commit(scope: Any?, block: Work) { synchronized(this, block) }
+private fun <R> NetCall.commit(scope: Any?, block: () -> R) = lock(INET_CALL, block)
 private fun NetCall.exec(cmd: String = INET_CALL, respond: Respond) {
     markTag()
     respond(this[cmd].asType<NetCall>()!!.call()!!.execute()) }
