@@ -966,16 +966,22 @@ suspend fun SequencerScope.change(transit: Short) = reset {
     EventBus.signal(transit)
 }
 
+suspend fun SequencerScope.reset() = net.consolator.reset()
+suspend fun SequencerScope.resetByTag(tag: String) = net.consolator.resetByTag(tag)
+
+suspend fun <R> SequencerScope.capture(capture: () -> R) = emit {
+    reset()
+    capture() }
+suspend fun <R> SequencerScope.captureByTag(tag: String, capture: () -> R) = emit {
+    resetByTag(tag)
+    capture() }
+
 private suspend inline fun <R> SequencerScope.reset(block: () -> R): R {
     reset()
     return block() }
 private suspend inline fun <R> SequencerScope.resetByTag(tag: String, block: () -> R): R {
     resetByTag(tag)
     return block() }
-suspend fun SequencerScope.reset() = net.consolator.reset()
-suspend fun SequencerScope.resetByTag(tag: String) = net.consolator.resetByTag(tag)
-suspend fun SequencerScope.emitReset() = emit { reset() }
-suspend fun SequencerScope.emitResetByTag(tag: String) = emit { resetByTag(tag) }
 
 private fun reset() = sequencer?.reset()
 private fun resetByTag(tag: String) = sequencer?.resetByTag(tag)
