@@ -447,12 +447,10 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             isCancelled = true
             this.ex = ex
         }
-        fun cancelByTag(tag: String, ex: Throwable) {}
         fun error(ex: Throwable) {
             hasError = true
             this.ex = ex
         }
-        fun errorByTag(tag: String, ex: Throwable) {}
         var exception = fun(ex: Throwable) = when (ex) {
             is CancellationException ->
                 cancel(ex)
