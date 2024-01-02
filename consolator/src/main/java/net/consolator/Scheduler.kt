@@ -1093,8 +1093,8 @@ private fun combineTags(tag: String, self: String?) =
     else "$tag.$self"
 
 fun Any.markTag() = asCallable().markTag()
+fun Any?.markSequentialTag(vararg tag: String?): String? = TODO()
 fun AnyKCallable.markTag() = tag.also { jobs?.save(it, this) }
-private fun Any?.markSequentialTag(vararg tag: String?): String? = TODO()
 private fun returnItsTag(it: Any?) = it.asNullable().tag!!.string
 
 private fun Step?.markTagForSchExec(): Step? {
@@ -1165,9 +1165,6 @@ private fun markTagsForCtxReform(vararg function: Any?, i: Int = 0) =
         function[i + 2]?.let { form ->
             jobs?.save("${stageTag}[${jobId}].form", false, form.asCallable()) } /* form */ }
 
-suspend fun currentJob() = currentCoroutineContext().job
-fun currentThreadJob() = runBlocking { currentJob() }
-
 infix fun <R, S> (suspend () -> R).then(next: suspend () -> S): suspend () -> S = {
     this@then()
     next() }
@@ -1178,7 +1175,7 @@ infix fun <R, S> (suspend () -> R).thru(next: suspend (R) -> S): suspend () -> S
     next(this@thru()) }
 fun <R> (suspend () -> R).given(predicate: Predicate, fallback: suspend () -> R): suspend () -> R = {
     if (predicate()) this@given() else fallback() }
-infix fun Step.given(predicate: Predicate): Step = given(predicate, emptyStep)
+infix fun Step.given(predicate: Predicate) = given(predicate, emptyStep)
 
 infix fun <T, R, S> (suspend T.() -> R).then(next: suspend T.() -> S): suspend T.() -> S = {
     this@then()
@@ -1201,7 +1198,7 @@ infix fun <R, S> (() -> R).thru(next: (R) -> S): () -> S = {
     next(this@thru()) }
 fun <R> (() -> R).given(predicate: Predicate, fallback: () -> R): () -> R = {
     if (predicate()) this@given() else fallback() }
-infix fun AnyFunction.given(predicate: Predicate): AnyFunction = given(predicate, emptyWork)
+infix fun AnyFunction.given(predicate: Predicate) = given(predicate, emptyWork)
 
 infix fun <T, R, S> ((T) -> R).thru(next: (R) -> S): (T) -> S = {
     next(this@thru(it)) }
@@ -1210,6 +1207,9 @@ fun <R> KCallable<R>.with(vararg args: Any?): () -> R = {
     this@with.call(*args) }
 fun <R> call(vararg args: Any?): (KCallable<R>) -> R = {
     it.call(*args) }
+
+suspend fun currentJob() = currentCoroutineContext().job
+fun currentThreadJob() = runBlocking { currentJob() }
 
 val currentThread
     get() = Thread.currentThread()
