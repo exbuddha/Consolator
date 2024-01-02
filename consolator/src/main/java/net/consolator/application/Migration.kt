@@ -1,10 +1,10 @@
 package net.consolator.application
 
 import net.consolator.CoroutineStep
+import net.consolator.JobTreeRoot
 import net.consolator.Resolver
 import net.consolator.Scheduler
 import net.consolator.Scheduler.EventBus.signal
-import net.consolator.JobTreeRoot
 import net.consolator.expire
 import net.consolator.BaseApplication.Companion.COMMIT_NAV_MAIN_UI
 
