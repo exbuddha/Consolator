@@ -111,11 +111,11 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         private suspend fun <D : RoomDatabase> SequencerScope.commitStageBuildDatabase(instance: KMutableProperty<out D?>, tag: String, stage: ContextStep?) =
             commitAsyncOrResetByTag(instance, tag, {
                 buildDatabaseOrResetByTag(instance, tag) },
-                post = role(tag, stage, currentJob()))
+                post = markTagsForReform(tag, stage, synchronize(tag, stage).form(), currentJob()))
         private suspend fun <D : RoomDatabase> SequencerScope.commitStageBuildDatabase(instance: KMutableProperty<out D?>, tag: String, step: Step, stage: ContextStep?) =
             commitAsyncOrResetByTag(instance, tag, {
                 buildDatabaseOrResetByTag(instance, tag) },
-                post = role(tag, step, stage, currentJob()))
+                post = markTagsForReform(tag, stage, synchronize(tag, step, stage).form(step), currentJob()))
         private suspend fun <D : RoomDatabase> SequencerScope.buildDatabaseOrResetByTag(instance: KMutableProperty<out D?>, tag: String) =
             instance.setter.call(ref?.get()?.run {
                 sequencer { resetByTagOnError(tag, ::buildDatabase) } })
@@ -130,17 +130,14 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         private fun markTagsForReform(tag: String, stage: ContextStep?, form: Step, job: Job): Step =
             form.also { markTagsForCtxReform(tag, stage, form, job) }
 
-        private fun SequencerScope.role(tag: String, stage: ContextStep?, job: Job): Step =
-            markTagsForReform(tag, stage, synchronize(tag, stage).form(), job)
-        private fun SequencerScope.role(tag: String, step: Step, stage: ContextStep?, job: Job): Step =
-            markTagsForReform(tag, stage, synchronize(tag, step, stage).form(step), job)
-        private fun synchronize(tag: String, stage: ContextStep?): ContextStep =
+        private fun SequencerScope.synchronize(tag: String, stage: ContextStep?): ContextStep =
             stage ?: ignore
-        private fun synchronize(tag: String, step: Step, stage: ContextStep?): ContextStep =
+        private fun SequencerScope.synchronize(tag: String, step: Step, stage: ContextStep?): ContextStep =
             stage ?: ignore
-        private fun ContextStep.form(): Step = { change(this) }
-        private fun ContextStep.form(step: Step): Step = step then form()
         private val ignore: ContextStep get() = @Tag("ignore") {}
+
+        private fun ContextStep.form(): Step = { change(this) }
+        private fun ContextStep.form(step: Step) = step then form()
 
         override fun commit(step: CoroutineStep) = clockAhead(step.markTagForSvcCommit()::invoke)
 
