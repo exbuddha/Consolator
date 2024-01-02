@@ -65,21 +65,22 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
 
     sealed interface BaseServiceScope : IBinder, (Intent?) -> IBinder, SchedulerScope, SystemContext, UniqueContext {
         fun getStartTimeExtra(intent: Intent?) =
-            intent?.getLongExtra(START_TIME_KEY, foregroundContext.asType<UniqueContext>()!!.startTime)!!
+            intent?.getLongExtra(START_TIME_KEY, foregroundContext.asType<UniqueContext>()!!.startTime)
 
         var mode: Int?
         fun getModeExtra(intent: Intent?) =
-            intent?.getIntExtra(MODE_KEY, mode ?: START_NOT_STICKY)!!
+            intent?.getIntExtra(MODE_KEY, mode ?: START_NOT_STICKY)
 
         val hasMoreInitWork
             get() = logDb === null || netDb === null
 
         override fun invoke(intent: Intent?): IBinder {
             mode = getModeExtra(intent)
-            if (intent?.hasCategory(START_TIME_KEY) == true)
+            if (intent !== null && intent.hasCategory(START_TIME_KEY))
                 clock?.start()
             if (hasMoreInitWork) commit @Tag("init") {
-                startTime = getStartTimeExtra(intent)
+                trySafelyForResult { getStartTimeExtra(intent) }?.let {
+                    startTime = it }
                 Sequencer {
                     if (logDb === null) with(LogDatabase) {
                         io(true,
@@ -517,8 +518,8 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             seq.clear()
             clearLatestObjects()
         }
-        companion object : (SequencerWork) -> Unit {
-            override fun invoke(work: SequencerWork) = sequencer!!.work()
+        companion object : (SequencerWork) -> Unit? {
+            override fun invoke(work: SequencerWork) = sequencer?.work()
             const val ATTACHED_ALREADY = -1
         }
 
@@ -838,7 +839,8 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
 }
 
 val Step.transit
-    get() = if (this is Relay) transit else asCallable().event?.transit
+    get() = if (this is Relay) transit
+            else asCallable().event?.transit
 
 fun Step.relay(transit: Short? = this.transit) = Relay(transit)
 fun Step.reevaluate(transit: Short? = this.transit) = object : Relay(transit) {
@@ -870,8 +872,8 @@ private fun service(step: CoroutineStep) {
             it.parameters[1].name == "step"
         }?.call(scope, step.markTagForSvcCommit(scope)) } } // message queue reconfiguration
 
-fun clock(callback: Runnable) = clock!!.post(callback)
-fun clockAhead(callback: Runnable) = clock!!.postAhead(callback)
+fun clock(callback: Runnable) = clock?.post?.invoke(callback)
+fun clockAhead(callback: Runnable) = clock?.postAhead?.invoke(callback)
 
 fun <T> clock(step: suspend CoroutineScope.() -> T) = clock(runnableOf(step))
 fun <T> clockAhead(step: suspend CoroutineScope.() -> T) = clockAhead(runnableOf(step))
@@ -914,7 +916,7 @@ inline fun <R, S : R> commitAsyncBlockingForResult(lock: Any, crossinline predic
 fun <R, S> commitAsyncBlocking(lock: AnyKProperty, block: suspend () -> R, fallback: suspend () -> S) {
     commitAsyncBlockingForResult(lock, { lock.getter.call() === null }, block, fallback) }
 
-inline fun <R> sequencer(block: Sequencer.() -> R) = sequencer!!.block()
+inline fun <R> sequencer(block: Sequencer.() -> R) = sequencer?.block()
 fun <T, R> capture(context: CoroutineContext, step: suspend LiveDataScope<T>.() -> Unit, capture: (T) -> R) =
     liveData(context, block = step) to capture
 fun <T, R> ioCapture(step: suspend LiveDataScope<T>.() -> Unit, capture: (T) -> R) =
@@ -972,8 +974,10 @@ private suspend inline fun <R> SequencerScope.emitResettingByTag(tag: String, bl
     return block() }
 suspend fun SequencerScope.emitReset() = emit { reset() }
 suspend fun SequencerScope.emitResetByTag(tag: String) = emit { resetByTag(tag) }
-private suspend fun SequencerScope.reset() = sequencer?.reset()
-private suspend fun SequencerScope.resetByTag(tag: String) = sequencer?.resetByTag(tag)
+private suspend fun SequencerScope.reset() = net.consolator.reset()
+private suspend fun SequencerScope.resetByTag(tag: String) = net.consolator.resetByTag(tag)
+private fun reset() = sequencer?.reset()
+private fun resetByTag(tag: String) = sequencer?.resetByTag(tag)
 private fun tagOf(stage: ContextStep): String = TODO()
 
 private suspend inline fun whenNotNull(instance: AnyKProperty, stage: String, block: Step) {
@@ -982,7 +986,7 @@ private suspend inline fun whenNotNull(instance: AnyKProperty, stage: String, bl
 private suspend inline fun whenNotNullOrResetByTag(instance: AnyKProperty, stage: String, block: Step) {
     if (instance.getter.call() !== null)
         block()
-    else sequencer?.resetByTag(stage) }
+    else resetByTag(stage) }
 
 fun CoroutineScope.relaunch(instance: JobKProperty, context: CoroutineContext = Scheduler, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep) =
     relaunch(::launch, instance, context, start, step)

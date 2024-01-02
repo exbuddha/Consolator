@@ -17,7 +17,7 @@ open class BaseService : Service(), Scheduler.BaseServiceScope {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         mode = super.onStartCommand(intent, flags, startId)
         invoke(intent)
-        return mode!!
+        return mode ?: START_NOT_STICKY
     }
 
     override fun onBind(intent: Intent?) = invoke(intent)
