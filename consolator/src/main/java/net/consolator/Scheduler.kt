@@ -64,13 +64,6 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     var applicationMigrationResolver: Migration? = null
 
     sealed interface BaseServiceScope : IBinder, (Intent?) -> IBinder, SchedulerScope, SystemContext, UniqueContext {
-        fun getStartTimeExtra(intent: Intent?) =
-            intent?.getLongExtra(START_TIME_KEY, foregroundContext.asType<UniqueContext>()!!.startTime)
-
-        var mode: Int?
-        fun getModeExtra(intent: Intent?) =
-            intent?.getIntExtra(MODE_KEY, mode ?: START_NOT_STICKY)
-
         val hasMoreInitWork
             get() = logDb === null || netDb === null
 
@@ -152,6 +145,13 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         private fun ContextStep.form(vararg step: Step) = step.first() then form()
 
         override fun commit(step: CoroutineStep) = clockAhead(step.markTagForSvcCommit()::invoke)
+
+        fun getStartTimeExtra(intent: Intent?) =
+            intent?.getLongExtra(START_TIME_KEY, foregroundContext.asType<UniqueContext>()!!.startTime)
+
+        var mode: Int?
+        fun getModeExtra(intent: Intent?) =
+            intent?.getIntExtra(MODE_KEY, mode ?: START_NOT_STICKY)
 
         fun clearObjects() {
             mode = null
