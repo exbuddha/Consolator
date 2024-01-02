@@ -835,12 +835,12 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     override fun invoke(work: SchedulerWork) = this.work()
 }
 
+val Step.transit
+    get() = if (this is Relay) transit else asCallable().event?.transit
+
 fun Step.relay(transit: Short? = this.transit) = Relay(transit)
 fun Step.reevaluate(transit: Short? = this.transit) = object : Relay(transit) {
     override suspend fun invoke() = this@reevaluate() }
-
-val Step.transit
-    get() = if (this is Relay) transit else asCallable().event?.transit
 
 inline fun <reified T : Resolver> LifecycleOwner.defer(member: UnitKFunction, vararg context: Any?) =
     Scheduler.defer(T::class, this, member, *context)
@@ -890,33 +890,27 @@ inline fun <R> commitAsync(lock: Any, crossinline predicate: Predicate, crossinl
     if (predicate())
         synchronized(lock) {
             if (predicate()) block() } }
-inline fun <R> commitAsyncForResult(lock: Any, crossinline predicate: Predicate, fallback: R? = null, crossinline block: () -> R): R? {
+inline fun <R, S : R> commitAsyncForResult(lock: Any, predicate: Predicate, block: () -> R, fallback: () -> S? = { null }): R? {
     if (predicate())
         synchronized(lock) {
             if (predicate()) return block() }
-    return fallback }
-inline fun <T, R, S> T.commitAsyncBlocking(lock: Any, crossinline predicate: Predicate, crossinline block: suspend T.() -> R, crossinline fallback: suspend T.() -> S) {
+    return fallback() }
+
+inline fun <R> commitAsyncBlocking(lock: Any, crossinline predicate: Predicate, crossinline block: suspend () -> R) {
     if (predicate())
         synchronized(lock) {
             runBlocking {
-                if (predicate()) block()
-                else fallback() } }
-    else runBlocking { fallback() } }
-inline fun <T, R, S : R> T.commitAsyncBlockingForResult(lock: Any, crossinline predicate: Predicate, crossinline block: suspend T.() -> R, crossinline fallback: suspend T.() -> S? = { null }) =
+                if (predicate()) block() } } }
+inline fun <R, S : R> commitAsyncBlockingForResult(lock: Any, crossinline predicate: Predicate, crossinline block: suspend () -> R, crossinline fallback: suspend () -> S? = { null }) =
     if (predicate())
         synchronized(lock) {
             runBlocking {
                 if (predicate()) block()
                 else fallback() } }
     else runBlocking { fallback() }
-fun <R, S> commitAsyncBlocking(lock: AnyKProperty, block: suspend () -> R, fallback: suspend () -> S) {
-    fun predicate() = lock.getter.call() === null
-    if (predicate())
-        synchronized(lock) {
-            runBlocking {
-                if (predicate()) block()
-                else fallback() } }
-    else runBlocking { fallback() } }
+
+fun <R, S : R> commitAsyncBlocking(lock: AnyKProperty, block: suspend () -> R, fallback: suspend () -> S) {
+    commitAsyncBlockingForResult(lock, { lock.getter.call() === null }, block, fallback) }
 
 inline fun <R> sequencer(block: Sequencer.() -> R) = sequencer!!.block()
 fun <T, R> capture(context: CoroutineContext, step: suspend LiveDataScope<T>.() -> Unit, capture: (T) -> R) =
