@@ -489,8 +489,8 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
                 throw interruptByTag(tag, ex) }
         private fun resettingFirstly(step: SequencerStep) = SequencerScope::emitReset then step
         private fun resettingLastly(step: SequencerStep) = step then SequencerScope::emitReset
-        private fun resettingByTagFirstly(step: SequencerStep) = step after { emitResetByTag(tagOf(step)) }
-        private fun resettingByTagLastly(step: SequencerStep) = step then { emitResetByTag(tagOf(step)) }
+        private fun resettingByTagFirstly(step: SequencerStep) = step after { resetByTag(tagOf(step)) }
+        private fun resettingByTagLastly(step: SequencerStep) = step then { resetByTag(tagOf(step)); Unit }
         private fun tagOf(step: SequencerStep): String = TODO()
 
         var isActive = false
