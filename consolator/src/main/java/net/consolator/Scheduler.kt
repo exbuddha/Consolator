@@ -1118,7 +1118,7 @@ private fun returnItsTag(it: Any?) = it.asNullable().tag!!.string
 
 private fun Step?.markTagForSchExec(): Step? {
     jobs?.save("sch.exec", asCallable())
-    return this } // or apply capture function
+    return this } // or apply (live step) capture function
 private fun CoroutineStep.markTagForSchCommit(): CoroutineStep {
     jobs?.save("sch.commit", asCallable())
     return this }
