@@ -909,7 +909,7 @@ inline fun <R, S : R> commitAsyncBlockingForResult(lock: Any, crossinline predic
                 else fallback() } }
     else runBlocking { fallback() }
 
-fun <R, S : R> commitAsyncBlocking(lock: AnyKProperty, block: suspend () -> R, fallback: suspend () -> S) {
+fun <R, S> commitAsyncBlocking(lock: AnyKProperty, block: suspend () -> R, fallback: suspend () -> S) {
     commitAsyncBlockingForResult(lock, { lock.getter.call() === null }, block, fallback) }
 
 inline fun <R> sequencer(block: Sequencer.() -> R) = sequencer!!.block()
