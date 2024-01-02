@@ -466,29 +466,29 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         suspend inline fun <R> SequencerScope.resetOnCancel(block: () -> R) =
             try { block() }
             catch (ex: CancellationException) {
-                emitReset()
+                reset()
                 exception(ex)
                 throw interrupt(ex) }
         suspend inline fun <R> SequencerScope.resetOnError(block: () -> R) =
             try { block() }
             catch (ex: Throwable) {
-                emitReset()
+                reset()
                 exception(ex)
                 throw interrupt(ex) }
         suspend inline fun <R> SequencerScope.resetByTagOnCancel(tag: String, block: () -> R) =
             try { block() }
             catch (ex: CancellationException) {
-                emitResetByTag(tag)
+                resetByTag(tag)
                 exceptionByTag(tag, ex)
                 throw interruptByTag(tag, ex) }
         suspend inline fun <R> SequencerScope.resetByTagOnError(tag: String, block: () -> R) =
             try { block() }
             catch (ex: Throwable) {
-                emitResetByTag(tag)
+                resetByTag(tag)
                 exceptionByTag(tag, ex)
                 throw interruptByTag(tag, ex) }
-        private fun resettingFirstly(step: SequencerStep) = SequencerScope::emitReset then step
-        private fun resettingLastly(step: SequencerStep) = step then SequencerScope::emitReset
+        private fun resettingFirstly(step: SequencerStep) = step after SequencerScope::reset
+        private fun resettingLastly(step: SequencerStep) = step then SequencerScope::reset
         private fun resettingByTagFirstly(step: SequencerStep) = step after { resetByTag(tagOf(step)) }
         private fun resettingByTagLastly(step: SequencerStep) = step then { resetByTag(tagOf(step)); Unit }
         private fun tagOf(step: SequencerStep): String = TODO()
@@ -890,7 +890,7 @@ fun <T> safeRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { trySaf
 fun <T> interruptingRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { tryInterrupting(step) }
 fun <T> safeInterruptingRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { trySafelyInterrupting(step) }
 
-inline fun <R> commitAsync(lock: Any, crossinline predicate: Predicate, crossinline block: () -> R) {
+inline fun <R> commitAsync(lock: Any, predicate: Predicate, block: () -> R) {
     if (predicate())
         synchronized(lock) {
             if (predicate()) block() } }
@@ -959,23 +959,24 @@ private fun <T, R> LifecycleOwner.disposer(liveStep: Pair<LiveData<T>, (T) -> R>
         step.removeObservers(this)
         capture(value) }
 
-suspend fun SequencerScope.change(stage: ContextStep) = emitResettingByTag(tagOf(stage)) {
+suspend fun SequencerScope.change(stage: ContextStep) = resetByTag(tagOf(stage)) {
     EventBus.signal(stage)
 }
-suspend fun SequencerScope.change(transit: Short) = emitResetting {
+suspend fun SequencerScope.change(transit: Short) = reset {
     EventBus.signal(transit)
 }
 
-private suspend inline fun <R> SequencerScope.emitResetting(block: () -> R): R {
-    emitReset()
+private suspend inline fun <R> SequencerScope.reset(block: () -> R): R {
+    reset()
     return block() }
-private suspend inline fun <R> SequencerScope.emitResettingByTag(tag: String, block: () -> R): R {
-    emitResetByTag(tag)
+private suspend inline fun <R> SequencerScope.resetByTag(tag: String, block: () -> R): R {
+    resetByTag(tag)
     return block() }
+suspend fun SequencerScope.reset() = net.consolator.reset()
+suspend fun SequencerScope.resetByTag(tag: String) = net.consolator.resetByTag(tag)
 suspend fun SequencerScope.emitReset() = emit { reset() }
 suspend fun SequencerScope.emitResetByTag(tag: String) = emit { resetByTag(tag) }
-private suspend fun SequencerScope.reset() = net.consolator.reset()
-private suspend fun SequencerScope.resetByTag(tag: String) = net.consolator.resetByTag(tag)
+
 private fun reset() = sequencer?.reset()
 private fun resetByTag(tag: String) = sequencer?.resetByTag(tag)
 private fun tagOf(stage: ContextStep): String = TODO()
@@ -1019,10 +1020,6 @@ private fun CoroutineScope.determineCoroutine(context: CoroutineContext, start: 
 private fun CoroutineContext.isSchedulerContext() =
     this is Scheduler || this[_key] is SchedulerKey
 
-fun LifecycleOwner.close(node: SchedulerNode) {}
-fun LifecycleOwner.detach(node: SchedulerNode) {}
-fun LifecycleOwner.reattach(node: SchedulerNode) {}
-
 infix fun Job.then(next: DescriptiveStep): CoroutineStep = {}
 infix fun Job.after(prev: DescriptiveStep): CoroutineStep = {}
 infix fun Job.given(predicate: JobPredicate): CoroutineStep = {}
@@ -1039,24 +1036,26 @@ infix fun CoroutineStep.onCancel(action: DescriptiveStep): CoroutineStep = {}
 infix fun CoroutineStep.onError(action: DescriptiveStep): CoroutineStep = {}
 infix fun CoroutineStep.onTimeout(action: DescriptiveStep): CoroutineStep = {}
 
+fun SchedulerScope.enact(job: Job, exit: ThrowableFunction? = null) {}
+fun SchedulerScope.error(job: Job, exit: ThrowableFunction? = null) {}
+fun SchedulerScope.retry(job: Job, exit: ThrowableFunction? = null) {}
+fun SchedulerScope.close(job: Job, exit: ThrowableFunction? = null) {}
+
 fun SchedulerScope.keepAlive(job: Job) = keepAliveNode(job.node)
 fun SchedulerScope.keepAliveOrClose(job: Job) =
     job.node.let { node ->
         keepAliveNode(node) || job.close(node) }
-fun SchedulerScope.close(job: Job, exit: ThrowableFunction? = null) {}
-fun SchedulerScope.enact(job: Job, exit: ThrowableFunction? = null) {}
-fun SchedulerScope.error(job: Job, exit: ThrowableFunction? = null) {}
-fun SchedulerScope.retry(job: Job, exit: ThrowableFunction? = null) {}
-fun Job.close() {}
 fun SchedulerScope.keepAliveNode(node: SchedulerNode): Boolean = false
+
 fun Job.close(node: SchedulerNode): Boolean = true
+fun Job.close() {}
+
+fun LifecycleOwner.detach(node: SchedulerNode) {}
+fun LifecycleOwner.reattach(node: SchedulerNode) {}
+fun LifecycleOwner.close(node: SchedulerNode) {}
+
 val Job.node: SchedulerNode
     get() = TODO()
-
-suspend fun CoroutineScope.retrieveContext() =
-    currentJob()["context"].asType<Context>()!!
-suspend fun CoroutineScope.registerContext(context: WeakContext) {
-    currentJob()["context"] = context }
 
 fun SchedulerScope.change(stage: ContextStep) =
     EventBus.signal(stage)
@@ -1077,6 +1076,11 @@ suspend fun CoroutineScope.repeatSuspended(predicate: Predicate, block: JobFunct
 suspend fun delayOrYield(dt: Long = 0L) {
     if (dt > 0) delay(dt)
     else if (dt == 0L) yield() }
+
+suspend fun CoroutineScope.retrieveContext() =
+    currentJob()["context"].asType<Context>()!!
+suspend fun CoroutineScope.registerContext(context: WeakContext) {
+    currentJob()["context"] = context }
 
 typealias JobFunction = suspend (Any?) -> Unit
 private typealias JobFunctionSet = MutableSet<Pair<String, Any>>
