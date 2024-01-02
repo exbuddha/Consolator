@@ -2,7 +2,6 @@ package net.consolator
 
 import android.app.*
 import android.content.*
-import net.consolator.Scheduler.clock
 
 open class BaseService : Service(), Scheduler.BaseServiceScope {
     override val ref: WeakContext? = null
@@ -16,7 +15,6 @@ open class BaseService : Service(), Scheduler.BaseServiceScope {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        clock?.start()
         mode = super.onStartCommand(intent, flags, startId)
         invoke(intent)
         return mode!!

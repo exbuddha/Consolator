@@ -76,6 +76,8 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
 
         override fun invoke(intent: Intent?): IBinder {
             mode = getModeExtra(intent)
+            if (intent?.hasCategory(START_TIME_KEY) == true)
+                clock?.start()
             if (hasMoreInitWork) commit @Tag("init") {
                 startTime = getStartTimeExtra(intent)
                 Sequencer {
