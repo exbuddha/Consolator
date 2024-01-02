@@ -17,9 +17,9 @@ import kotlin.reflect.*
 import kotlinx.coroutines.*
 import com.google.gson.Gson
 import net.consolator.Path.Diverging
-import net.consolator.Scheduler.EventBus.signal
 import net.consolator.State.Pending
 import net.consolator.State.Resolved
+import net.consolator.Scheduler.EventBus.signal
 import android.Manifest.permission.ACCESS_NETWORK_STATE
 import android.Manifest.permission.INTERNET
 import androidx.core.content.ContextCompat.RECEIVER_EXPORTED
