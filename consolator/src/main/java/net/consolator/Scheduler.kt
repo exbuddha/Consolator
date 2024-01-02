@@ -959,11 +959,11 @@ private fun <T, R> LifecycleOwner.disposer(liveStep: Pair<LiveData<T>, (T) -> R>
         step.removeObservers(this)
         capture(value) }
 
-suspend fun SequencerScope.change(stage: ContextStep) = resetByTag(tagOf(stage)) {
-    EventBus.signal(stage)
-}
 suspend fun SequencerScope.change(transit: Short) = reset {
     EventBus.signal(transit)
+}
+suspend fun SequencerScope.change(stage: ContextStep) = resetByTag(tagOf(stage)) {
+    EventBus.signal(stage)
 }
 
 suspend fun SequencerScope.reset() = net.consolator.reset()
