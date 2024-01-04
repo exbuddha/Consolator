@@ -132,9 +132,6 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         private fun SequencerScope.commitAsyncOrResetByTag(lock: AnyKProperty, tag: String, block: Step) =
             commitAsyncBlocking(lock, block) { resetByTag(tag) }
 
-        private fun markTagsForReform(tag: String, stage: ContextStep?, form: Step, job: Job): Step =
-            form.also { markTagsForCtxReform(tag, stage, form, job) }
-
         private fun SequencerScope.synchronize(tag: String, stage: ContextStep?) =
             if (stage !== null) form(stage)
             else ignore
@@ -145,6 +142,9 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
 
         private fun SequencerScope.form(stage: ContextStep): Step = { change(stage) }
         private fun SequencerScope.form(stage: ContextStep, vararg step: Step) = step.first() then form(stage)
+
+        private fun markTagsForReform(tag: String, stage: ContextStep?, form: Step, job: Job): Step =
+            form.also { markTagsForCtxReform(tag, stage, form, job) }
 
         override fun commit(step: CoroutineStep) = clockAhead(step.markTagForSvcCommit()::invoke)
 
