@@ -1422,6 +1422,9 @@ private typealias ResolverKClass = KClass<out Resolver>
 private typealias ResolverKProperty = KMutableProperty<out Resolver?>
 private typealias UnitKFunction = KFunction<Unit>
 
+private operator fun AnyKCallable.plus(lock: AnyKCallable) = this
+private fun <R> AnyKCallable.commit(block: () -> R) = synchronized(this, block)
+
 private typealias ID = Short
 sealed interface State {
     object Failed : Resolved
