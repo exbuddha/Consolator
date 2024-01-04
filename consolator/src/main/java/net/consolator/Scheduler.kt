@@ -510,10 +510,10 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             add(element)
         private fun LiveSequence.attach(index: Int, element: LiveWork) =
             add(index, element)
-        fun attach(work: LiveWork) = commit { with(seq) {
+        fun attach(work: LiveWork, tag: String? = null) = commit { with(seq) {
             attach(work)
             size - 1 }.also { index ->
-                markTagsForSeqAttach(work, index) } }
+                markTagsForSeqAttach(tag, index, work) } }
         fun attachOnce(work: LiveWork) = commit {
             if (work.isNotAttached())
                 attach(work)
@@ -526,16 +526,16 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             if (work.isNotAttached(first, last))
                 attach(work)
             else ATTACHED_ALREADY }
-        fun attach(index: Int, work: LiveWork) = commit { with(seq) {
+        fun attach(index: Int, work: LiveWork, tag: String? = null) = commit { with(seq) {
             if (ln in index..size)
                 ln += 1
             attach(index, work)
-            markTagsForSeqAttach(work, index)
+            markTagsForSeqAttach(tag, index, work)
             index } }
-        fun attachOnce(index: Int, work: LiveWork) = commit {
+        fun attachOnce(index: Int, work: LiveWork, tag: String? = null) = commit {
             if (work.isNotAttached(index)) {
                 seq.attach(index, work)
-                markTagsForSeqAttach(work, index)
+                markTagsForSeqAttach(tag, index, work)
                 index }
             else ATTACHED_ALREADY }
         fun attachOnce(range: IntRange, index: Int, work: LiveWork) = commit {
@@ -546,10 +546,10 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             if (work.isNotAttached(first, last, index))
                 attach(index, work)
             else ATTACHED_ALREADY }
-        fun attachAfter(work: LiveWork) =
-            attach(after, work)
-        fun attachBefore(work: LiveWork) =
-            attach(before, work)
+        fun attachAfter(work: LiveWork, tag: String? = null) =
+            attach(after, work, tag)
+        fun attachBefore(work: LiveWork, tag: String? = null) =
+            attach(before, work, tag)
         fun attachOnceAfter(work: LiveWork) =
             attachOnce(after, work)
         fun attachOnceBefore(work: LiveWork) =
@@ -559,37 +559,37 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             step after { markTagsForSeqLaunch(step, capture, context, currentJob()) }
 
         fun attach(async: Boolean = false, step: SequencerStep) =
-            stepToNull(async) { liveData(block = markTagsForLaunch(step)) }.also { attach(it) }
+            stepToNull(async) { liveData(block = markTagsForLaunch(step)) }.also { attach(it, returnItsTag(step)) }
         fun attach(async: Boolean = false, step: SequencerStep, capture: CaptureFunction) =
-            Triple({ liveData(block = markTagsForLaunch(step, capture)) }, capture, async).also { attach(it) }
+            Triple({ liveData(block = markTagsForLaunch(step, capture)) }, capture, async).also { attach(it, returnItsTag(step)) }
         fun attach(context: CoroutineContext, async: Boolean = false, step: SequencerStep) =
-            stepToNull(async) { liveData(context, block = markTagsForLaunch(step, context = context)) }.also { attach(it) }
+            stepToNull(async) { liveData(context, block = markTagsForLaunch(step, context = context)) }.also { attach(it, returnItsTag(step)) }
         fun attach(context: CoroutineContext, async: Boolean = false, step: SequencerStep, capture: CaptureFunction) =
-            Triple({ liveData(context, block = markTagsForLaunch(step, capture, context)) }, capture, async).also { attach(it) }
+            Triple({ liveData(context, block = markTagsForLaunch(step, capture, context)) }, capture, async).also { attach(it, returnItsTag(step)) }
         fun attach(index: Int, async: Boolean = false, step: SequencerStep) =
-            stepToNull(async) { liveData(block = markTagsForLaunch(step)) }.also { attach(index, it) }
+            stepToNull(async) { liveData(block = markTagsForLaunch(step)) }.also { attach(index, it, returnItsTag(step)) }
         fun attach(index: Int, async: Boolean = false, step: SequencerStep, capture: CaptureFunction) =
-            Triple({ liveData(block = markTagsForLaunch(step, capture)) }, capture, async).also { attach(index, it) }
+            Triple({ liveData(block = markTagsForLaunch(step, capture)) }, capture, async).also { attach(index, it, returnItsTag(step)) }
         fun attach(index: Int, context: CoroutineContext, async: Boolean = false, step: SequencerStep) =
-            stepToNull(async) { liveData(context, block = markTagsForLaunch(step, context = context)) }.also { attach(index, it) }
+            stepToNull(async) { liveData(context, block = markTagsForLaunch(step, context = context)) }.also { attach(index, it, returnItsTag(step)) }
         fun attach(index: Int, context: CoroutineContext, async: Boolean = false, step: SequencerStep, capture: CaptureFunction) =
-            Triple({ liveData(context, block = markTagsForLaunch(step, capture, context)) }, capture, async).also { attach(index, it) }
+            Triple({ liveData(context, block = markTagsForLaunch(step, capture, context)) }, capture, async).also { attach(index, it, returnItsTag(step)) }
         fun attachAfter(async: Boolean = false, step: SequencerStep) =
-            stepToNull(async) { liveData(block = markTagsForLaunch(step)) }.also { attachAfter(it) }
+            stepToNull(async) { liveData(block = markTagsForLaunch(step)) }.also { attachAfter(it, returnItsTag(step)) }
         fun attachAfter(async: Boolean = false, step: SequencerStep, capture: CaptureFunction) =
-            Triple({ liveData(block = markTagsForLaunch(step, capture)) }, capture, async).also { attachAfter(it) }
+            Triple({ liveData(block = markTagsForLaunch(step, capture)) }, capture, async).also { attachAfter(it, returnItsTag(step)) }
         fun attachAfter(context: CoroutineContext, async: Boolean = false, step: SequencerStep) =
-            stepToNull(async) { liveData(context, block = markTagsForLaunch(step, context = context)) }.also { attachAfter(it) }
+            stepToNull(async) { liveData(context, block = markTagsForLaunch(step, context = context)) }.also { attachAfter(it, returnItsTag(step)) }
         fun attachAfter(context: CoroutineContext, async: Boolean = false, step: SequencerStep, capture: CaptureFunction) =
-            Triple({ liveData(context, block = markTagsForLaunch(step, capture, context)) }, capture, async).also { attachAfter(it) }
+            Triple({ liveData(context, block = markTagsForLaunch(step, capture, context)) }, capture, async).also { attachAfter(it, returnItsTag(step)) }
         fun attachBefore(async: Boolean = false, step: SequencerStep) =
-            stepToNull(async) { liveData(block = markTagsForLaunch(step)) }.also { attachBefore(it) }
+            stepToNull(async) { liveData(block = markTagsForLaunch(step)) }.also { attachBefore(it, returnItsTag(step)) }
         fun attachBefore(async: Boolean = false, step: SequencerStep, capture: CaptureFunction) =
-            Triple({ liveData(block = markTagsForLaunch(step, capture)) }, capture, async).also { attachBefore(it) }
+            Triple({ liveData(block = markTagsForLaunch(step, capture)) }, capture, async).also { attachBefore(it, returnItsTag(step)) }
         fun attachBefore(context: CoroutineContext, async: Boolean = false, step: SequencerStep) =
-            stepToNull(async) { liveData(context, block = markTagsForLaunch(step, context = context)) }.also { attachBefore(it) }
+            stepToNull(async) { liveData(context, block = markTagsForLaunch(step, context = context)) }.also { attachBefore(it, returnItsTag(step)) }
         fun attachBefore(context: CoroutineContext, async: Boolean = false, step: SequencerStep, capture: CaptureFunction) =
-            Triple({ liveData(context, block = markTagsForLaunch(step, capture, context)) }, capture, async).also { attachBefore(it) }
+            Triple({ liveData(context, block = markTagsForLaunch(step, capture, context)) }, capture, async).also { attachBefore(it, returnItsTag(step)) }
 
         fun capture(block: CaptureFunction) =
             attach(nullStepTo(block))
@@ -1142,12 +1142,11 @@ private fun markTagsForJobRepeat(vararg function: Any?, i: Int = 0) =
         function[i]?.let { predicate ->
             jobs?.save("${blockTag}[${jobId}].predicate", predicate.asCallable()) } /* predicate */ }
 private fun markTagsForSeqAttach(vararg function: Any?, i: Int = 0) =
-    function[i]?.asType<LiveWork>()?.let { work ->
-        work.first.markTag()?.also { stepTag ->
-            val stepTag = stepTag.string
-            jobs?.save("${stepTag}.work", false, work.asNullable())
-            function[i + 1]?.let { ln ->
-                jobs?.save("${stepTag}.ln", ln.asNullable()) } } /* work & ln */ }
+    function[i]?.asType<String>()?.let { stepTag ->
+        function[i + 2]?.asType<LiveWork>()?.let { work ->
+            jobs?.save("${stepTag}.work", work.asCallable()) } /* work */
+        function[i + 1]?.let { ln ->
+            jobs?.save("${stepTag}.ln", ln.asNullable()) } /* ln */ }
 private fun markTagsForSeqLaunch(vararg function: Any?, i: Int = 0) =
     function[i]?.markTag()?.also { stepTag ->
         val stepTag = stepTag.string
