@@ -573,22 +573,18 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             var index = -1
             return Triple({ liveData(context, block = markTagsForLaunch(step, { index }, context)) }, capture, async).also {
                 index = attach(it, returnItsTag(step)) } }
-        fun attach(index: Int, async: Boolean = false, step: SequencerStep): LiveWork {
-            var index = -1
-            return stepToNull(async) { liveData(block = markTagsForLaunch(step, { index })) }.also {
-                index = attach(index, it, returnItsTag(step)) } }
-        fun attach(index: Int, async: Boolean = false, step: SequencerStep, capture: CaptureFunction): LiveWork {
-            var index = -1
-            return Triple({ liveData(block = markTagsForLaunch(step, { index })) }, capture, async).also {
-                index = attach(index, it, returnItsTag(step)) } }
-        fun attach(index: Int, context: CoroutineContext, async: Boolean = false, step: SequencerStep): LiveWork {
-            var index = -1
-            return stepToNull(async) { liveData(context, block = markTagsForLaunch(step, { index }, context)) }.also {
-                index = attach(index, it, returnItsTag(step)) } }
-        fun attach(index: Int, context: CoroutineContext, async: Boolean = false, step: SequencerStep, capture: CaptureFunction): LiveWork {
-            var index = -1
-            return Triple({ liveData(context, block = markTagsForLaunch(step, { index }, context)) }, capture, async).also {
-                index = attach(index, it, returnItsTag(step)) } }
+        fun attach(index: Int, async: Boolean = false, step: SequencerStep) =
+            stepToNull(async) { liveData(block = markTagsForLaunch(step, { index })) }.also {
+                attach(index, it, returnItsTag(step)) }
+        fun attach(index: Int, async: Boolean = false, step: SequencerStep, capture: CaptureFunction) =
+            Triple({ liveData(block = markTagsForLaunch(step, { index })) }, capture, async).also {
+                attach(index, it, returnItsTag(step)) }
+        fun attach(index: Int, context: CoroutineContext, async: Boolean = false, step: SequencerStep) =
+            stepToNull(async) { liveData(context, block = markTagsForLaunch(step, { index }, context)) }.also {
+                attach(index, it, returnItsTag(step)) }
+        fun attach(index: Int, context: CoroutineContext, async: Boolean = false, step: SequencerStep, capture: CaptureFunction) =
+            Triple({ liveData(context, block = markTagsForLaunch(step, { index }, context)) }, capture, async).also {
+                attach(index, it, returnItsTag(step)) }
         fun attachAfter(async: Boolean = false, step: SequencerStep): LiveWork {
             var index = -1
             return stepToNull(async) { liveData(block = markTagsForLaunch(step, { index })) }.also {
