@@ -1093,7 +1093,7 @@ private fun combineTags(tag: String, self: String?) =
 fun Any.markTag() = asCallable().markTag()
 fun Any?.markSequentialTag(vararg tag: String?): String? = TODO()
 fun AnyKCallable.markTag() = tag.also { jobs?.save(it, this) }
-private fun returnItsTag(it: Any?) = it.asNullable().tag!!.string
+private fun returnItsTag(it: Any?) = it.asNullable().tag?.string
 
 private fun Step?.markTagForSchExec(): Step? {
     jobs?.save("sch.exec", asCallable())
