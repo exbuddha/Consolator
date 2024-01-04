@@ -1033,21 +1033,21 @@ private fun CoroutineScope.determineCoroutine(context: CoroutineContext, start: 
 private fun CoroutineContext.isSchedulerContext() =
     this is Scheduler || this[_key] is SchedulerKey
 
-infix fun Job.then(next: DescriptiveStep): CoroutineStep = {}
-infix fun Job.after(prev: DescriptiveStep): CoroutineStep = {}
+infix fun Job.then(next: SchedulerStep): CoroutineStep = {}
+infix fun Job.after(prev: SchedulerStep): CoroutineStep = {}
 infix fun Job.given(predicate: JobPredicate): CoroutineStep = {}
-infix fun Job.from(next: DescriptiveStep): CoroutineStep = {}
-infix fun Job.onCancel(action: DescriptiveStep): CoroutineStep = {}
-infix fun Job.onError(action: DescriptiveStep): CoroutineStep = {}
-infix fun Job.onTimeout(action: DescriptiveStep): CoroutineStep = {}
-infix fun CoroutineStep.then(next: DescriptiveStep): CoroutineStep = {}
-infix fun CoroutineStep.after(prev: DescriptiveStep): CoroutineStep = {}
+infix fun Job.from(next: SchedulerStep): CoroutineStep = {}
+infix fun Job.onCancel(action: SchedulerStep): CoroutineStep = {}
+infix fun Job.onError(action: SchedulerStep): CoroutineStep = {}
+infix fun Job.onTimeout(action: SchedulerStep): CoroutineStep = {}
+infix fun CoroutineStep.then(next: SchedulerStep): CoroutineStep = {}
+infix fun CoroutineStep.after(prev: SchedulerStep): CoroutineStep = {}
 infix fun CoroutineStep.given(predicate: JobPredicate): CoroutineStep = {}
-infix fun CoroutineStep.otherwise(next: DescriptiveStep): CoroutineStep = {}
-infix fun CoroutineStep.from(next: DescriptiveStep): CoroutineStep = {}
-infix fun CoroutineStep.onCancel(action: DescriptiveStep): CoroutineStep = {}
-infix fun CoroutineStep.onError(action: DescriptiveStep): CoroutineStep = {}
-infix fun CoroutineStep.onTimeout(action: DescriptiveStep): CoroutineStep = {}
+infix fun CoroutineStep.otherwise(next: SchedulerStep): CoroutineStep = {}
+infix fun CoroutineStep.from(next: SchedulerStep): CoroutineStep = {}
+infix fun CoroutineStep.onCancel(action: SchedulerStep): CoroutineStep = {}
+infix fun CoroutineStep.onError(action: SchedulerStep): CoroutineStep = {}
+infix fun CoroutineStep.onTimeout(action: SchedulerStep): CoroutineStep = {}
 
 fun SchedulerScope.enact(job: Job, exit: ThrowableFunction? = null) {}
 fun SchedulerScope.error(job: Job, exit: ThrowableFunction? = null) {}
@@ -1346,7 +1346,7 @@ private fun annotatedScopeOf(step: CoroutineStep) =
 private val AnyKCallable.launchScope
     get() = annotations.find { it is LaunchScope } as? LaunchScope
 
-private typealias DescriptiveStep = suspend SchedulerScope.(Job) -> Unit
+private typealias SchedulerStep = suspend SchedulerScope.(Job) -> Unit
 private typealias JobPredicate = (Job) -> Boolean
 private typealias SchedulerNode = KClass<out Annotation>
 private typealias SchedulerPath = Array<KClass<out Throwable>>
