@@ -1157,38 +1157,38 @@ private fun markTagsForJobLaunch(vararg function: Any?, i: Int = 0) =
             jobs?.save("${stepTag}.job", step.keep, job.asCallable())
             job.asType<Job>().hashCode() } /* job */
         function[i]?.let { context ->
-            jobs?.save("${stepTag}[${jobId}].context", false, context.asCallable()) } /* context */
+            jobs?.save("${stepTag}@${jobId}.context", false, context.asCallable()) } /* context */
         function[i + 1]?.let { start ->
-            jobs?.save("${stepTag}[${jobId}].start", false, start.asCallable()) } /* start */ }
+            jobs?.save("${stepTag}@${jobId}.start", false, start.asCallable()) } /* start */ }
 private fun markTagsForJobRepeat(vararg function: Any?, i: Int = 0) =
     function[i + 1]?.markTag()?.also { blockTag ->
         val blockTag = blockTag.string
         val jobId = function[i + 3].asType<Int>()
         function[i + 2]?.let { delay ->
-            jobs?.save("${blockTag}[${jobId}].delay", delay.asCallable()) } /* delay */
+            jobs?.save("${blockTag}@${jobId}.delay", delay.asCallable()) } /* delay */
         function[i]?.let { predicate ->
-            jobs?.save("${blockTag}[${jobId}].predicate", predicate.asCallable()) } /* predicate */ }
+            jobs?.save("${blockTag}@${jobId}.predicate", predicate.asCallable()) } /* predicate */ }
 private fun markTagsForSeqAttach(vararg function: Any?, i: Int = 0) =
     function[i]?.asType<String>().let { stepTag ->
         val stepTag = stepTag ?: "null-step"
         function[i + 1]?.let { index ->
             jobs?.save("${stepTag}.index", index.asCallable())
             function[i + 2]?.asType<LiveWork>()?.let { work ->
-                jobs?.save("${stepTag}[${index}].work", work.asCallable()) } } /* index & work */ }
+                jobs?.save("${stepTag}#${index}.work", work.asCallable()) } } /* index & work */ }
 private fun markTagsForSeqLaunch(vararg function: Any?, i: Int = 0) =
     function[i]?.markTag()?.also { stepTag ->
         val stepTag = stepTag.string
         val index = function[i + 1]?.asType<Int>()!!
         val jobId = function[i + 3].asType<Job>().hashCode()
         function[i + 2]?.let { context ->
-            jobs?.save("${stepTag}[${index}][${jobId}].context", false, context.asNullable()) } /* context */ }
+            jobs?.save("${stepTag}#${index}@${jobId}.context", false, context.asNullable()) } /* context */ }
 private fun markTagsForCtxReform(vararg function: Any?, i: Int = 0) =
     function[i + 1].markSequentialTag(function[i].asType<String>())?.also { stageTag ->
         val jobId = function[i + 3]?.let { job ->
             jobs?.save("${stageTag}.job", false, job.asCallable())
             job.asType<Job>().hashCode() } /* job */
         function[i + 2]?.let { form ->
-            jobs?.save("${stageTag}[${jobId}].form", false, form.asCallable()) } /* form */ }
+            jobs?.save("${stageTag}@${jobId}.form", false, form.asCallable()) } /* form */ }
 
 infix fun <R, S> (suspend () -> R).then(next: suspend () -> S): suspend () -> S = {
     this@then()
