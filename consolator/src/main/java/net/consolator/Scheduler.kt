@@ -510,11 +510,10 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             add(element)
         private fun LiveSequence.attach(index: Int, element: LiveWork) =
             add(index, element)
-        fun attach(work: LiveWork) =
-            commit {
-                seq.attach(work)
-                seq.size - 1 }.also { ln ->
-                    markTagsForSeqAttach(work, ln) }
+        fun attach(work: LiveWork) = commit { with(seq) {
+            attach(work)
+            size - 1 }.also { index ->
+                markTagsForSeqAttach(work, index) } }
         fun attachOnce(work: LiveWork) =
             if (work.isNotAttached())
                 attach(work)
@@ -527,20 +526,18 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             if (work.isNotAttached(first, last))
                 attach(work)
             else ATTACHED_ALREADY
-        fun attach(index: Int, work: LiveWork) =
-            commit { with(seq) {
-                if (ln in index..size)
-                    ln += 1
-                attach(index, work)
-                index } }.also { ln ->
-                    markTagsForSeqAttach(work, ln) }
-        fun attachOnce(index: Int, work: LiveWork) =
-            commit {
-                if (work.isNotAttached(index)) {
-                    seq.attach(index, work)
-                    markTagsForSeqAttach(work, index)
-                    index }
-                else ATTACHED_ALREADY }
+        fun attach(index: Int, work: LiveWork) = commit { with(seq) {
+            if (ln in index..size)
+                ln += 1
+            attach(index, work)
+            markTagsForSeqAttach(work, index)
+            index } }
+        fun attachOnce(index: Int, work: LiveWork) = commit {
+            if (work.isNotAttached(index)) {
+                seq.attach(index, work)
+                markTagsForSeqAttach(work, index)
+                index }
+            else ATTACHED_ALREADY }
         fun attachOnce(range: IntRange, index: Int, work: LiveWork) =
             if (work.isNotAttached(range, index))
                 attach(index, work)
