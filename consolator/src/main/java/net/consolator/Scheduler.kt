@@ -1149,7 +1149,7 @@ private fun markTagsForSeqAttach(vararg function: Any?, i: Int = 0) =
 private fun markTagsForSeqLaunch(vararg function: Any?, i: Int = 0) =
     function[i]?.markTag()?.also { stepTag ->
         val stepTag = stepTag.string
-        val jobId = function[i + 3].asType<Int>()
+        val jobId = function[i + 3].asType<Job>().hashCode()
         function[i + 1]?.let { capture ->
             jobs?.save("${stepTag}[${jobId}].capture", capture.asNullable()) } /* capture */
         function[i + 2]?.let { context ->
