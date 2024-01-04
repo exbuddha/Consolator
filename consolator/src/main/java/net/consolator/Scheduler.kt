@@ -514,18 +514,18 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             attach(work)
             size - 1 }.also { index ->
                 markTagsForSeqAttach(work, index) } }
-        fun attachOnce(work: LiveWork) =
+        fun attachOnce(work: LiveWork) = commit {
             if (work.isNotAttached())
                 attach(work)
-            else ATTACHED_ALREADY
-        fun attachOnce(range: IntRange, work: LiveWork) =
+            else ATTACHED_ALREADY }
+        fun attachOnce(range: IntRange, work: LiveWork) = commit {
             if (work.isNotAttached(range))
                 attach(work)
-            else ATTACHED_ALREADY
-        fun attachOnce(first: Int, last: Int, work: LiveWork) =
+            else ATTACHED_ALREADY }
+        fun attachOnce(first: Int, last: Int, work: LiveWork) = commit {
             if (work.isNotAttached(first, last))
                 attach(work)
-            else ATTACHED_ALREADY
+            else ATTACHED_ALREADY }
         fun attach(index: Int, work: LiveWork) = commit { with(seq) {
             if (ln in index..size)
                 ln += 1
@@ -538,14 +538,14 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
                 markTagsForSeqAttach(work, index)
                 index }
             else ATTACHED_ALREADY }
-        fun attachOnce(range: IntRange, index: Int, work: LiveWork) =
+        fun attachOnce(range: IntRange, index: Int, work: LiveWork) = commit {
             if (work.isNotAttached(range, index))
                 attach(index, work)
-            else ATTACHED_ALREADY
-        fun attachOnce(first: Int, last: Int, index: Int, work: LiveWork) =
+            else ATTACHED_ALREADY }
+        fun attachOnce(first: Int, last: Int, index: Int, work: LiveWork) = commit {
             if (work.isNotAttached(first, last, index))
                 attach(index, work)
-            else ATTACHED_ALREADY
+            else ATTACHED_ALREADY }
         fun attachAfter(work: LiveWork) =
             attach(after, work)
         fun attachBefore(work: LiveWork) =
