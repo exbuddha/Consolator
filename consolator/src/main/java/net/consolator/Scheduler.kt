@@ -430,47 +430,43 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             isObserving = false
         }
         fun resetByTag(tag: String) {}
+
         fun cancel(ex: Throwable) {
             isCancelled = true
             this.ex = ex
         }
+        fun cancelByTag(tag: String, ex: Throwable) = cancel(ex)
         fun error(ex: Throwable) {
             hasError = true
             this.ex = ex
         }
-        var exception = fun(ex: Throwable) = when (ex) {
-            is CancellationException ->
-                cancel(ex)
-            else ->
-                error(ex)
-        }
+        fun errorByTag(tag: String, ex: Throwable) = error(ex)
         var interrupt = fun(ex: Throwable) = ex
-        var exceptionByTag = fun(tag: String, ex: Throwable) = exception(ex)
         var interruptByTag = fun(tag: String, ex: Throwable) = ex
 
         suspend inline fun <R> SequencerScope.resetOnCancel(block: () -> R) =
             try { block() }
             catch (ex: CancellationException) {
                 reset()
-                exception(ex)
+                cancel(ex)
                 throw interrupt(ex) }
         suspend inline fun <R> SequencerScope.resetOnError(block: () -> R) =
             try { block() }
             catch (ex: Throwable) {
                 reset()
-                exception(ex)
+                error(ex)
                 throw interrupt(ex) }
         suspend inline fun <R> SequencerScope.resetByTagOnCancel(tag: String, block: () -> R) =
             try { block() }
             catch (ex: CancellationException) {
                 resetByTag(tag)
-                exceptionByTag(tag, ex)
+                cancelByTag(tag, ex)
                 throw interruptByTag(tag, ex) }
         suspend inline fun <R> SequencerScope.resetByTagOnError(tag: String, block: () -> R) =
             try { block() }
             catch (ex: Throwable) {
                 resetByTag(tag)
-                exceptionByTag(tag, ex)
+                errorByTag(tag, ex)
                 throw interruptByTag(tag, ex) }
 
         // preserve tags
