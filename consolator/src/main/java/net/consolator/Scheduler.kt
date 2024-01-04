@@ -189,6 +189,9 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         constructor(callback: Runnable) : this() {
             queue.add(callback)
         }
+        constructor(name: String, priority: Int = currentThread.priority, callback: Runnable) : this(name, priority) {
+            queue.add(callback)
+        }
 
         var id: Int = -1
         override fun start() {
