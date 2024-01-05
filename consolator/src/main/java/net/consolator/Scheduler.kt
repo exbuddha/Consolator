@@ -473,7 +473,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         private fun resettingFirstly(step: SequencerStep) = step after SequencerScope::reset
         private fun resettingLastly(step: SequencerStep) = step then SequencerScope::reset
         private fun resettingByTagFirstly(step: SequencerStep) = step after { resetByTag(tagOf(step)) }
-        private fun resettingByTagLastly(step: SequencerStep) = step then { resetByTag(tagOf(step)); Unit }
+        private fun resettingByTagLastly(step: SequencerStep) = step then { resetByTag(tagOf(step)) }
         private fun tagOf(step: SequencerStep): String = TODO()
 
         var isActive = false
@@ -990,8 +990,8 @@ private suspend inline fun <R> SequencerScope.resetByTag(tag: String, block: () 
     resetByTag(tag)
     return block() }
 
-private fun reset() = sequencer?.reset()
-private fun resetByTag(tag: String) = sequencer?.resetByTag(tag)
+private fun reset() { sequencer?.reset() }
+private fun resetByTag(tag: String) { sequencer?.resetByTag(tag) }
 private fun tagOf(stage: ContextStep): String = TODO()
 
 private suspend inline fun whenNotNull(instance: AnyKProperty, stage: String, block: Step) {
