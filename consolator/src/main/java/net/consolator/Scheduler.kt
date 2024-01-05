@@ -1123,17 +1123,14 @@ fun Any?.markSequentialTag(vararg tag: String?): String? = TODO()
 fun AnyKCallable.markTag() = tag.also { jobs?.save(it, this) }
 private fun returnItsTag(it: Any?) = it.asNullable().tag?.string
 
-private fun Step?.markTagForSchExec(): Step? {
-    jobs?.save("sch.exec", asCallable())
-    return this }
-private fun CoroutineStep.markTagForSchCommit(): CoroutineStep {
-    jobs?.save("sch.commit", asCallable())
-    return this }
-private fun CoroutineStep.markTagForSvcCommit(scope: CoroutineScope? = null): CoroutineStep {
+private fun Step?.markTagForSchExec() = apply {
+    jobs?.save("sch.exec", asCallable()) }
+private fun CoroutineStep.markTagForSchCommit() = apply {
+    jobs?.save("sch.commit", asCallable()) }
+private fun CoroutineStep.markTagForSvcCommit(scope: CoroutineScope? = null) = apply {
     jobs?.save("svc.commit", asCallable())?.apply {
         if (scope !== null)
-            jobs?.save("svc.scope", string, scope.asCallable()) }
-    return this }
+            jobs?.save("svc.scope", string, scope.asCallable()) } }
 
 fun markTags(vararg function: Any?) {
     when (function.firstOrNull()) {
