@@ -249,9 +249,9 @@ var jsonConverter: Gson? = null
     get() = field ?: Gson()
 
 open class BaseImplementationRestriction(
-    msg: String = "Base implementation restricted",
-    cause: Throwable? = null
-) : UnsupportedOperationException(msg, cause) {
+    override val message: String? = "Base implementation restricted",
+    override val cause: Throwable? = null
+) : UnsupportedOperationException(message, cause) {
     companion object : BaseImplementationRestriction() }
 open class InterruptedStepException(
     val step: Any,
