@@ -864,8 +864,6 @@ interface Resolver : SchedulerScope {
 
 fun schedule(step: Step) = Scheduler.postValue(step)
 fun scheduleNow(step: Step) { Scheduler.value = step }
-fun Context.schedule(ref: ContextStep) = schedule(step = { ref() })
-fun Context.scheduleNow(ref: ContextStep) = scheduleNow(step = { ref() })
 
 fun service(task: String, vararg context: Any?) {
     when (task) {
