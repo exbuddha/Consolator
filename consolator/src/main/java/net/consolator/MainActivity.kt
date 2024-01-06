@@ -7,7 +7,7 @@ import androidx.core.os.LocaleListCompat
 import androidx.fragment.app.add
 import androidx.fragment.app.commit
 import net.consolator.application.MemoryManager
-import net.consolator.Scheduler.appliationMemoryManager
+import net.consolator.Scheduler.applicationMemoryManager
 
 open class MainActivity : BaseActivity(), ObjectProvider {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -50,7 +50,7 @@ open class MainActivity : BaseActivity(), ObjectProvider {
         LocalesChangeManager::class ->
             LocalesChangeManager()
         MemoryManager::class ->
-            ::appliationMemoryManager.require(constructor = ::MemoryManager)!!
+            ::applicationMemoryManager.require(constructor = ::MemoryManager)!!
         else ->
             throw BaseImplementationRestriction
     }

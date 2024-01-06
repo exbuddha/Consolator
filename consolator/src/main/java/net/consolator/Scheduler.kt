@@ -53,7 +53,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             LocalesChangeManager::class ->
                 ::activityLocalesChangeManager.setResolverThenCommit()
             MemoryManager::class ->
-                ::appliationMemoryManager.setResolverThenCommit()
+                ::applicationMemoryManager.setResolverThenCommit()
             else -> null
         }
     }
@@ -62,7 +62,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     private var activityNightModeChangeManager: NightModeChangeManager? = null
     private var activityLocalesChangeManager: LocalesChangeManager? = null
     var applicationMigrationResolver: Migration? = null
-    var appliationMemoryManager: MemoryManager? = null
+    var applicationMemoryManager: MemoryManager? = null
 
     sealed interface BaseServiceScope : IBinder, (Intent?) -> IBinder, SchedulerScope, SystemContext, UniqueContext {
         val hasMoreInitWork

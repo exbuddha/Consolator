@@ -24,7 +24,7 @@ import kotlinx.coroutines.Dispatchers.IO
 import net.consolator.BaseApplication.Companion.ACTION_MIGRATE_APP
 import net.consolator.BaseApplication.Companion.ABORT_NAV_MAIN_UI
 import net.consolator.BaseApplication.Companion.COMMIT_NAV_MAIN_UI
-import net.consolator.Scheduler.appliationMemoryManager
+import net.consolator.Scheduler.applicationMemoryManager
 import net.consolator.Scheduler.applicationMigrationResolver
 
 abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
@@ -133,7 +133,7 @@ abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
         Migration::class ->
             ::applicationMigrationResolver.require(constructor = ::Migration)!!
         MemoryManager::class ->
-            ::appliationMemoryManager.require(constructor = ::MemoryManager)!!
+            ::applicationMemoryManager.require(constructor = ::MemoryManager)!!
         else ->
             throw BaseImplementationRestriction
     }

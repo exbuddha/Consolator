@@ -3,7 +3,7 @@ package net.consolator
 import android.app.*
 import android.content.*
 import net.consolator.application.*
-import net.consolator.Scheduler.appliationMemoryManager
+import net.consolator.Scheduler.applicationMemoryManager
 
 open class BaseApplication : Application(), ObjectProvider, UniqueContext {
     override var startTime = now()
@@ -49,7 +49,7 @@ open class BaseApplication : Application(), ObjectProvider, UniqueContext {
 
     override fun invoke(type: AnyKClass) = when (type) {
         MemoryManager::class ->
-            ::appliationMemoryManager.require(constructor = ::MemoryManager)!!
+            ::applicationMemoryManager.require(constructor = ::MemoryManager)!!
         else ->
             throw BaseImplementationRestriction
     }
