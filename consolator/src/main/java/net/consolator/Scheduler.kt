@@ -872,7 +872,21 @@ fun scheduleNow(step: Step) { Scheduler.value = step }
 fun Context.schedule(ref: ContextStep) = schedule(step = { ref() })
 fun Context.scheduleNow(ref: ContextStep) = scheduleNow(step = { ref() })
 
-fun service(task: String) {}
+fun service(task: String, vararg context: Any?) {
+    when (task) {
+        "start" -> {
+            with(foregroundContext) {
+                Scheduler {
+                    clock = Clock("svc", Thread.MAX_PRIORITY)
+                        .alsoStart()
+                    observe()
+                }
+                startService(intendFor(BaseService::class)
+                    .putExtra(START_TIME_KEY, asType<UniqueContext>()?.startTime ?: now()))
+            }
+        }
+    }
+}
 private fun service(step: CoroutineStep) {
     (annotatedScopeOf(step) ?:
     service)?.let { scope ->

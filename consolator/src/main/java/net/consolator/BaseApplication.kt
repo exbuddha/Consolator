@@ -8,7 +8,7 @@ import net.consolator.Scheduler.applicationMemoryManager
 open class BaseApplication : Application(), ObjectProvider, UniqueContext {
     override var startTime = now()
 
-    override fun onCreate() {
+    init {
         mainUncaughtExceptionHandler = @Tag("uncaught-shared") ExceptionHandler { th, ex ->
             with(getSharedPreferences("uncaught", MODE_PRIVATE).edit()) {
                 putLong("start", startTime)
@@ -18,14 +18,12 @@ open class BaseApplication : Application(), ObjectProvider, UniqueContext {
             }
         }
         Thread.setDefaultUncaughtExceptionHandler(mainUncaughtExceptionHandler)
+    }
+
+    override fun onCreate() {
         super.onCreate()
         instance = this
-        Scheduler {
-            clock = Clock("svc", Thread.MAX_PRIORITY)
-                .alsoStart()
-            observe()
-        }
-        startService(intendFor(BaseService::class).putExtra(START_TIME_KEY, startTime))
+        service("start")
     }
 
     override fun onTrimMemory(level: Int) {
