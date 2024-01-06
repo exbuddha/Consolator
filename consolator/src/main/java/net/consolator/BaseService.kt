@@ -4,8 +4,6 @@ import android.app.*
 import android.content.*
 
 open class BaseService : Service(), Scheduler.BaseServiceScope {
-    override val ref: WeakContext? = null
-        get() = field.unique(this)
     override var startTime = 0L
     override var mode: Int? = null
 
@@ -26,6 +24,9 @@ open class BaseService : Service(), Scheduler.BaseServiceScope {
         service = null
         super.onDestroy()
     }
+
+    override val ref: WeakContext? = null
+        get() = field.unique(this)
 }
 
 typealias Sequencer = Scheduler.Sequencer

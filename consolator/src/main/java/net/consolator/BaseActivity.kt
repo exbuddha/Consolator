@@ -7,9 +7,6 @@ import net.consolator.activity.*
 import net.consolator.application.*
 
 abstract class BaseActivity : AppCompatActivity(), SystemContext {
-    override val ref: WeakContext? = null
-        get() = field.unique(this)
-
     var enableNetworkCallbacks: Work? = null
     var disableNetworkCallbacks: Work? = null
 
@@ -43,6 +40,9 @@ abstract class BaseActivity : AppCompatActivity(), SystemContext {
             super.onLowMemory()
         }
     }
+
+    override val ref: WeakContext? = null
+        get() = field.unique(this)
 
     abstract inner class ConfigurationChangeManager : Reconfiguration()
     abstract inner class NightModeChangeManager : Reconfiguration()
