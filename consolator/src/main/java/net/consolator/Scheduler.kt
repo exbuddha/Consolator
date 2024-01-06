@@ -782,6 +782,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         activityNightModeChangeManager = null
         activityLocalesChangeManager = null
         applicationMigrationResolver = null
+        applicationMemoryManager = null
     }
     fun clearObjects() {
         clock = null
