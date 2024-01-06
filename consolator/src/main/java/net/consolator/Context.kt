@@ -59,13 +59,11 @@ fun Context.changeBroadly(ref: WeakContext = weakRef()!!, stage: ContextStep) =
 fun Context.changeGlobally(ref: WeakContext = weakRef()!!, owner: LifecycleOwner, stage: ContextStep) =
     signal(stage)
 
-@Event(ACTION_MIGRATE_APP)
 @Diverging([AppDatabase.STAGE_BUILD])
 fun Context.stageDbCreated() {
     // bootstrap
 }
 
-@Event(ACTION_MIGRATE_APP)
 @Diverging([RuntimeSessionEntity.STAGE_BUILD])
 fun Context.stageSessionCreated() {
     // update db records

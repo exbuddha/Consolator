@@ -80,7 +80,7 @@ abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
             registerContext(context)
         } then @Parallel @Path(AppDatabase.STAGE_BUILD) {
             tryCancelingSuspended(retrieveContext(), Context::buildAppDatabase)
-        } then @Signaling {
+        } then @Signaling @Event(ACTION_MIGRATE_APP) {
             change(Context::stageDbCreated)
         } given {
             db !== null
@@ -88,7 +88,7 @@ abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
             SchedulerScope::retry
         ) then @Path(RuntimeSessionEntity.STAGE_BUILD) {
             tryCancelingSuspended(::buildSession)
-        } then @Signaling {
+        } then @Signaling @Event(ACTION_MIGRATE_APP) {
             change(Context::stageSessionCreated)
         } given {
             session !== null
