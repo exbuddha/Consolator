@@ -536,7 +536,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             index } }
         fun attachOnce(index: Int, work: LiveWork) = commit {
             if (work.isNotAttached(index)) {
-                seq.attach(index, work)
+                attach(index, work)
                 index }
             else ATTACHED_ALREADY }
         fun attachOnce(range: IntRange, index: Int, work: LiveWork) = commit {
