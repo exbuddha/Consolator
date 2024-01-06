@@ -1,6 +1,5 @@
 package net.consolator.application
 
-import net.consolator.CoroutineStep
 import net.consolator.JobTreeRoot
 import net.consolator.Resolver
 import net.consolator.Scheduler.EventBus.signal
@@ -22,8 +21,6 @@ class Migration : Resolver {
             }
         }
     }
-
-    override fun commit(step: CoroutineStep): Boolean = TODO()
 
     var progress: Byte = 0
         private set

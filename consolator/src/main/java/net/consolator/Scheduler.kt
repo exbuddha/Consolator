@@ -31,7 +31,8 @@ import net.consolator.Scheduler.sequencer
 sealed interface SchedulerScope : CoroutineScope {
     override val coroutineContext
         get() = Scheduler
-    fun commit(step: CoroutineStep): Any?
+    fun commit(step: CoroutineStep): Any? =
+        service(step)
 }
 
 private interface SchedulerKey : CoroutineContext.Key<SchedulerElement>
@@ -862,7 +863,8 @@ inline fun <reified T : Resolver> Context.defer(member: UnitKFunction, vararg co
     Scheduler.defer(T::class, this, member, *context, `super`)
 
 interface Resolver : SchedulerScope {
-    fun commit(vararg context: Any?)
+    fun commit(vararg context: Any?) =
+        context.lastOrNull().asType<Work>()?.invoke()
 }
 
 fun schedule(step: Step) = Scheduler.postValue(step)
