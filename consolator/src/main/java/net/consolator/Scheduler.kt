@@ -762,12 +762,6 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     fun observe(owner: LifecycleOwner) = observe(owner, this)
     fun ignore() = removeObserver(this)
 
-    val observeScheduler = Runnable(::observe)
-    val ignoreScheduler = Runnable(::ignore)
-    val startSequencer = Runnable { sequencer?.start() }
-    val resumeSequencer = Runnable { sequencer?.resume() }
-    val retrySequencer = Runnable { sequencer?.retry() }
-
     var clock: Clock? = null
         get() = field.singleton()
     var sequencer: Sequencer? = null
