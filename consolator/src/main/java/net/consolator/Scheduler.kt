@@ -880,14 +880,14 @@ fun service(task: String, vararg context: Any?) {
         }
     }
 }
-private fun service(step: CoroutineStep) {
+private fun service(step: CoroutineStep) =
     (annotatedScopeOf(step) ?:
     service)?.let { scope ->
         scope::class.memberFunctions.find {
             it.name == "commit" &&
             it.parameters.size == 2 &&
             it.parameters[1].name == "step"
-        }?.call(scope, step.markTagForSvcCommit(scope)) } } // message queue reconfiguration
+        }?.call(scope, step.markTagForSvcCommit(scope)) } // message queue reconfiguration
 
 fun clock(callback: Runnable) = clock?.post?.invoke(callback)
 fun clockAhead(callback: Runnable) = clock?.postAhead?.invoke(callback)
