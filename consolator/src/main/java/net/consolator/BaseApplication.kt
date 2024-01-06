@@ -3,8 +3,9 @@ package net.consolator
 import android.app.*
 import android.content.*
 import net.consolator.application.*
+import net.consolator.Scheduler.appliationMemoryManager
 
-open class BaseApplication : Application(), UniqueContext {
+open class BaseApplication : Application(), ObjectProvider, UniqueContext {
     override var startTime = now()
 
     override fun onCreate() {
@@ -44,6 +45,13 @@ open class BaseApplication : Application(), UniqueContext {
             putString("${name}-cause", cause::class.qualifiedName)
             putString("${name}-cause-msg", cause.message)
         }
+    }
+
+    override fun invoke(type: AnyKClass) = when (type) {
+        MemoryManager::class ->
+            ::appliationMemoryManager.require(constructor = ::MemoryManager)!!
+        else ->
+            throw BaseImplementationRestriction
     }
 
     companion object {

@@ -53,7 +53,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             LocalesChangeManager::class ->
                 ::activityLocalesChangeManager.setResolverThenCommit()
             MemoryManager::class ->
-                null
+                ::appliationMemoryManager.setResolverThenCommit()
             else -> null
         }
     }
@@ -62,6 +62,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     private var activityNightModeChangeManager: NightModeChangeManager? = null
     private var activityLocalesChangeManager: LocalesChangeManager? = null
     var applicationMigrationResolver: Migration? = null
+    var appliationMemoryManager: MemoryManager? = null
 
     sealed interface BaseServiceScope : IBinder, (Intent?) -> IBinder, SchedulerScope, SystemContext, UniqueContext {
         val hasMoreInitWork
@@ -1411,6 +1412,7 @@ private fun <T> T?.asNullRef() =
 fun <T> T.asCallable(): KCallable<T> = asObjRef()::obj
 fun <T> T?.asNullable(): KCallable<T?> = asNullRef()::obj
 
+typealias AnyKClass = KClass<*>
 typealias AnyKCallable = KCallable<*>
 typealias AnyKProperty = KProperty<*>
 typealias AnyKMutableProperty = KMutableProperty<*>

@@ -6,7 +6,8 @@ import android.os.Bundle
 import androidx.core.os.LocaleListCompat
 import androidx.fragment.app.add
 import androidx.fragment.app.commit
-import kotlin.reflect.KClass
+import net.consolator.application.MemoryManager
+import net.consolator.Scheduler.appliationMemoryManager
 
 open class MainActivity : BaseActivity(), ObjectProvider {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -41,13 +42,15 @@ open class MainActivity : BaseActivity(), ObjectProvider {
     inner class NightModeChangeManager : BaseActivity.NightModeChangeManager()
     inner class LocalesChangeManager : BaseActivity.LocalesChangeManager()
 
-    override fun invoke(type: KClass<*>) = when (type) {
+    override fun invoke(type: AnyKClass) = when (type) {
         ConfigurationChangeManager::class ->
             ConfigurationChangeManager()
         NightModeChangeManager::class ->
             NightModeChangeManager()
         LocalesChangeManager::class ->
             LocalesChangeManager()
+        MemoryManager::class ->
+            ::appliationMemoryManager.require(constructor = ::MemoryManager)!!
         else ->
             throw BaseImplementationRestriction
     }

@@ -24,8 +24,10 @@ import kotlinx.coroutines.Dispatchers.IO
 import net.consolator.BaseApplication.Companion.ACTION_MIGRATE_APP
 import net.consolator.BaseApplication.Companion.ABORT_NAV_MAIN_UI
 import net.consolator.BaseApplication.Companion.COMMIT_NAV_MAIN_UI
+import net.consolator.Scheduler.appliationMemoryManager
+import net.consolator.Scheduler.applicationMigrationResolver
 
-abstract class BaseFragment : Fragment(contentLayoutId) {
+abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
     protected abstract var overlay: (View, Bundle?) -> Pair<Fragment?, Int?>
     private inline fun transit(view: View, savedInstanceState: Bundle?, crossinline editor: BundleEditor) {
         val (overlay, transition) =
@@ -126,6 +128,15 @@ abstract class BaseFragment : Fragment(contentLayoutId) {
     @Retention(SOURCE)
     @Target(EXPRESSION)
     protected annotation class MainViewGroup
+
+    override fun invoke(type: AnyKClass) = when (type) {
+        Migration::class ->
+            ::applicationMigrationResolver.require(constructor = ::Migration)!!
+        MemoryManager::class ->
+            ::appliationMemoryManager.require(constructor = ::MemoryManager)!!
+        else ->
+            throw BaseImplementationRestriction
+    }
 
     companion object {
         const val UI_TAG = "FRAGMENT"

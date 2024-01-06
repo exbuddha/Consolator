@@ -133,7 +133,7 @@ val Context.isInternetAccessPermitted
 fun Context.isPermissionGranted(permission: String) =
     ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
 fun Context.intendFor(cls: Class<*>) = Intent(this, cls)
-fun Context.intendFor(cls: KClass<*>) = intendFor(cls.java)
+fun Context.intendFor(cls: AnyKClass) = intendFor(cls.java)
 
 interface SystemContext { val ref: WeakContext? }
 typealias WeakContext = WeakReference<out Context>
@@ -209,10 +209,10 @@ fun <T : Any> KClass<out T>.new(vararg args: Any?) =
 fun <T : Any> KClass<out T>.emptyConstructor() = constructors.first { it.parameters.isEmpty() }
 fun <T : Any> KClass<out T>.firstConstructor() = constructors.first()
 
-typealias ObjectProvider = (KClass<*>) -> Any
+typealias ObjectProvider = (AnyKClass) -> Any
 inline fun <reified T> KMutableProperty<out T?>.reconstruct(provider: Any = T::class) =
     apply { renew {
-        if (provider is KClass<*>)
+        if (provider is AnyKClass)
             provider.emptyConstructor().call()
         else
             provider.asType<ObjectProvider>()?.invoke(T::class) } }
