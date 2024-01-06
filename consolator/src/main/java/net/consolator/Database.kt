@@ -16,8 +16,8 @@ abstract class AppDatabase : RoomDatabase() {
     companion object {
         const val CURRENT_TIMESTAMP = "CURRENT_TIMESTAMP"
         const val ID = "_id"
-        const val DB_TAG = "DATABASE"
         const val STAGE_BUILD = "app-db.build"
+        const val DB_TAG = "DATABASE"
     }
 }
 
