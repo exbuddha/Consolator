@@ -56,7 +56,7 @@ abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
                         close(MainViewGroup::class)
                     }
                     ACTION_MIGRATE_APP ->
-                        defer<Migration>(::onViewCreated, ACTION_MIGRATE_APP)
+                        defer<Migration>(::onViewCreated)
                 }
             }
         } onError { job ->
