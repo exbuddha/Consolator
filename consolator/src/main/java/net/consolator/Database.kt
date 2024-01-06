@@ -195,6 +195,7 @@ abstract class NetworkDatabase : RoomDatabase() {
     abstract fun networkDao(): NetworkDao
     companion object {
         const val STAGE_BUILD = "net-db.build"
+        const val STAGE_INIT = "net-db.init"
     }
 }
 

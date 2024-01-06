@@ -88,7 +88,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
                             commitStageBuildDatabase(
                                 ::netDb,
                                 STAGE_BUILD,
-                                step = arrayOf({ /* update net db records */ }),
+                                step = arrayOf(@Tag(STAGE_INIT) { /* update net db records */ }),
                                 stage = Context::stageNetDbInitialized) } }
                     resume()
                 }
