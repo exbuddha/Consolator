@@ -113,8 +113,8 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             commitAsyncOrResetByTag(lock, tag) {
                 block()
                 condition(lock, tag, post) }
-        private fun SequencerScope.commitAsyncOrResetByTag(lock: AnyKProperty, tag: String, block: Step) =
-            commitAsyncBlocking(lock, block) { resetByTag(tag) }
+        private fun SequencerScope.commitAsyncOrResetByTag(lock: AnyKProperty, tag: String, block: Step) {
+            commitAsyncBlocking(lock, block) { resetByTag(tag) } }
 
         private fun SequencerScope.synchronize(tag: String, stage: ContextStep?) =
             if (stage !== null) form(stage)
@@ -931,8 +931,8 @@ inline fun <R, S : R> commitAsyncBlockingForResult(lock: Any, crossinline predic
                 else fallback() } }
     else runBlocking { fallback() }
 
-fun <R, S> commitAsyncBlocking(lock: AnyKProperty, block: suspend () -> R, fallback: suspend () -> S) {
-    commitAsyncBlockingForResult(lock, { lock.getter.call() === null }, block, fallback) }
+fun <R, S> commitAsyncBlocking(lock: AnyKProperty, block: suspend () -> R, fallback: suspend () -> S) =
+    commitAsyncBlockingForResult(lock, { lock.getter.call() === null }, block, fallback)
 
 inline fun <R> sequencer(block: Sequencer.() -> R) = sequencer?.block()
 fun <T, R> capture(context: CoroutineContext, step: suspend LiveDataScope<T>.() -> Unit, capture: (T) -> R) =
