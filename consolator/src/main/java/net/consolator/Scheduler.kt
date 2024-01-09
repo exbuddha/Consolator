@@ -21,14 +21,15 @@ import net.consolator.Scheduler.Sequencer
 import net.consolator.application.*
 import net.consolator.BaseActivity.*
 import net.consolator.State.Unresolved
+import net.consolator.Scheduler.defer
 import android.app.Service.START_NOT_STICKY
 import kotlinx.coroutines.Dispatchers.Default
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Dispatchers.Main
 import kotlinx.coroutines.Dispatchers.Unconfined
-import net.consolator.Scheduler.BaseServiceScope.Companion.SVC_TAG
 import net.consolator.Scheduler.clock
 import net.consolator.Scheduler.sequencer
+import net.consolator.Scheduler.BaseServiceScope.Companion.SVC_TAG
 
 sealed interface SchedulerScope : CoroutineScope {
     override val coroutineContext
@@ -851,11 +852,11 @@ fun Step.reevaluate(transit: Short? = this.transit) = object : Relay(transit) {
     override suspend fun invoke() = this@reevaluate() }
 
 inline fun <reified T : Resolver> LifecycleOwner.defer(member: UnitKFunction, vararg context: Any?) =
-    Scheduler.defer(T::class, this, member, *context)
+    defer(T::class, this, member, *context)
 inline fun <reified T : Resolver> LifecycleOwner.defer(member: UnitKFunction, vararg context: Any?, noinline `super`: Work) =
-    Scheduler.defer(T::class, this, member, *context, `super`)
+    defer(T::class, this, member, *context, `super`)
 inline fun <reified T : Resolver> Context.defer(member: UnitKFunction, vararg context: Any?, noinline `super`: Work) =
-    Scheduler.defer(T::class, this, member, *context, `super`)
+    defer(T::class, this, member, *context, `super`)
 
 interface Resolver : SchedulerScope {
     fun commit(vararg context: Any?) =
