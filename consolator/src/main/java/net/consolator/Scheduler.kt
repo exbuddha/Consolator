@@ -20,6 +20,7 @@ import net.consolator.Scheduler.Lock
 import net.consolator.Scheduler.Sequencer
 import net.consolator.application.*
 import net.consolator.BaseActivity.*
+import net.consolator.State.Unresolved
 import android.app.Service.START_NOT_STICKY
 import kotlinx.coroutines.Dispatchers.Default
 import kotlinx.coroutines.Dispatchers.IO
@@ -66,14 +67,11 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     var applicationMemoryManager: MemoryManager? = null
 
     sealed interface BaseServiceScope : IBinder, (Intent?) -> IBinder, SchedulerScope, SystemContext, UniqueContext {
-        val hasMoreInitWork
-            get() = logDb === null || netDb === null
-
         override fun invoke(intent: Intent?): IBinder {
             mode = getModeExtra(intent)
             if (intent !== null && intent.hasCategory(START_TIME_KEY))
                 clock?.start()
-            if (hasMoreInitWork) commit @Tag("init") {
+            if (State[2] is Unresolved) commit @Tag("init") {
                 trySafelyForResult { getStartTimeExtra(intent) }?.let {
                     startTime = it }
                 Sequencer {
@@ -1452,7 +1450,12 @@ sealed interface State {
     companion object {
         operator fun invoke(): State = Lock.Open
         fun of(string: String): State = Ambiguous
-        operator fun get(id: ID): State = Lock.Open
+        operator fun get(id: ID): State = when (id.toInt()) {
+            2 -> if (logDb === null || netDb === null)
+                Unresolved
+                else Resolved
+            else -> Lock.Open
+        }
         operator fun set(id: ID, lock: Any) {
             when (id.toInt()) {
                 1 -> if (lock is Resolved) Scheduler.windDownClock()
@@ -1483,7 +1486,7 @@ sealed interface State {
     operator fun plus(state: Any): State {
         when {
             this === State[2] && state is Pending ->
-                if (service?.hasMoreInitWork == false)
+                if (State[2] is Unresolved)
                     State[2] = Succeeded
         }
         return this
