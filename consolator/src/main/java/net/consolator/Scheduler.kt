@@ -401,6 +401,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         fun observe(work: LiveWork): Boolean? {
             val (step, _, async) = work
             try {
+                // process tags to use saved live step
                 step().let { step ->
                     latestStep = step
                     step?.observeForever(observer) ?:
