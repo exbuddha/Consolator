@@ -1,6 +1,6 @@
 package net.consolator
 
-class MainApplication : BaseApplication() {
+open class MainApplication : BaseApplication() {
     override fun onCreate() {
         super.onCreate()
     }

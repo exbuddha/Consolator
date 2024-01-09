@@ -33,7 +33,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_REMOTE_MESSAGING" />
 
     <application
-        android:name=".MainApplication"
+        android:name="page.consolator.UserApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -44,7 +44,7 @@
         android:theme="@style/Theme.Consolator">
 
         <activity
-            android:name=".UserActivity"
+            android:name="page.consolator.UserActivity"
             android:exported="true"
             android:launchMode="singleInstance">
             <intent-filter>

@@ -49,7 +49,7 @@ val foregroundContext: Context
 val foregroundLifecycleOwner: LifecycleOwner?
     get() = TODO()
 
-const val VIEW_MIN_DELAY = 100L
+const val VIEW_MIN_DELAY = 300L
 
 fun Context.change(stage: ContextStep) =
     signal(stage)

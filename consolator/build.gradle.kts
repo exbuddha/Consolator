@@ -10,7 +10,7 @@ android {
     buildFeatures.buildConfig = true
 
     defaultConfig {
-        applicationId = "app.consolator"
+        applicationId = "page.consolator"
         minSdk = 31
         targetSdk = 34
         versionCode = 1
