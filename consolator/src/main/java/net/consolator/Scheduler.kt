@@ -885,7 +885,7 @@ fun service(task: String, vararg context: Any?) {
                                 }
                                 cancel()
                             }
-                            else debug(SVC_TAG, "Waiting for the clock to start...")
+                            else debug(SVC_TAG, "Waiting for clock to start...")
                         }
                     },
                     delayTime = { currentJob()["delay"].asType<Long>() ?: VIEW_MIN_DELAY })
