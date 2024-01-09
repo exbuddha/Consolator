@@ -875,10 +875,10 @@ fun service(task: String, vararg context: Any?) {
             currentThreadJob()["view.init"] = launch(IO) {
                 repeatSuspended(
                     block = {
-                        clock?.let { clock ->
-                            if (clock.isAlive) {
+                        clock?.apply {
+                            if (handler !== null) {
                                 info(SVC_TAG, "Sending out initial clock message.")
-                                clock.postAhead.invoke {
+                                postAhead.invoke {
                                     // turn clock until scope is active
                                     info(SVC_TAG, "Clock is detected.")
                                 }
