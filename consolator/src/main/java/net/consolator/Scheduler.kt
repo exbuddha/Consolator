@@ -184,7 +184,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     open class Clock(
         name: String,
         priority: Int = currentThread.priority
-    ) : HandlerThread(name, priority), SchedulerScope {
+    ) : HandlerThread(name, priority) {
         var handler: Handler? = null
         private var queue: RunnableList
 
