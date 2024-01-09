@@ -13,7 +13,7 @@ object UI : (Context, ScreenEventInterceptor?) -> Pair<Fragment, Int?> {
 }
 
 private open class OverlayFragment(
-    private val context: WeakContext,
+    private var context: WeakContext,
     private val interceptor: ScreenEventInterceptor?)
     : Fragment(),
     OnContextClickListener {
