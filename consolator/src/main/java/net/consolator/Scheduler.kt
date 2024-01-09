@@ -1441,6 +1441,8 @@ private fun <T> T?.asNullRef() =
 fun <T> T.asCallable(): KCallable<T> = asObjRef()::obj
 fun <T> T?.asNullable(): KCallable<T?> = asNullRef()::obj
 
+fun trueWhenNull(it: Any?) = it === null
+
 typealias AnyKClass = KClass<*>
 typealias AnyKCallable = KCallable<*>
 typealias AnyKProperty = KProperty<*>

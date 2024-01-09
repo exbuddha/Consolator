@@ -23,7 +23,6 @@ import net.consolator.Scheduler.EventBus.signal
 import android.Manifest.permission.ACCESS_NETWORK_STATE
 import android.Manifest.permission.INTERNET
 import androidx.core.content.ContextCompat.RECEIVER_EXPORTED
-import net.consolator.BaseApplication.Companion.ACTION_MIGRATE_APP
 import net.consolator.Scheduler.clock
 
 var instance: BaseApplication? = null
@@ -216,15 +215,15 @@ inline fun <reified T> KMutableProperty<out T?>.reconstruct(provider: Any = T::c
             provider.emptyConstructor().call()
         else
             provider.asType<ObjectProvider>()?.invoke(T::class) } }
-inline fun <reified T> KMutableProperty<out T?>.renew(constructor: () -> T? = { getter.call() }) {
+fun <T> KMutableProperty<out T?>.renew(constructor: () -> T? = ::get) {
     if (getter.call() === null)
         setter.call(constructor()) }
-inline fun <reified T> KMutableProperty<T?>.require(predicate: (T) -> Boolean = { it === null }, constructor: () -> T? = { getter.call() }) =
+fun <T> KMutableProperty<out T?>.require(predicate: (T) -> Boolean = ::trueWhenNull, constructor: () -> T? = ::get) =
     getter.call().let { old ->
         if (old === null || predicate(old))
             constructor().also { new -> setter.call(new) }
         else old }
-inline fun <reified T> KMutableProperty<T?>.requireAsync(predicate: (T) -> Boolean = { it === null }, constructor: () -> T? = { getter.call() }) =
+fun <T> KMutableProperty<out T?>.requireAsync(predicate: (T) -> Boolean = ::trueWhenNull, constructor: () -> T? = ::get) =
     getter.call().let { old ->
         if (old === null || predicate(old))
             synchronized(this) {
@@ -232,6 +231,7 @@ inline fun <reified T> KMutableProperty<T?>.requireAsync(predicate: (T) -> Boole
                     constructor().also { new -> setter.call(new) }
                 else old }
         else old }
+private fun <T> KMutableProperty<out T?>.get() = getter.call()
 
 @Retention(SOURCE)
 @Target(CLASS)
