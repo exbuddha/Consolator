@@ -868,11 +868,9 @@ fun scheduleNow(step: Step) { Scheduler.value = step }
 fun service(task: String, vararg context: Any?) {
     when (task) {
         "start" -> {
-            Scheduler {
-                clock = Clock("svc", Thread.MAX_PRIORITY)
-                    .alsoStart()
-                observe()
-            }
+            clock = Clock("svc", Thread.MAX_PRIORITY)
+                .alsoStart()
+            Scheduler.observe()
             currentThreadJob()["view.init"] = launch(IO) {
                 repeatSuspended(
                     block = {
