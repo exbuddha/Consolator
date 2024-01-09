@@ -876,7 +876,7 @@ fun service(task: String, vararg context: Any?) {
                 }
                 currentThreadJob()["view.init"] = launch(IO) {
                     repeatSuspended(
-                        block =  {
+                        block = {
                             clock?.let { clock ->
                                 if (clock.isAlive) {
                                     info(SVC_TAG, "Sending out initial clock message.")
@@ -889,7 +889,7 @@ fun service(task: String, vararg context: Any?) {
                                 else debug(SVC_TAG, "Waiting for the clock to start...")
                             }
                         },
-                        delayTime = { 100L })
+                        delayTime = { currentJob()["delay"].asType<Long>() ?: VIEW_MIN_DELAY })
                 }
                 startService(intendFor(BaseService::class)
                     .putExtra(START_TIME_KEY, asType<UniqueContext>()?.startTime ?: now()))
@@ -1108,7 +1108,7 @@ fun <R> SchedulerScope.change(ref: WeakContext, member: KFunction<R>, stage: Con
 fun <R> SchedulerScope.change(ref: WeakContext, owner: LifecycleOwner, member: KFunction<R>, stage: ContextStep) =
     EventBus.signal(stage)
 
-suspend fun CoroutineScope.repeatSuspended(predicate: Predicate = @Tag("is-active") { isActive }, block: JobFunction, delayTime: LongFunction = @Tag("yield") { 0L }, scope: CoroutineScope = this) {
+suspend fun CoroutineScope.repeatSuspended(predicate: PredicateFunction = @Tag("is-active") { isActive }, block: JobFunction, delayTime: DelayFunction = @Tag("yield") { 0L }, scope: CoroutineScope = this) {
     markTags("job.repeat", predicate, block, delayTime, currentJob())
     while (predicate()) {
         block(scope)
@@ -1393,6 +1393,8 @@ typealias PropertyCondition = suspend (AnyKProperty, String, Step) -> Unit
 
 private typealias RunnableList = MutableList<Runnable>
 private typealias MessageFunction = (Message) -> Any?
+private typealias PredicateFunction = suspend () -> Boolean
+private typealias DelayFunction = suspend () -> Long
 typealias Work = () -> Unit
 typealias Step = suspend () -> Unit
 typealias CoroutineStep = suspend CoroutineScope.() -> Unit

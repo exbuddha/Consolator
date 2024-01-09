@@ -74,7 +74,7 @@ abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
         super.onAttach(context)
         val context = context.weakRef()!!
         launch(IO, LAZY) @JobTreeRoot @MainViewGroup @Retrying(
-            delay = 100L,
+            delay = VIEW_MIN_DELAY,
             pathwise = [ FromLastCancellation::class ]
         ) @Tag("view.attach") {
             registerContext(context)
