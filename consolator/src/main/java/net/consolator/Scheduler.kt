@@ -873,7 +873,7 @@ fun service(task: String, vararg context: Any?) {
             clock = Clock("svc", Thread.MAX_PRIORITY)
                 .alsoStart()
             Scheduler.observe()
-            currentThreadJob()["view.init"] = launch(IO) {
+            currentThreadJob()["clock.init"] = launch(IO) {
                 repeatSuspended(
                     block = {
                         clock?.apply {
