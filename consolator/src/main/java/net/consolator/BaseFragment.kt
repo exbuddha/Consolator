@@ -8,6 +8,7 @@ import androidx.fragment.app.FragmentTransaction.*
 import kotlin.annotation.AnnotationRetention.*
 import kotlin.annotation.AnnotationTarget.*
 import kotlinx.coroutines.*
+import net.consolator.application.*
 import net.consolator.Event.Listening
 import net.consolator.Event.Retrying
 import net.consolator.Event.Signaling
@@ -18,7 +19,6 @@ import net.consolator.State.Resolved
 import net.consolator.State.Succeeded
 import net.consolator.State.Suspending
 import net.consolator.State.Unresolved
-import net.consolator.application.*
 import kotlinx.coroutines.CoroutineStart.LAZY
 import kotlinx.coroutines.Dispatchers.IO
 import net.consolator.BaseApplication.Companion.ACTION_MIGRATE_APP
