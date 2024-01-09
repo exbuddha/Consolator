@@ -31,10 +31,14 @@ import net.consolator.Scheduler.clock
 import net.consolator.Scheduler.sequencer
 import net.consolator.Scheduler.BaseServiceScope.Companion.SVC_TAG
 
-sealed interface SchedulerScope : CoroutineScope {
+interface ResolverScope : CoroutineScope {
     override val coroutineContext
         get() = Scheduler
-    fun commit(step: CoroutineStep): Any? =
+    fun commit(step: CoroutineStep): Any?
+}
+
+sealed interface SchedulerScope : ResolverScope {
+    override fun commit(step: CoroutineStep) =
         service(step)
 }
 
@@ -68,7 +72,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     var applicationMigrationResolver: Migration? = null
     var applicationMemoryManager: MemoryManager? = null
 
-    sealed interface BaseServiceScope : IBinder, (Intent?) -> IBinder, SchedulerScope, SystemContext, UniqueContext {
+    sealed interface BaseServiceScope : IBinder, (Intent?) -> IBinder, ResolverScope, SystemContext, UniqueContext {
         override fun invoke(intent: Intent?): IBinder {
             mode = getModeExtra(intent)
             if (intent !== null && intent.hasCategory(START_TIME_KEY))
@@ -859,7 +863,9 @@ inline fun <reified T : Resolver> LifecycleOwner.defer(member: UnitKFunction, va
 inline fun <reified T : Resolver> Context.defer(member: UnitKFunction, vararg context: Any?, noinline `super`: Work) =
     defer(T::class, this, member, *context, `super`)
 
-interface Resolver : SchedulerScope {
+interface Resolver : ResolverScope {
+    override fun commit(step: CoroutineStep) =
+        commit(arrayOf(step))
     fun commit(vararg context: Any?) =
         context.lastOrNull().asType<Work>()?.invoke()
 }
