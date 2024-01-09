@@ -131,7 +131,7 @@ abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
 
     override fun invoke(type: AnyKClass) = when (type) {
         Migration::class ->
-            ::applicationMigrationResolver.require(constructor = ::Migration)!!
+            ::applicationMigrationResolver.requireAsync(constructor = ::Migration)!!
         MemoryManager::class ->
             ::applicationMemoryManager.require(constructor = ::MemoryManager)!!
         else ->

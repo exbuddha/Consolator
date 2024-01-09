@@ -77,9 +77,8 @@ var netCall: Call? = null
 
 private suspend fun repeatNetworkCallFunction(scope: CoroutineScope) {
     scope.repeatSuspended(
-        scope::isActive,
-        networkCallFunction,
-        ::netCallDelayTime)
+        block = networkCallFunction,
+        delayTime = ::netCallDelayTime)
 }
 private var networkCallFunction: JobFunction = @Tag(INET_FUNCTION) { scope ->
     if (repeatNetCallback && isNetCallTimeIntervalExceeded) {

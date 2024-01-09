@@ -26,6 +26,7 @@ import kotlinx.coroutines.Dispatchers.Default
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Dispatchers.Main
 import kotlinx.coroutines.Dispatchers.Unconfined
+import net.consolator.Scheduler.BaseServiceScope.Companion.SVC_TAG
 import net.consolator.Scheduler.clock
 import net.consolator.Scheduler.sequencer
 
@@ -90,7 +91,6 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
                                 stage = Context::stageNetDbInitialized) } }
                     resume()
                 }
-                info(SVC_TAG, "Clock is detected.")
             }
             return this
         }
@@ -140,9 +140,10 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         fun clearObjects() {
             mode = null
         }
-
-        val SVC_TAG
-            get() = if (onMainThread()) "SERVICE" else "CLOCK"
+        companion object {
+            val SVC_TAG
+                get() = if (onMainThread()) "SERVICE" else "CLOCK"
+        }
 
         override fun getInterfaceDescriptor(): String? {
             return null
@@ -873,6 +874,23 @@ fun service(task: String, vararg context: Any?) {
                         .alsoStart()
                     observe()
                 }
+                currentThreadJob()["view.init"] = launch(IO) {
+                    repeatSuspended(
+                        block =  {
+                            clock?.let { clock ->
+                                if (clock.isAlive) {
+                                    info(SVC_TAG, "Sending out initial clock message.")
+                                    clock.postAhead.invoke {
+                                        // turn clock until scope is active
+                                        info(SVC_TAG, "Clock is detected.")
+                                    }
+                                    cancel()
+                                }
+                                else debug(SVC_TAG, "Waiting for the clock to start...")
+                            }
+                        },
+                        delayTime = { 100L })
+                }
                 startService(intendFor(BaseService::class)
                     .putExtra(START_TIME_KEY, asType<UniqueContext>()?.startTime ?: now()))
             }
@@ -1090,11 +1108,12 @@ fun <R> SchedulerScope.change(ref: WeakContext, member: KFunction<R>, stage: Con
 fun <R> SchedulerScope.change(ref: WeakContext, owner: LifecycleOwner, member: KFunction<R>, stage: ContextStep) =
     EventBus.signal(stage)
 
-suspend fun CoroutineScope.repeatSuspended(predicate: Predicate, block: JobFunction, delayTime: LongFunction = @Tag("yield") { 0L }, scope: CoroutineScope = this) {
+suspend fun CoroutineScope.repeatSuspended(predicate: Predicate = @Tag("is-active") { isActive }, block: JobFunction, delayTime: LongFunction = @Tag("yield") { 0L }, scope: CoroutineScope = this) {
     markTags("job.repeat", predicate, block, delayTime, currentJob())
     while (predicate()) {
         block(scope)
-        delayOrYield(delayTime()) } }
+        if (isActive)
+            delayOrYield(delayTime()) } }
 suspend fun delayOrYield(dt: Long = 0L) {
     if (dt > 0) delay(dt)
     else if (dt == 0L) yield() }
