@@ -868,29 +868,29 @@ fun scheduleNow(step: Step) { Scheduler.value = step }
 fun service(task: String, vararg context: Any?) {
     when (task) {
         "start" -> {
-            with(foregroundContext) {
-                Scheduler {
-                    clock = Clock("svc", Thread.MAX_PRIORITY)
-                        .alsoStart()
-                    observe()
-                }
-                currentThreadJob()["view.init"] = launch(IO) {
-                    repeatSuspended(
-                        block = {
-                            clock?.let { clock ->
-                                if (clock.isAlive) {
-                                    info(SVC_TAG, "Sending out initial clock message.")
-                                    clock.postAhead.invoke {
-                                        // turn clock until scope is active
-                                        info(SVC_TAG, "Clock is detected.")
-                                    }
-                                    cancel()
+            Scheduler {
+                clock = Clock("svc", Thread.MAX_PRIORITY)
+                    .alsoStart()
+                observe()
+            }
+            currentThreadJob()["view.init"] = launch(IO) {
+                repeatSuspended(
+                    block = {
+                        clock?.let { clock ->
+                            if (clock.isAlive) {
+                                info(SVC_TAG, "Sending out initial clock message.")
+                                clock.postAhead.invoke {
+                                    // turn clock until scope is active
+                                    info(SVC_TAG, "Clock is detected.")
                                 }
-                                else debug(SVC_TAG, "Waiting for the clock to start...")
+                                cancel()
                             }
-                        },
-                        delayTime = { currentJob()["delay"].asType<Long>() ?: VIEW_MIN_DELAY })
-                }
+                            else debug(SVC_TAG, "Waiting for the clock to start...")
+                        }
+                    },
+                    delayTime = { currentJob()["delay"].asType<Long>() ?: VIEW_MIN_DELAY })
+            }
+            with(foregroundContext) {
                 startService(intendFor(BaseService::class)
                     .putExtra(START_TIME_KEY, asType<UniqueContext>()?.startTime ?: now()))
             }
