@@ -14,12 +14,12 @@ import kotlin.reflect.*
 import kotlin.reflect.full.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
+import net.consolator.BaseActivity.*
+import net.consolator.application.*
 import net.consolator.Scheduler.EventBus
 import net.consolator.Scheduler.EventBus.Relay
 import net.consolator.Scheduler.Lock
 import net.consolator.Scheduler.Sequencer
-import net.consolator.application.*
-import net.consolator.BaseActivity.*
 import net.consolator.State.Unresolved
 import net.consolator.Scheduler.defer
 import android.app.Service.START_NOT_STICKY
