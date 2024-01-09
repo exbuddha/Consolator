@@ -108,7 +108,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             instance.setter.call(ref?.get()?.run {
                 sequencer { resetByTagOnError(tag, ::buildDatabase) } })
 
-        private fun SequencerScope.commitAsyncOrResetByTag(lock: AnyKProperty, tag: String, block: Step, condition: PropertyCondition = ::whenNotNullOrResetByTag, post: Step = @Tag("empty") emptyStep) =
+        private fun SequencerScope.commitAsyncOrResetByTag(lock: AnyKProperty, tag: String, block: Step, condition: PropertyCondition = ::whenNotNullOrResetByTag, post: Step) =
             commitAsyncOrResetByTag(lock, tag) {
                 block()
                 condition(lock, tag, post) }
@@ -121,7 +121,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         private fun SequencerScope.synchronize(tag: String, vararg step: Step, stage: ContextStep?) =
             if (stage !== null) form(stage, *step)
             else ignore
-        private val ignore: Step get() = @Tag("ignore") {}
+        private val ignore: Step get() = @Tag("ignore") emptyStep
 
         private fun SequencerScope.form(stage: ContextStep): Step = { change(stage) }
         private fun SequencerScope.form(stage: ContextStep, vararg step: Step) = step.first() then form(stage)
