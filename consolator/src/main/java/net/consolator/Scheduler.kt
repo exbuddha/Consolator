@@ -199,7 +199,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             queue.add(callback)
         }
 
-        var id: Int = -1
+        var id = -1
         override fun start() {
             commitAsync(this, { !isAlive }) {
                 super.start()
