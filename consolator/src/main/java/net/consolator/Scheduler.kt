@@ -82,13 +82,13 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
                     startTime = it }
                 Sequencer {
                     if (logDb === null) with(LogDatabase) {
-                        io(true) @Tag(STAGE_BUILD) {
+                        unconfined(true) @Tag(STAGE_BUILD) {
                             commitStageBuildDatabase(
                                 ::logDb,
                                 STAGE_BUILD,
                                 stage = Context::stageLogDbCreated) } }
                     if (netDb === null) with(NetworkDatabase) {
-                        io(true) @Tag(STAGE_BUILD) {
+                        unconfined(true) @Tag(STAGE_BUILD) {
                             commitStageBuildDatabase(
                                 ::netDb,
                                 STAGE_BUILD,
