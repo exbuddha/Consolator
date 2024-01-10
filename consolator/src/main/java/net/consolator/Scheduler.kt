@@ -20,7 +20,7 @@ import net.consolator.Scheduler.EventBus
 import net.consolator.Scheduler.EventBus.Relay
 import net.consolator.Scheduler.Lock
 import net.consolator.Scheduler.Sequencer
-import net.consolator.State.Unresolved
+import net.consolator.State.Resolved
 import net.consolator.Scheduler.defer
 import android.app.Service.START_NOT_STICKY
 import kotlinx.coroutines.Dispatchers.Default
@@ -77,7 +77,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             mode = getModeExtra(intent)
             if (intent !== null && intent.hasCategory(START_TIME_KEY))
                 clock?.start()
-            if (State[2] is Unresolved) commit @Tag("init") {
+            if (State[2] !is Resolved) commit @Tag("init") {
                 trySafelyForResult { getStartTimeExtra(intent) }?.let {
                     startTime = it }
                 Sequencer {
