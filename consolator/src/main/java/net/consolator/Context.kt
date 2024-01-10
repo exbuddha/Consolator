@@ -91,9 +91,6 @@ fun <D : RoomDatabase> Context.createDatabase(cls: KClass<D>) =
     createDatabase(cls.java, cls.lastAnnotatedFilename())
 inline fun <reified D : RoomDatabase> Context.buildDatabase() =
     with(D::class, ::createDatabase)
-inline fun <reified D : RoomDatabase> Context.buildDatabaseSync(lock: Any = D::class.lock()) =
-    with(D::class) {
-        synchronized(lock) { createDatabase(this) } }
 fun Context.buildAppDatabase() = commitAsync(AppDatabase, { db === null }) {
     db = buildDatabase() }
 
@@ -216,22 +213,24 @@ inline fun <reified T> KMutableProperty<out T?>.reconstruct(provider: Any = T::c
         else
             provider.asType<ObjectProvider>()?.invoke(T::class) } }
 fun <T> KMutableProperty<out T?>.renew(constructor: () -> T? = ::get) {
-    if (getter.call() === null)
+    if (get() === null)
         setter.call(constructor()) }
 fun <T> KMutableProperty<out T?>.require(predicate: (T) -> Boolean = ::trueWhenNull, constructor: () -> T? = ::get) =
-    getter.call().let { old ->
+    get().let { old ->
         if (old === null || predicate(old))
             constructor().also { new -> setter.call(new) }
         else old }
 fun <T> KMutableProperty<out T?>.requireAsync(predicate: (T) -> Boolean = ::trueWhenNull, constructor: () -> T? = ::get) =
-    getter.call().let { old ->
+    get().let { old ->
         if (old === null || predicate(old))
             synchronized(this) {
                 if (old === null || predicate(old))
                     constructor().also { new -> setter.call(new) }
                 else old }
         else old }
-private fun <T> KMutableProperty<out T?>.get() = getter.call()
+
+fun <T> KProperty<T?>.get() = getter.call()
+fun <T> KProperty<T?>.isNotNull() = get() !== null
 
 @Retention(SOURCE)
 @Target(CLASS)

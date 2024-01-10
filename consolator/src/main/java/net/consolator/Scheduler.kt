@@ -969,7 +969,7 @@ inline fun <R, S : R> commitAsyncBlockingForResult(lock: Any, crossinline predic
     else runBlocking { fallback() }
 
 fun <R, S> commitAsyncBlocking(lock: AnyKProperty, block: suspend () -> R, fallback: suspend () -> S) =
-    commitAsyncBlockingForResult(lock, { lock.getter.call() === null }, block, fallback)
+    commitAsyncBlockingForResult(lock, lock::isNotNull, block, fallback)
 
 inline fun <R> sequencer(block: Sequencer.() -> R) = sequencer?.block()
 fun <T, R> capture(context: CoroutineContext, step: suspend LiveDataScope<T>.() -> Unit, capture: (T) -> R) =
@@ -1043,10 +1043,10 @@ private fun resetByTag(tag: String) { sequencer?.resetByTag(tag) }
 private fun tagOf(stage: ContextStep): String = TODO()
 
 private suspend inline fun whenNotNull(instance: AnyKProperty, stage: String, block: Step) {
-    if (instance.getter.call() !== null)
+    if (instance.get() !== null)
         block() }
 private suspend inline fun whenNotNullOrResetByTag(instance: AnyKProperty, stage: String, block: Step) {
-    if (instance.getter.call() !== null)
+    if (instance.get() !== null)
         block()
     else resetByTag(stage) }
 
