@@ -45,7 +45,7 @@ var containerViewId = R.id.layout_background
 var contentLayoutId = R.layout.background
 
 val foregroundContext: Context
-    get() = instance ?: service!!
+    get() = service ?: instance!!
 val foregroundLifecycleOwner: LifecycleOwner?
     get() = TODO()
 
