@@ -825,7 +825,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
 
     override fun commit(step: CoroutineStep) =
         step.markTagForSchCommit().attach()
-    private fun CoroutineStep.attach(enlist: (CoroutineStep) -> Any? = ::clock) =
+    private fun CoroutineStep.attach(enlist: EnlistFunction = ::clock) =
         when (enlist(this)) {
             null, false -> {
                 /* unhandled, use coroutines */
@@ -1411,6 +1411,7 @@ typealias PropertyPredicate = suspend (AnyKProperty) -> Boolean
 typealias PropertyCondition = suspend (AnyKProperty, String, Step) -> Unit
 
 private typealias RunnableList = MutableList<Runnable>
+private typealias EnlistFunction = (CoroutineStep) -> Any?
 private typealias MessageFunction = (Message) -> Any?
 private typealias PredicateFunction = suspend () -> Boolean
 private typealias DelayFunction = suspend () -> Long
