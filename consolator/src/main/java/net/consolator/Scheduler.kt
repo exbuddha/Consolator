@@ -100,17 +100,18 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             return this
         }
 
-        private suspend fun <D : RoomDatabase> SequencerScope.commitStageBuildDatabase(instance: KMutableProperty<out D?>, tag: String, stage: ContextStep?) =
+        private suspend inline fun <reified D : RoomDatabase> SequencerScope.commitStageBuildDatabase(instance: KMutableProperty<out D?>, tag: String, noinline stage: ContextStep?) =
             commitAsyncOrResetByTag(instance, tag, {
                 buildDatabaseOrResetByTag(instance, tag) },
                 post = markTagsForReform(tag, stage, synchronize(tag, stage), currentJob()))
-        private suspend fun <D : RoomDatabase> SequencerScope.commitStageBuildDatabase(instance: KMutableProperty<out D?>, tag: String, vararg step: Step, stage: ContextStep?) =
+        private suspend inline fun <reified D : RoomDatabase> SequencerScope.commitStageBuildDatabase(instance: KMutableProperty<out D?>, tag: String, vararg step: Step, noinline stage: ContextStep?) =
             commitAsyncOrResetByTag(instance, tag, {
                 buildDatabaseOrResetByTag(instance, tag) },
                 post = markTagsForReform(tag, stage, synchronize(tag, *step, stage = stage), currentJob()))
-        private suspend fun <D : RoomDatabase> SequencerScope.buildDatabaseOrResetByTag(instance: KMutableProperty<out D?>, tag: String) =
-            instance.setter.call(ref?.get()?.run {
-                sequencer { resetByTagOnError(tag, ::buildDatabase) } })
+        private suspend inline fun <reified D : RoomDatabase> SequencerScope.buildDatabaseOrResetByTag(instance: KMutableProperty<out D?>, tag: String) {
+            ref?.get()?.run<Context, D?> {
+                sequencer { resetByTagOnError(tag, ::buildDatabase) } }?.let { new ->
+                    instance.set(new) } }
 
         private fun SequencerScope.commitAsyncOrResetByTag(lock: AnyKProperty, tag: String, block: Step, condition: PropertyCondition = ::whenNotNullOrResetByTag, post: Step) =
             commitAsyncOrResetByTag(lock, tag) {
@@ -1444,7 +1445,7 @@ interface Expiry : MutableSet<Lifetime> {
     }
 }
 typealias Lifetime = (AnyKMutableProperty) -> Boolean?
-fun AnyKMutableProperty.expire() = setter.call(null)
+fun AnyKMutableProperty.expire() = set(null)
 
 private interface ObjectReference<T> { val obj: T }
 private interface NullReference<T> : ObjectReference<T?>
