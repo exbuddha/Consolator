@@ -896,19 +896,17 @@ fun service(task: String, vararg context: Any?) {
             Scheduler.observe()
             currentThreadJob()["clock.init"] = launch(IO) {
                 repeatSuspended(
-                    block = {
-                        clock?.apply {
-                            if (handler !== null) {
-                                info(SVC_TAG, "Sending out initial clock message.")
-                                postAhead.invoke {
-                                    // turn clock until scope is active
-                                    info(SVC_TAG, "Clock is detected.")
-                                }
-                                cancel()
+                    block = { clock?.apply {
+                        if (handler !== null) {
+                            info(SVC_TAG, "Sending out initial clock message.")
+                            postAhead.invoke {
+                                // turn clock until scope is active
+                                info(SVC_TAG, "Clock is detected.")
                             }
-                            else debug(SVC_TAG, "Waiting for clock to start...")
+                            cancel()
                         }
-                    },
+                        else debug(SVC_TAG, "Waiting for clock to start...")
+                    } },
                     delayTime = { currentJob()["delay"].asType<Long>() ?: VIEW_MIN_DELAY })
             }
             with(foregroundContext) {
