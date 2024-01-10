@@ -1151,7 +1151,7 @@ operator fun Job.get(tag: String) =
     jobs?.find { tag == it.first }?.second.asType<AnyArray>()?.get(1)
 operator fun Job.set(tag: String, value: Any?) {
     // addressable layer work
-    value.mark(tag) }
+    value.markTag(tag) }
 
 private fun JobFunctionSet.save(tag: String, function: AnyKCallable) = function.tag.apply {
     save(combineTags(tag, this?.string), this?.keep ?: true, function) }
@@ -1159,23 +1159,23 @@ private fun JobFunctionSet.save(tag: String, unit: String, function: AnyKCallabl
 private fun JobFunctionSet.save(tag: Tag?, self: AnyKCallable) =
     if (tag !== null) with(tag) { save(string, keep, self) }
     else save(null, false, self)
-private fun JobFunctionSet.save(tag: String?, keep: Boolean, function: AnyKCallable) {
+private fun JobFunctionSet.save(tag: String?, keep: Boolean, function: AnyKCallable) =
     // rewire related parts
-    add((tag ?: currentThreadJob().hashCode().toString()) to arrayOf(keep, function)) }
+    add((tag ?: currentThreadJob().hashCode().toString()) to arrayOf(keep, function))
 private fun combineTags(tag: String, self: String?) =
     if (self === null) tag
     else "$tag.$self"
 
-fun Any.markTag() = asCallable().markTag()
-private fun Any?.mark(tag: String) =
-    jobs?.save(tag, asNullable())
-fun Any?.markSequentialTag(vararg tag: String?): String? = TODO()
 fun AnyKCallable.markTag() = tag.also { jobs?.save(it, this) }
+fun Any.markTag() = asCallable().markTag()
 private fun returnItsTag(it: Any?) = it.asNullable().tag?.string
 
-private fun Step?.markTagForSchExec() = apply { mark("sch.exec") }
-private fun CoroutineStep.markTagForSchCommit() = apply { mark("sch.commit") }
-private fun CoroutineStep.markTagForSvcCommit() = apply { mark("svc.commit") }
+fun Any?.markTag(tag: String) = jobs?.save(tag, asNullable())
+fun Any?.markSequentialTag(vararg tag: String?): String? = TODO()
+
+private fun Step?.markTagForSchExec() = apply { markTag("sch.exec") }
+private fun CoroutineStep.markTagForSchCommit() = apply { markTag("sch.commit") }
+private fun CoroutineStep.markTagForSvcCommit() = apply { markTag("svc.commit") }
 
 fun markTags(vararg function: Any?) {
     when (function.firstOrNull()) {
