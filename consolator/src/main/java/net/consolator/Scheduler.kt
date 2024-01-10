@@ -118,7 +118,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
                 block()
                 condition(lock, tag, post) }
         private fun SequencerScope.commitAsyncOrResetByTag(lock: AnyKProperty, tag: String, block: Step) {
-            commitAsyncBlocking(lock, block) { resetByTag(tag) } }
+            blockAsync(lock, block) { resetByTag(tag) } }
 
         private fun SequencerScope.synchronize(tag: String, stage: ContextStep?) =
             if (stage !== null) form(stage)
@@ -956,12 +956,12 @@ inline fun <R, S : R> commitAsyncForResult(lock: Any, predicate: Predicate, bloc
             if (predicate()) return block() }
     return fallback() }
 
-inline fun <R> commitAsyncBlocking(lock: Any, crossinline predicate: Predicate, crossinline block: suspend () -> R) {
+inline fun <R> blockAsync(lock: Any, crossinline predicate: Predicate, crossinline block: suspend () -> R) {
     if (predicate())
         synchronized(lock) {
             runBlocking {
                 if (predicate()) block() } } }
-inline fun <R, S : R> commitAsyncBlockingForResult(lock: Any, crossinline predicate: Predicate, crossinline block: suspend () -> R, crossinline fallback: suspend () -> S? = { null }) =
+inline fun <R, S : R> blockAsyncForResult(lock: Any, crossinline predicate: Predicate, crossinline block: suspend () -> R, crossinline fallback: suspend () -> S? = { null }) =
     if (predicate())
         synchronized(lock) {
             runBlocking {
@@ -969,8 +969,8 @@ inline fun <R, S : R> commitAsyncBlockingForResult(lock: Any, crossinline predic
                 else fallback() } }
     else runBlocking { fallback() }
 
-fun <R, S> commitAsyncBlocking(lock: AnyKProperty, block: suspend () -> R, fallback: suspend () -> S) =
-    commitAsyncBlockingForResult(lock, lock::isNotNull, block, fallback)
+fun <R, S> blockAsync(lock: AnyKProperty, block: suspend () -> R, fallback: suspend () -> S) =
+    blockAsyncForResult(lock, lock::isNotNull, block, fallback)
 
 inline fun <R> sequencer(block: Sequencer.() -> R) = sequencer?.block()
 fun <T, R> capture(context: CoroutineContext, step: suspend LiveDataScope<T>.() -> Unit, capture: (T) -> R) =
