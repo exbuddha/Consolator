@@ -825,8 +825,8 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
 
     override fun commit(step: CoroutineStep) =
         step.markTagForSchCommit().attach()
-    private fun CoroutineStep.attach(enlist: EnlistFunction = ::clock) =
-        when (enlist(this)) {
+    private fun CoroutineStep.attach(enlist: EnlistFunction? = ::clock) =
+        when (enlist?.invoke(this)) {
             null, false -> {
                 /* unhandled, use coroutines */
                 false }
