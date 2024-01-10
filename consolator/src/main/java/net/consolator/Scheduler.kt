@@ -830,12 +830,12 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             null, false -> {
                 /* unhandled, use coroutines */
                 false }
-            true -> {
-                /* in message queue */
-                true }
             Unit -> {
                 /* in back queue, try to remove and use coroutines */
                 false }
+            true -> {
+                /* in message queue */
+                true }
             else -> { true } }
 
     @OptIn(ExperimentalCoroutinesApi::class)
