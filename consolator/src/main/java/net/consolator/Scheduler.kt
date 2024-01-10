@@ -133,7 +133,8 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         private fun markTagsForReform(tag: String, stage: ContextStep?, form: Step, job: Job) =
             form.also { markTagsForCtxReform(tag, stage, form, job) }
 
-        override fun commit(step: CoroutineStep) = clockAhead(step.markTagForSvcCommit()::invoke)
+        override fun commit(step: CoroutineStep) =
+            step.markTagForSvcCommit().attach(::clockAhead)
 
         fun getStartTimeExtra(intent: Intent?) =
             intent?.getLongExtra(START_TIME_KEY, foregroundContext.asType<UniqueContext>()!!.startTime)
@@ -253,10 +254,10 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         private var sLock = Any()
         var post = fun(callback: Runnable) =
             handler?.post(callback) ?:
-            synchronized(sLock) { queue.add(callback) }
+            synchronized(sLock) { queue.add(callback); Unit }
         var postAhead = fun(callback: Runnable) =
             handler?.postAtFrontOfQueue(callback) ?:
-            synchronized(sLock) { queue.add(0, callback); true }
+            synchronized(sLock) { queue.add(0, callback); Unit }
 
         fun clearObjects() {
             handler = null
@@ -821,7 +822,20 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         step.markTagForSchExec()?.exec() }
     private fun Step.exec() = runBlocking { invoke() } // or apply (live step) capture function internally
 
-    override fun commit(step: CoroutineStep) = clock(step.markTagForSchCommit()::invoke)
+    override fun commit(step: CoroutineStep) =
+        step.markTagForSchCommit().attach(::clock)
+    private fun CoroutineStep.attach(enlist: (CoroutineStep) -> Any?) =
+        when (enlist(this)) {
+            null, false -> {
+                /* unhandled, use coroutines */
+                false }
+            true -> {
+                /* in message queue */
+                true }
+            Unit -> {
+                /* in back queue, try to remove and use coroutines */
+                false }
+            else -> { true } }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     object EventBus : AbstractFlow<Step?>() {
@@ -904,13 +918,14 @@ fun service(task: String, vararg context: Any?) {
     }
 }
 private fun service(step: CoroutineStep) =
-    (annotatedScopeOf(step) ?:
-    service)?.let { scope ->
+    (service ?:
+    annotatedScopeOf(step) ?:
+    Scheduler).let { scope ->
         scope::class.memberFunctions.find {
             it.name == "commit" &&
             it.parameters.size == 2 &&
             it.parameters[1].name == "step"
-        }?.call(scope, step.markTagForSvcCommit(scope)) } // message queue reconfiguration
+        }?.call(scope, step) } // message queue reconfiguration
 
 fun clock(callback: Runnable) = clock?.post?.invoke(callback)
 fun clockAhead(callback: Runnable) = clock?.postAhead?.invoke(callback)
@@ -1135,9 +1150,9 @@ private var jobs: JobFunctionSet? = null
 
 operator fun Job.get(tag: String) =
     jobs?.find { tag == it.first }?.second.asType<AnyArray>()?.get(1)
-operator fun Job.set(tag: String, value: Any) {
+operator fun Job.set(tag: String, value: Any?) {
     // addressable layer work
-    jobs?.save(tag, value.asCallable()) }
+    value.mark(tag) }
 
 private fun JobFunctionSet.save(tag: String, function: AnyKCallable) = function.tag.apply {
     save(combineTags(tag, this?.string), this?.keep ?: true, function) }
@@ -1153,18 +1168,15 @@ private fun combineTags(tag: String, self: String?) =
     else "$tag.$self"
 
 fun Any.markTag() = asCallable().markTag()
+private fun Any?.mark(tag: String) =
+    jobs?.save(tag, asNullable())
 fun Any?.markSequentialTag(vararg tag: String?): String? = TODO()
 fun AnyKCallable.markTag() = tag.also { jobs?.save(it, this) }
 private fun returnItsTag(it: Any?) = it.asNullable().tag?.string
 
-private fun Step?.markTagForSchExec() = apply {
-    jobs?.save("sch.exec", asCallable()) }
-private fun CoroutineStep.markTagForSchCommit() = apply {
-    jobs?.save("sch.commit", asCallable()) }
-private fun CoroutineStep.markTagForSvcCommit(scope: CoroutineScope? = null) = apply {
-    jobs?.save("svc.commit", asCallable())?.apply {
-        if (scope !== null)
-            jobs?.save("svc.scope", string, scope.asCallable()) } }
+private fun Step?.markTagForSchExec() = apply { mark("sch.exec") }
+private fun CoroutineStep.markTagForSchCommit() = apply { mark("sch.commit") }
+private fun CoroutineStep.markTagForSvcCommit() = apply { mark("svc.commit") }
 
 fun markTags(vararg function: Any?) {
     when (function.firstOrNull()) {
