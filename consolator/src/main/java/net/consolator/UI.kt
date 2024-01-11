@@ -1,6 +1,6 @@
 package net.consolator
 
-import android.content.Context
+import android.content.*
 import android.view.*
 import android.view.GestureDetector.*
 import androidx.fragment.app.*

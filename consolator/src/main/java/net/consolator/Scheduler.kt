@@ -2,7 +2,6 @@ package net.consolator
 
 import android.content.*
 import android.os.*
-import android.os.Process
 import androidx.lifecycle.*
 import androidx.room.*
 import java.io.*
@@ -1417,6 +1416,7 @@ private typealias DelayFunction = suspend () -> Long
 typealias Work = () -> Unit
 typealias Step = suspend () -> Unit
 typealias CoroutineStep = suspend CoroutineScope.() -> Unit
+typealias Process = android.os.Process
 
 val emptyWork = {}
 val emptyStep: Step = {}
