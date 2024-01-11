@@ -52,8 +52,8 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         fun ResolverKProperty.setResolverThenCommit() =
             reconstruct(provider).getter.call()?.commit(context)
         return when (resolver) {
-            Migration::class ->
-                ::applicationMigrationResolver.setResolverThenCommit()
+            MigrationManager::class ->
+                ::applicationMigrationManager.setResolverThenCommit()
             ConfigurationChangeManager::class ->
                 ::activityConfigurationChangeManager.setResolverThenCommit()
             NightModeChangeManager::class ->
@@ -69,7 +69,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     private var activityConfigurationChangeManager: ConfigurationChangeManager? = null
     private var activityNightModeChangeManager: NightModeChangeManager? = null
     private var activityLocalesChangeManager: LocalesChangeManager? = null
-    var applicationMigrationResolver: Migration? = null
+    var applicationMigrationManager: MigrationManager? = null
     var applicationMemoryManager: MemoryManager? = null
 
     sealed interface BaseServiceScope : IBinder, (Intent?) -> IBinder, ResolverScope, SystemContext, UniqueContext {
@@ -789,7 +789,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         activityConfigurationChangeManager = null
         activityNightModeChangeManager = null
         activityLocalesChangeManager = null
-        applicationMigrationResolver = null
+        applicationMigrationManager = null
         applicationMemoryManager = null
     }
     fun clearObjects() {

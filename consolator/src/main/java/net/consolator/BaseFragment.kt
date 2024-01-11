@@ -25,7 +25,7 @@ import net.consolator.BaseApplication.Companion.ACTION_MIGRATE_APP
 import net.consolator.BaseApplication.Companion.ABORT_NAV_MAIN_UI
 import net.consolator.BaseApplication.Companion.COMMIT_NAV_MAIN_UI
 import net.consolator.Scheduler.applicationMemoryManager
-import net.consolator.Scheduler.applicationMigrationResolver
+import net.consolator.Scheduler.applicationMigrationManager
 
 abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
     protected abstract var overlay: (View, Bundle?) -> Pair<Fragment?, Int?>
@@ -56,7 +56,7 @@ abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
                         close(MainViewGroup::class)
                     }
                     ACTION_MIGRATE_APP ->
-                        defer<Migration>(::onViewCreated)
+                        defer<MigrationManager>(::onViewCreated)
                 }
             }
         } onError { job ->
@@ -130,8 +130,8 @@ abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
     protected annotation class MainViewGroup
 
     override fun invoke(type: AnyKClass) = when (type) {
-        Migration::class ->
-            ::applicationMigrationResolver.requireAsync(constructor = ::Migration)!!
+        MigrationManager::class ->
+            ::applicationMigrationManager.requireAsync(constructor = ::MigrationManager)!!
         MemoryManager::class ->
             ::applicationMemoryManager.require(constructor = ::MemoryManager)!!
         else ->
