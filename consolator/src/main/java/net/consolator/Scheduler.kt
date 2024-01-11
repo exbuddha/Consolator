@@ -1160,8 +1160,7 @@ private fun JobFunctionSet.save(tag: Tag?, self: AnyKCallable) =
     if (tag !== null) with(tag) { save(string, keep, self) }
     else save(null, false, self)
 private fun JobFunctionSet.save(tag: String?, keep: Boolean, function: AnyKCallable) =
-    // rewire related parts
-    add((tag ?: currentThreadJob().hashCode().toString()) to arrayOf(keep, function))
+    add((tag ?: currentThreadJob().hashCode().toString()) to arrayOf(keep, function)) // rewire related parts
 private fun combineTags(tag: String, self: String?) =
     if (self === null) tag
     else "$tag.$self"
@@ -1394,7 +1393,7 @@ private typealias SchedulerNode = KClass<out Annotation>
 private typealias SchedulerPath = Array<KClass<out Throwable>>
 private typealias SchedulerWork = Scheduler.() -> Unit
 
-typealias SequencerScope = LiveDataScope<Step?>
+private typealias SequencerScope = LiveDataScope<Step?>
 private typealias SequencerStep = suspend SequencerScope.() -> Unit
 private typealias StepObserver = Observer<Step?>
 private typealias LiveStep = LiveData<Step?>
@@ -1405,14 +1404,16 @@ private typealias LiveSequence = MutableList<LiveWork>
 private typealias LiveWorkPredicate = (LiveWork) -> Boolean
 private typealias SequencerWork = Sequencer.() -> Unit
 
-typealias PropertyPredicate = suspend (AnyKProperty) -> Boolean
-typealias PropertyCondition = suspend (AnyKProperty, String, Step) -> Unit
+private typealias PropertyPredicate = suspend (AnyKProperty) -> Boolean
+private typealias PropertyCondition = suspend (AnyKProperty, String, Step) -> Unit
 
-private typealias RunnableList = MutableList<Runnable>
-private typealias EnlistFunction = (CoroutineStep) -> Any?
-private typealias MessageFunction = (Message) -> Any?
 private typealias PredicateFunction = suspend () -> Boolean
 private typealias DelayFunction = suspend () -> Long
+
+private typealias EnlistFunction = (CoroutineStep) -> Any?
+private typealias MessageFunction = (Message) -> Any?
+private typealias RunnableList = MutableList<Runnable>
+
 typealias Work = () -> Unit
 typealias Step = suspend () -> Unit
 typealias CoroutineStep = suspend CoroutineScope.() -> Unit
@@ -1462,14 +1463,15 @@ fun <T> T?.asNullable(): KCallable<T?> = asNullRef()::obj
 
 fun trueWhenNull(it: Any?) = it === null
 
-typealias AnyKClass = KClass<*>
-typealias AnyKCallable = KCallable<*>
-typealias AnyKProperty = KProperty<*>
-typealias AnyKMutableProperty = KMutableProperty<*>
 private typealias JobKProperty = KMutableProperty<Job?>
 private typealias ResolverKClass = KClass<out Resolver>
 private typealias ResolverKProperty = KMutableProperty<out Resolver?>
 private typealias UnitKFunction = KFunction<Unit>
+
+typealias AnyKClass = KClass<*>
+typealias AnyKCallable = KCallable<*>
+typealias AnyKProperty = KProperty<*>
+typealias AnyKMutableProperty = KMutableProperty<*>
 
 private operator fun AnyKCallable.plus(lock: AnyKCallable) = this
 private fun <R> AnyKCallable.commit(block: () -> R) = synchronized(this, block)
