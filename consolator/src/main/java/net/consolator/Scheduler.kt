@@ -225,7 +225,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         }
         private fun turn(msg: Message) {
             if (isSynchronized(msg))
-                commit {
+                commit(msg) {
                     queue.run(msg) || return@commit
                     msg.callback.run()
                 }
@@ -245,12 +245,13 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         }
 
         private lateinit var hLock: Lock
-        fun <R> commit(block: () -> R) = synchronized(hLock(block)) {
-            hLock = Lock.Closed(block)
-            block().also {
-                hLock = Lock.Open(block, it)
+        fun <R> commit(msg: Message? = null, block: () -> R) =
+            synchronized(hLock(msg, block)) {
+                hLock = Lock.Closed(msg, block)
+                block().also {
+                    hLock = Lock.Open(msg, block, it)
+                }
             }
-        }
 
         private var sLock = Any()
         var post = fun(callback: Runnable) =
