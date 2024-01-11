@@ -60,18 +60,18 @@ fun Context.changeBroadly(ref: WeakContext = weakRef()!!, stage: ContextStep) =
 fun Context.changeGlobally(ref: WeakContext = weakRef()!!, owner: LifecycleOwner, stage: ContextStep) =
     signal(stage)
 
-@Diverging([AppDatabase.STAGE_BUILD])
+@Diverging([STAGE_BUILD_DB])
 fun Context.stageDbCreated() {
     // bootstrap
 }
 
-@Diverging([RuntimeSessionEntity.STAGE_BUILD])
+@Diverging([STAGE_BUILD_SESSION])
 fun Context.stageSessionCreated() {
     // update db records
     State[1] = Resolved
 }
 
-@Diverging([LogDatabase.STAGE_BUILD])
+@Diverging([STAGE_BUILD_LOG_DB])
 fun Context.stageLogDbCreated() {
     mainUncaughtExceptionHandler = @Tag("uncaught-db") ExceptionHandler { th, ex ->
         // record in db safely
@@ -79,7 +79,7 @@ fun Context.stageLogDbCreated() {
     State[2] += Pending
 }
 
-@Diverging([NetworkDatabase.STAGE_BUILD])
+@Diverging([STAGE_BUILD_NET_DB])
 fun Context.stageNetDbInitialized() {
     // update net function pointers
     State[2] += Pending
@@ -275,6 +275,12 @@ fun bypassAllLogs() {
     bypassInfoLog()
     bypassDebugLog()
     bypassWarningLog() }
+
+const val STAGE_BUILD_DB = "app-db.build"
+const val STAGE_BUILD_SESSION = "session.build"
+const val STAGE_BUILD_LOG_DB = "log-db.build"
+const val STAGE_BUILD_NET_DB = "net-db.build"
+const val STAGE_INIT_NET_DB = "net-db.init"
 
 const val START_TIME_KEY = "1"
 const val MODE_KEY = "2"

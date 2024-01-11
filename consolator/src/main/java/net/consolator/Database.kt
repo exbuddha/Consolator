@@ -16,7 +16,6 @@ abstract class AppDatabase : RoomDatabase() {
     companion object {
         const val CURRENT_TIMESTAMP = "CURRENT_TIMESTAMP"
         const val ID = "_id"
-        const val STAGE_BUILD = "app-db.build"
         const val DB_TAG = "DATABASE"
     }
 }
@@ -47,7 +46,6 @@ data class RuntimeSessionEntity(
         const val BUILD_TYPE = "build_type"
         const val BUILD_VERSION = "build_ver"
         const val TABLE = "sessions"
-        const val STAGE_BUILD = "session.build"
     }
 }
 
@@ -90,9 +88,7 @@ abstract class RuntimeDao {
 @File("log.db")
 abstract class LogDatabase : RoomDatabase() {
     abstract fun logDao(): LogDao
-    companion object {
-        const val STAGE_BUILD = "log-db.build"
-    }
+    companion object {}
 }
 
 @Entity(tableName = ThreadEntity.TABLE)
@@ -193,10 +189,7 @@ abstract class LogDao
 @File("net.db")
 abstract class NetworkDatabase : RoomDatabase() {
     abstract fun networkDao(): NetworkDao
-    companion object {
-        const val STAGE_BUILD = "net-db.build"
-        const val STAGE_INIT = "net-db.init"
-    }
+    companion object {}
 }
 
 @Entity(tableName = NetworkStateEntity.TABLE)

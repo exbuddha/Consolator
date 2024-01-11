@@ -28,7 +28,6 @@ import kotlinx.coroutines.Dispatchers.Main
 import kotlinx.coroutines.Dispatchers.Unconfined
 import net.consolator.Scheduler.clock
 import net.consolator.Scheduler.sequencer
-import net.consolator.Scheduler.BaseServiceScope.Companion.SVC_TAG
 
 interface ResolverScope : CoroutineScope {
     override val coroutineContext
@@ -80,19 +79,21 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
                 trySafelyForResult { getStartTimeExtra(intent) }?.let {
                     startTime = it }
                 Sequencer {
-                    if (logDb === null) with(LogDatabase) {
-                        unconfined(true) @Tag(STAGE_BUILD) {
+                    if (logDb === null)
+                        unconfined(true)
+                            @Tag(STAGE_BUILD_LOG_DB) {
                             commitStageBuildDatabase(
                                 ::logDb,
-                                STAGE_BUILD,
-                                stage = Context::stageLogDbCreated) } }
-                    if (netDb === null) with(NetworkDatabase) {
-                        unconfined(true) @Tag(STAGE_BUILD) {
+                                STAGE_BUILD_LOG_DB,
+                                stage = Context::stageLogDbCreated) }
+                    if (netDb === null)
+                        unconfined(true)
+                            @Tag(STAGE_BUILD_NET_DB) {
                             commitStageBuildDatabase(
                                 ::netDb,
-                                STAGE_BUILD,
-                                step = arrayOf(@Tag(STAGE_INIT) { /* update net db records */ }),
-                                stage = Context::stageNetDbInitialized) } }
+                                STAGE_BUILD_NET_DB,
+                                step = arrayOf(@Tag(STAGE_INIT_NET_DB) { /* update net db records */ }),
+                                stage = Context::stageNetDbInitialized) }
                     resume()
                 }
             }
@@ -146,10 +147,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         fun clearObjects() {
             mode = null
         }
-        companion object {
-            val SVC_TAG
-                get() = if (onMainThread()) "SERVICE" else "CLOCK"
-        }
+        companion object {}
 
         override fun getInterfaceDescriptor(): String? {
             return null
@@ -1546,3 +1544,6 @@ sealed interface State {
     operator fun contains(state: Any) = state === this
     operator fun compareTo(state: Any) = 0
 }
+
+val SVC_TAG
+    get() = if (onMainThread()) "SERVICE" else "CLOCK"
