@@ -258,7 +258,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             synchronized(sLock) { queue.add(callback); Unit }
         var postAhead = fun(callback: Runnable) =
             handler?.postAtFrontOfQueue(callback) ?:
-            synchronized(sLock) { queue.add(0, callback); Unit }
+            synchronized(sLock) { queue.add(0, callback) }
 
         fun clearObjects() {
             handler = null
