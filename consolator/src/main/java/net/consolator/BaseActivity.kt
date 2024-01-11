@@ -44,7 +44,7 @@ abstract class BaseActivity : AppCompatActivity(), SystemContext {
     override val ref: WeakContext? = null
         get() = field.unique(this)
 
-    abstract inner class ConfigurationChangeManager : Reconfiguration()
-    abstract inner class NightModeChangeManager : Reconfiguration()
-    abstract inner class LocalesChangeManager : Reconfiguration()
+    abstract inner class ConfigurationChangeManager : ConfigurationManager()
+    abstract inner class NightModeChangeManager : ConfigurationManager()
+    abstract inner class LocalesChangeManager : ConfigurationManager()
 }
