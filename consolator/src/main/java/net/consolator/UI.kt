@@ -43,4 +43,4 @@ private open class OverlayFragment(
         }
 }
 
-private typealias ScreenEventInterceptor = (Any, KFunction<*>, Array<*>, Runnable?) -> Pair<Predicate?, Boolean?>?
+private typealias ScreenEventInterceptor = (Any, AnyKFunction, AnyArray, Runnable?) -> Pair<Predicate?, Boolean?>?

@@ -1468,6 +1468,7 @@ private typealias UnitKFunction = KFunction<Unit>
 
 typealias AnyKClass = KClass<*>
 typealias AnyKCallable = KCallable<*>
+typealias AnyKFunction = KFunction<*>
 typealias AnyKProperty = KProperty<*>
 typealias AnyKMutableProperty = KMutableProperty<*>
 

@@ -144,7 +144,7 @@ typealias ContextStep = suspend Context.() -> Unit
 private typealias ExceptionHandler = Thread.UncaughtExceptionHandler
 typealias BundleEditor = Bundle.() -> Unit
 
-typealias AnyArray = Array<out Any?>
+typealias AnyArray = Array<*>
 typealias AnyFunction = () -> Any?
 typealias AnyToAnyFunction = (Any?) -> Any?
 typealias IntFunction = () -> Int

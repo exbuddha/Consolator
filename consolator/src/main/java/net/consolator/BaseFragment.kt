@@ -75,7 +75,7 @@ abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
         val context = context.weakRef()!!
         launch(IO, LAZY) @JobTreeRoot @MainViewGroup @Retrying(
             delay = VIEW_MIN_DELAY,
-            pathwise = [ FromLastCancellation::class ]
+            pathwise = [FromLastCancellation::class]
         ) @Tag("view.attach") {
             registerContext(context)
         } then @Parallel @Path(STAGE_BUILD_DB) {
