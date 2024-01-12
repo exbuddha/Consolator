@@ -910,7 +910,7 @@ fun service(task: String, vararg context: Any?) {
             }
             with(foregroundContext) {
                 startService(intendFor(BaseService::class)
-                    .putExtra(START_TIME_KEY, asType<UniqueContext>()?.startTime ?: now()))
+                    .putExtra(START_TIME_KEY, startTime()))
             }
         }
     }

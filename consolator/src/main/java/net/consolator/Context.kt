@@ -100,7 +100,7 @@ suspend fun buildSession() {
 suspend fun buildNewSession() {
     runtimeDao {
         session = getSession(
-            newSession(instance!!.startTime)) } }
+            newSession(foregroundContext.startTime())) } }
 suspend fun updateNetworkState() {
     networkDao {
         updateNetworkState(
@@ -137,7 +137,9 @@ fun Context.weakRef() =
     if (this is SystemContext) ref
     else WeakReference(this)
 fun <T : Context> WeakReference<out T>?.unique(context: T) = this ?: WeakReference(context)
+
 interface UniqueContext { var startTime: Long }
+fun Context.startTime() = asType<UniqueContext>()?.startTime ?: now()
 
 typealias ContextStep = suspend Context.() -> Unit
 

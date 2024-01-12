@@ -30,6 +30,8 @@ data class RuntimeSessionEntity(
     override val id: Long,
     @ColumnInfo(name = CTX_TIME)
     override var startTime: Long,
+    @ColumnInfo(name = INIT_TIME)
+    var initTime: Long = now(),
     @ColumnInfo(name = DB_TIME, defaultValue = CURRENT_TIMESTAMP)
     var dbTime: String,
     @ColumnInfo(name = APP_ID, defaultValue = BuildConfig.APPLICATION_ID)
@@ -41,6 +43,7 @@ data class RuntimeSessionEntity(
 ) : BaseEntity(id), UniqueContext {
     companion object {
         const val CTX_TIME = "ctx_time"
+        const val INIT_TIME = "init_time"
         const val DB_TIME = "db_time"
         const val APP_ID = "app_id"
         const val BUILD_TYPE = "build_type"
@@ -63,8 +66,8 @@ open class TimeSensitiveSessionEntity(
 
 @Dao
 abstract class RuntimeDao {
-    @Query("INSERT INTO ${RuntimeSessionEntity.TABLE}(${RuntimeSessionEntity.CTX_TIME},${ThreadEntity.RUNTIME_ID}) VALUES (:startTime)")
-    abstract suspend fun newSession(startTime: Long): Long
+    @Query("INSERT INTO ${RuntimeSessionEntity.TABLE}(${RuntimeSessionEntity.CTX_TIME},${ThreadEntity.RUNTIME_ID}) VALUES (:ctxTime)")
+    abstract suspend fun newSession(ctxTime: Long): Long
 
     @Query("SELECT * FROM ${RuntimeSessionEntity.TABLE} WHERE id == :id")
     abstract suspend fun getSession(id: Long): RuntimeSessionEntity
@@ -304,7 +307,7 @@ private var dateTimeFormat: DateFormat? = null
 private fun String.toLocalTime() = dateTimeFormat!!.parse(this)!!.time
 private fun Long.toLocalTimestamp() = dateTimeFormat!!.format(Date(this))
 private var dbTimeDiff: Long? = null
-    get() = field ?: with(session!!) { dbTime.toLocalTime() - startTime }
+    get() = field ?: session?.run { dbTime.toLocalTime() - initTime }
 private fun String.toAppTime() = toLocalTime() - dbTimeDiff!!
 private fun Long.toDbTime() = plus(dbTimeDiff!!)
 
