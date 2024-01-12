@@ -1127,7 +1127,7 @@ fun <R> SchedulerScope.change(ref: WeakContext, member: KFunction<R>, stage: Con
 fun <R> SchedulerScope.change(ref: WeakContext, owner: LifecycleOwner, member: KFunction<R>, stage: ContextStep) =
     EventBus.signal(stage)
 
-suspend fun CoroutineScope.repeatSuspended(predicate: PredicateFunction = @Tag("is-active") { isActive }, block: JobFunction, delayTime: DelayFunction = @Tag("yield") { 0L }) {
+suspend fun CoroutineScope.repeatSuspended(predicate: PredicateFunction = @Tag(IS_ACTIVE) { isActive }, block: JobFunction, delayTime: DelayFunction = @Tag(YIELD) { 0L }) {
     markTags(JOB_REPEAT, predicate, block, delayTime, currentJob())
     while (predicate()) {
         block(this)

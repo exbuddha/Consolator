@@ -277,6 +277,7 @@ fun bypassAllLogs() {
     bypassDebugLog()
     bypassWarningLog() }
 
+const val IS = "is"
 const val MIN = "min"
 const val NULL = "null"
 
@@ -295,8 +296,11 @@ const val REFORM = "reform"
 const val INDEX = "index"
 const val REPEAT = "repeat"
 const val DELAY = "delay"
+const val YIELD = "yield"
 const val CALL = "call"
 const val FUNC = "function"
+const val ACTIVE = "active"
+const val IS_ACTIVE = "$IS-$ACTIVE"
 const val PREDICATE = "predicate"
 const val SUCCESS = "success"
 const val ERROR = "error"
