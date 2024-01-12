@@ -213,11 +213,11 @@ private inline fun buildNetworkRequest(block: NetworkRequest.Builder.() -> Unit)
     NetworkRequest.Builder().apply(block).build()
 
 const val INET = "inet"
-const val INET_CALL = "$INET.call"
-const val INET_FUNCTION = "$INET.function"
-const val INET_SUCCESS = "$INET.success"
-const val INET_ERROR = "$INET.error"
-const val INET_DELAY = "$INET.delay"
-const val INET_INTERVAL = "$INET.interval"
-const val INET_MIN_INTERVAL = "$INET.min-interval"
+const val INET_CALL = "$INET.$CALL"
+const val INET_FUNCTION = "$INET.$FUNC"
+const val INET_SUCCESS = "$INET.$SUCCESS"
+const val INET_ERROR = "$INET.$ERROR"
+const val INET_DELAY = "$INET.$DELAY"
+const val INET_INTERVAL = "$INET.$INTERVAL"
+const val INET_MIN_INTERVAL = "$INET.$MIN_INTERVAL"
 const val INET_TAG = "INTERNET"

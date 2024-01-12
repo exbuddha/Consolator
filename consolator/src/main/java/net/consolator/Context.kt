@@ -60,7 +60,7 @@ fun Context.changeBroadly(ref: WeakContext = weakRef()!!, stage: ContextStep) =
 fun Context.changeGlobally(ref: WeakContext = weakRef()!!, owner: LifecycleOwner, stage: ContextStep) =
     signal(stage)
 
-@Diverging([STAGE_BUILD_DB])
+@Diverging([STAGE_BUILD_APP_DB])
 fun Context.stageDbCreated() {
     // bootstrap
 }
@@ -73,7 +73,7 @@ fun Context.stageSessionCreated() {
 
 @Diverging([STAGE_BUILD_LOG_DB])
 fun Context.stageLogDbCreated() {
-    mainUncaughtExceptionHandler = @Tag("uncaught-db") ExceptionHandler { th, ex ->
+    mainUncaughtExceptionHandler = @Tag(UNCAUGHT_DB) ExceptionHandler { th, ex ->
         // record in db safely
     }
     State[2] += Pending
@@ -181,13 +181,13 @@ suspend inline fun <T, R> tryCancelingSuspended(scope: T, crossinline block: sus
 inline fun <R> tryInterrupting(block: () -> R) =
     try { block() } catch (ex: Throwable) { throw InterruptedException() }
 inline fun <R> tryInterrupting(noinline step: suspend CoroutineScope.() -> R, blockOf: (suspend CoroutineScope.() -> R) -> () -> R = ::blockOf) =
-    try { blockOf(step)() } catch (ex: Throwable) { throw InterruptedStepException(step, ex) }
+    try { blockOf(step)() } catch (ex: Throwable) { throw InterruptedStepException(step, cause = ex) }
 inline fun <R> trySafelyInterrupting(block: () -> R) =
     try { block() } catch (ex: InterruptedException) { throw ex } catch (_: Throwable) {}
 inline fun <R> trySafelyInterrupting(noinline step: suspend CoroutineScope.() -> R, blockOf: (suspend CoroutineScope.() -> R) -> () -> R = ::blockOf) =
-    try { blockOf(step)() } catch (ex: InterruptedException) { throw InterruptedStepException(step, ex) } catch (_: Throwable) {}
+    try { blockOf(step)() } catch (ex: InterruptedException) { throw InterruptedStepException(step, cause = ex) } catch (_: Throwable) {}
 inline fun <R> tryInterruptingForResult(noinline step: suspend CoroutineScope.() -> R, blockOf: (suspend CoroutineScope.() -> R) -> () -> R = ::blockOf, exit: (Throwable) -> R? = { null }) =
-    try { blockOf(step)() } catch (ex: InterruptedException) { throw InterruptedStepException(step, ex) } catch (ex: Throwable) { exit(ex) }
+    try { blockOf(step)() } catch (ex: InterruptedException) { throw InterruptedStepException(step, cause = ex) } catch (ex: Throwable) { exit(ex) }
 
 inline fun <reified T : Any> Any?.asType(): T? =
     if (this is T) this else null
@@ -255,6 +255,7 @@ open class BaseImplementationRestriction(
     companion object : BaseImplementationRestriction() }
 open class InterruptedStepException(
     val step: Any,
+    override val message: String? = null,
     override val cause: Throwable? = null
 ) : InterruptedException()
 
@@ -276,11 +277,81 @@ fun bypassAllLogs() {
     bypassDebugLog()
     bypassWarningLog() }
 
-const val STAGE_BUILD_DB = "app-db.build"
-const val STAGE_BUILD_SESSION = "session.build"
-const val STAGE_BUILD_LOG_DB = "log-db.build"
-const val STAGE_BUILD_NET_DB = "net-db.build"
-const val STAGE_INIT_NET_DB = "net-db.init"
+const val MIN = "min"
+const val NULL = "null"
+
+const val JOB = "job"
+const val BUILD = "build"
+const val INIT = "init"
+const val START = "start"
+const val LAUNCH = "launch"
+const val COMMIT = "commit"
+const val EXEC = "exec"
+const val ATTACH = "attach"
+const val WORK = "work"
+const val STEP = "step"
+const val FORM = "form"
+const val REFORM = "reform"
+const val INDEX = "index"
+const val REPEAT = "repeat"
+const val DELAY = "delay"
+const val CALL = "call"
+const val FUNC = "function"
+const val PREDICATE = "predicate"
+const val SUCCESS = "success"
+const val ERROR = "error"
+const val EXCEPTION = "exception"
+const val CAUSE = "cause"
+const val MESSAGE = "message"
+const val EXCEPTION_CAUSE = "$EXCEPTION-$CAUSE"
+const val EXCEPTION_MESSAGE = "$EXCEPTION-$MESSAGE"
+const val EXCEPTION_CAUSE_MESSAGE = "$EXCEPTION-$CAUSE-$MESSAGE"
+const val IGNORE = "ignore"
+const val UNCAUGHT = "uncaught"
+const val NOW = "now"
+const val INTERVAL = "interval"
+const val MIN_INTERVAL = "$MIN-$INTERVAL"
+
+const val APP = "app"
+const val VIEW = "view"
+const val CONTEXT = "context"
+const val CTX = "ctx"
+const val MAIN = "main"
+const val SHARED = "shared"
+const val SERVICE = "service"
+const val SVC = "svc"
+const val CLOCK = "clock"
+const val CLK = "clk"
+const val SCH = "sch"
+const val SEQ = "seq"
+const val LOG = "log"
+const val NET = "net"
+const val DB = "db"
+
+const val APP_DB = "$APP-$DB"
+const val LOG_DB = "$LOG-$DB"
+const val NET_DB = "$NET-$DB"
+const val SESSION = "session"
+
+const val CLOCK_INIT = "$CLOCK.$INIT"
+const val VIEW_ATTACH = "$VIEW.$ATTACH"
+const val CTX_REFORM = "$CTX.$REFORM"
+const val JOB_LAUNCH = "$JOB.$LAUNCH"
+const val JOB_REPEAT = "$JOB.$REPEAT"
+const val SCH_COMMIT = "$SCH.$COMMIT"
+const val SCH_EXEC = "$SCH.$EXEC"
+const val SEQ_ATTACH = "$SEQ.$ATTACH"
+const val SEQ_LAUNCH = "$SEQ.$LAUNCH"
+const val SVC_COMMIT = "$SVC.$COMMIT"
+const val NULL_STEP = "$NULL-$STEP"
+const val UNCAUGHT_DB = "$UNCAUGHT-$DB"
+const val UNCAUGHT_SHARED = "$UNCAUGHT-$SHARED"
+
+const val STAGE_BUILD_APP_DB = "$APP_DB.$BUILD"
+const val STAGE_BUILD_SESSION = "$SESSION.$BUILD"
+const val STAGE_BUILD_LOG_DB = "$LOG_DB.$BUILD"
+const val STAGE_BUILD_NET_DB = "$NET_DB.$BUILD"
+const val STAGE_INIT_NET_DB = "$NET_DB.$INIT"
 
 const val START_TIME_KEY = "1"
 const val MODE_KEY = "2"

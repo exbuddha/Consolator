@@ -76,9 +76,9 @@ abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
         launch(IO, LAZY) @JobTreeRoot @MainViewGroup @Retrying(
             delay = VIEW_MIN_DELAY,
             pathwise = [FromLastCancellation::class]
-        ) @Tag("view.attach") {
+        ) @Tag(VIEW_ATTACH) {
             registerContext(context)
-        } then @Parallel @Path(STAGE_BUILD_DB) {
+        } then @Parallel @Path(STAGE_BUILD_APP_DB) {
             tryCancelingSuspended(retrieveContext(), Context::buildAppDatabase)
         } then @Signaling @Event(ACTION_MIGRATE_APP) {
             change(Context::stageDbCreated)

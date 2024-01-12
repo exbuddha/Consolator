@@ -9,12 +9,12 @@ open class BaseApplication : Application(), ObjectProvider, UniqueContext {
     override var startTime = now()
 
     init {
-        mainUncaughtExceptionHandler = @Tag("uncaught-shared") ExceptionHandler { th, ex ->
-            with(getSharedPreferences("uncaught", MODE_PRIVATE).edit()) {
-                putLong("start", startTime)
-                putLong("now", now())
-                putBoolean("main", th.isMainThread())
-                putException("exception", ex)
+        mainUncaughtExceptionHandler = @Tag(UNCAUGHT_SHARED) ExceptionHandler { th, ex ->
+            with(getSharedPreferences(UNCAUGHT, MODE_PRIVATE).edit()) {
+                putLong(START, startTime)
+                putLong(NOW, now())
+                putBoolean(MAIN, th.isMainThread())
+                putException(ex)
             }
         }
         Thread.setDefaultUncaughtExceptionHandler(mainUncaughtExceptionHandler)
@@ -23,7 +23,7 @@ open class BaseApplication : Application(), ObjectProvider, UniqueContext {
     override fun onCreate() {
         super.onCreate()
         instance = this
-        service("start")
+        service(START)
     }
 
     override fun onTrimMemory(level: Int) {
@@ -37,11 +37,11 @@ open class BaseApplication : Application(), ObjectProvider, UniqueContext {
         }
     }
 
-    private fun SharedPreferences.Editor.putException(name: String, ex: Throwable) {
-        putString("${name}-message", ex.message)
+    private fun SharedPreferences.Editor.putException(ex: Throwable) {
+        putString(EXCEPTION_MESSAGE, ex.message)
         ex.cause?.let { cause ->
-            putString("${name}-cause", cause::class.qualifiedName)
-            putString("${name}-cause-msg", cause.message)
+            putString(EXCEPTION_CAUSE, cause::class.qualifiedName)
+            putString(EXCEPTION_CAUSE_MESSAGE, cause.message)
         }
     }
 
