@@ -670,7 +670,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         private fun LiveWork.isSameWork(work: LiveWork) =
             this === work || (first === work.first && second === work.second)
         private fun LiveWork.isNotSameWork(work: LiveWork) =
-            this !== work || first !== work.first || second != work.second
+            this !== work || first !== work.first || second !== work.second
         private fun LiveWork.isSameCapture(block: CaptureFunction) =
             second === block
         private fun LiveWork.isNotSameCapture(block: CaptureFunction) =
@@ -965,7 +965,7 @@ inline fun <R, S : R> blockAsyncForResult(lock: Any, crossinline predicate: Pred
                 else fallback() } }
     else runBlocking { fallback() }
 
-fun <R, S> blockAsync(lock: AnyKProperty, block: suspend () -> R, fallback: suspend () -> S) =
+inline fun <R, S> blockAsync(lock: AnyKProperty, crossinline block: suspend () -> R, crossinline fallback: suspend () -> S) =
     blockAsyncForResult(lock, lock::isNotNull, block, fallback)
 
 inline fun <R> sequencer(block: Sequencer.() -> R) = sequencer?.block()
@@ -1480,15 +1480,14 @@ sealed interface State {
     object Succeeded : Resolved
     object Pending : Unresolved, Ambiguous
     object Suspending : Ambiguous
+
     interface Resolved : State {
-        companion object : Resolved
-    }
+        companion object : Resolved }
     interface Unresolved : State {
-        companion object : Unresolved
-    }
+        companion object : Unresolved }
     interface Ambiguous : State {
-        companion object : Ambiguous
-    }
+        companion object : Ambiguous }
+
     companion object {
         operator fun invoke(): State = Lock.Open
         fun of(string: String): State = Ambiguous
@@ -1496,13 +1495,12 @@ sealed interface State {
             2 -> if (logDb === null || netDb === null)
                 Unresolved
                 else Resolved
-            else -> Lock.Open
+            else ->
+                Lock.Open
         }
-        operator fun set(id: ID, lock: Any) {
-            when (id.toInt()) {
-                1 -> if (lock is Resolved) Scheduler.windDownClock()
-            }
-        }
+        operator fun set(id: ID, lock: Any) { when (id.toInt()) {
+            1 -> if (lock is Resolved) Scheduler.windDownClock()
+        } }
         operator fun plus(lock: Any): State = Ambiguous
         operator fun plusAssign(lock: Any) {}
         operator fun minus(lock: Any): State = Ambiguous
@@ -1520,6 +1518,7 @@ sealed interface State {
         operator fun contains(lock: Any) = false
         operator fun compareTo(lock: Any) = 1
     }
+
     operator fun invoke(vararg param: Any?): Lock = this as Lock
     operator fun inc() = this
     operator fun dec() = this
