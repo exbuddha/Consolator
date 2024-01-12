@@ -1544,4 +1544,4 @@ sealed interface State {
     operator fun compareTo(state: Any) = 0
 }
 
-val SVC_TAG get() = if (onMainThread()) SERVICE else CLOCK
+val SVC_TAG get() = if (onMainThread()) "SERVICE" else "CLOCK"
