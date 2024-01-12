@@ -131,10 +131,10 @@ fun Context.isPermissionGranted(permission: String) =
 fun Context.intendFor(cls: Class<*>) = Intent(this, cls)
 fun Context.intendFor(cls: AnyKClass) = intendFor(cls.java)
 
-interface SystemContext { val ref: WeakContext? }
+interface VolatileContext { val ref: WeakContext? }
 typealias WeakContext = WeakReference<out Context>
 fun Context.weakRef() =
-    if (this is SystemContext) ref
+    if (this is VolatileContext) ref
     else WeakReference(this)
 fun <T : Context> WeakReference<out T>?.unique(context: T) = this ?: WeakReference(context)
 
@@ -242,10 +242,18 @@ annotation class File(val name: String)
 fun <T : Any> KClass<out T>.lastAnnotatedFile() = annotations.last { it is File } as File
 fun <T : Any> KClass<out T>.lastAnnotatedFilename() = lastAnnotatedFile().name
 
+fun Any?.asContext() = asType<Context>()
+fun Any?.asUniqueContext() = asType<UniqueContext>()
+fun Any?.asJob() = asType<Job>()
+fun Any?.asString() = asType<String>()
+fun Any?.asAnyArray() = asType<AnyArray>()
+fun Any?.asInt() = asType<Int>()
+fun Any?.asLong() = asType<Long>()
+fun Byte.toPercentage() =
+    (this * 100 / Byte.MAX_VALUE).toByte()
+
 fun IntArray.toJson() = jsonConverter!!.toJson(this, IntArray::class.java)
 fun String.toIntArray() = jsonConverter!!.fromJson(this, IntArray::class.java)
-fun Byte.asPercentage() =
-    (this * 100 / Byte.MAX_VALUE).toByte()
 
 var jsonConverter: Gson? = null
     get() = field ?: Gson()
