@@ -82,15 +82,13 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
                     if (logDb === null)
                         unconfined(true)
                             @Tag(STAGE_BUILD_LOG_DB) { self ->
-                            commitStageBuildDatabase(
-                                self,
+                            coordinateBuildDatabase(self,
                                 ::logDb,
                                 stage = Context::stageLogDbCreated) }
                     if (netDb === null)
                         unconfined(true)
                             @Tag(STAGE_BUILD_NET_DB) { self ->
-                            commitStageBuildDatabase(
-                                self,
+                            coordinateBuildDatabase(self,
                                 ::netDb,
                                 step = arrayOf(@Tag(STAGE_INIT_NET_DB) { /* update net db records */ }),
                                 stage = Context::stageNetDbInitialized) }
@@ -100,12 +98,12 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             return this
         }
 
-        private suspend inline fun <reified D : RoomDatabase> SequencerScope.commitStageBuildDatabase(identifier: Any?, instance: KMutableProperty<out D?>, noinline stage: ContextStep?) =
+        private suspend inline fun <reified D : RoomDatabase> SequencerScope.coordinateBuildDatabase(identifier: Any?, instance: KMutableProperty<out D?>, noinline stage: ContextStep?) =
             returnItsTag(identifier)?.let { tag ->
                 commitAsyncOrResetByTag(instance, tag, {
                     buildDatabaseOrResetByTag(instance, tag) },
                     post = markTagsForReform(tag, stage, synchronize(tag, stage), currentJob())) }
-        private suspend inline fun <reified D : RoomDatabase> SequencerScope.commitStageBuildDatabase(identifier: Any?, instance: KMutableProperty<out D?>, vararg step: Step, noinline stage: ContextStep?) =
+        private suspend inline fun <reified D : RoomDatabase> SequencerScope.coordinateBuildDatabase(identifier: Any?, instance: KMutableProperty<out D?>, vararg step: Step, noinline stage: ContextStep?) =
             returnItsTag(identifier)?.let { tag ->
                 commitAsyncOrResetByTag(instance, tag, {
                     buildDatabaseOrResetByTag(instance, tag) },
