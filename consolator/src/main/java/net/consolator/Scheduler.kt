@@ -878,7 +878,7 @@ inline fun <reified T : Resolver> Context.defer(member: UnitKFunction, vararg co
 
 interface Resolver : ResolverScope {
     override fun commit(step: CoroutineStep) =
-        commit(arrayOf(step))
+        commit(arrayOf(blockOf(step)))
     fun commit(vararg context: Any?) =
         context.lastOrNull().asType<Work>()?.invoke()
 }
