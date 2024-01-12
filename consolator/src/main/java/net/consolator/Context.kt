@@ -189,10 +189,10 @@ inline fun <R> trySafelyInterrupting(noinline step: suspend CoroutineScope.() ->
 inline fun <R> tryInterruptingForResult(noinline step: suspend CoroutineScope.() -> R, blockOf: (suspend CoroutineScope.() -> R) -> () -> R = ::blockOf, exit: (Throwable) -> R? = { null }) =
     try { blockOf(step)() } catch (ex: InterruptedException) { throw InterruptedStepException(step, ex) } catch (ex: Throwable) { exit(ex) }
 
-inline fun <reified R : Any> Any?.asType(): R? =
-    if (this is R) this else null
-inline fun <reified R : Any> R?.singleton(lock: Any = R::class.lock(), vararg args: Any?) =
-    commitAsyncForResult(lock, { this === null }, { R::class.new(*args) }, { this }) as R
+inline fun <reified T : Any> Any?.asType(): T? =
+    if (this is T) this else null
+inline fun <reified T : Any> T?.singleton(lock: Any = T::class.lock(), vararg args: Any?) =
+    commitAsyncForResult(lock, { this === null }, { T::class.new(*args) }, { this }) as T
 inline fun <reified T : Any> T?.reconstruct(vararg args: Any?): T = this ?: T::class.new(*args)
 
 fun <T : Any> KClass<out T>.lock() = objectInstance ?: this
