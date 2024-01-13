@@ -225,10 +225,7 @@ fun <T> KMutableProperty<out T?>.require(predicate: (T) -> Boolean = ::trueWhenN
 fun <T> KMutableProperty<out T?>.requireAsync(predicate: (T) -> Boolean = ::trueWhenNull, constructor: () -> T? = ::get) =
     get().let { old ->
         if (old === null || predicate(old))
-            synchronized(this) {
-                if (old === null || predicate(old))
-                    constructor().also { new -> set(new) }
-                else old }
+            synchronized(this) { require(predicate, constructor) }
         else old }
 fun <T> KMutableProperty<out T?>.set(vararg args: Any?) = setter.call(*args)
 
