@@ -139,7 +139,7 @@ fun Context.weakRef() =
 fun <T : Context> WeakReference<out T>?.unique(context: T) = this ?: WeakReference(context)
 
 interface UniqueContext { var startTime: Long }
-fun Context.startTime() = asType<UniqueContext>()?.startTime ?: now()
+fun Context.startTime() = asUniqueContext()?.startTime ?: now()
 
 typealias ContextStep = suspend Context.(Any?) -> Unit
 
@@ -213,7 +213,7 @@ inline fun <reified T> KMutableProperty<out T?>.reconstruct(provider: Any = T::c
         if (provider is AnyKClass)
             provider.emptyConstructor().call()
         else
-            provider.asType<ObjectProvider>()?.invoke(T::class) } }
+            provider.asObjectProvider()?.invoke(T::class) } }
 fun <T> KMutableProperty<out T?>.renew(constructor: () -> T? = ::get) {
     if (get() === null)
         set(constructor()) }
@@ -244,11 +244,13 @@ fun <T : Any> KClass<out T>.lastAnnotatedFilename() = lastAnnotatedFile().name
 
 fun Any?.asContext() = asType<Context>()
 fun Any?.asUniqueContext() = asType<UniqueContext>()
+fun Any?.asObjectProvider() = asType<ObjectProvider>()
 fun Any?.asJob() = asType<Job>()
 fun Any?.asString() = asType<String>()
 fun Any?.asAnyArray() = asType<AnyArray>()
 fun Any?.asInt() = asType<Int>()
 fun Any?.asLong() = asType<Long>()
+
 fun Byte.toPercentage() =
     (this * 100 / Byte.MAX_VALUE).toByte()
 
