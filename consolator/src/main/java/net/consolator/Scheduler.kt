@@ -828,8 +828,8 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         when (enlist?.invoke(this)) {
             null, false ->
                 transfer(@Unattached this)
-            else ->
-                transfer(@Attached this) }
+            true -> true
+            else -> transfer(@Attached this) }
     private fun reattach(step: CoroutineStep) =
         launch(step = step)
 
