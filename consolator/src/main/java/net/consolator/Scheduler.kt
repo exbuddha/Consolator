@@ -16,7 +16,6 @@ import kotlinx.coroutines.flow.*
 import net.consolator.BaseActivity.*
 import net.consolator.application.*
 import net.consolator.Scheduler.EventBus
-import net.consolator.Scheduler.EventBus.Relay
 import net.consolator.Scheduler.Lock
 import net.consolator.Scheduler.Sequencer
 import net.consolator.State.Resolved
@@ -75,7 +74,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             mode = getModeExtra(intent)
             if (intent !== null && intent.hasCategory(START_TIME_KEY))
                 clock?.start()
-            if (State[2] !is Resolved) commit @Tag(INIT) {
+            if (State[2] !is Resolved) commit @Tag(INIT) @Synchronous {
                 trySafelyForResult { getStartTimeExtra(intent) }?.let {
                     startTime = it }
                 Sequencer {
@@ -826,16 +825,18 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         step.markTagForSchCommit().attach()
     private fun CoroutineStep.attach(enlist: CoroutineFunction? = ::clock, transfer: CoroutineFunction = ::reattach) =
         when (enlist?.invoke(this)) {
-            null, false ->
-                transfer(@Unattached this)
+            null, false -> transfer(@Unlisted this)
             true -> true
             else -> transfer(@Enlisted this) }
     private fun reattach(step: CoroutineStep) =
-        launch(step = step)
+        trySafelyForResult { detach(step) }?.run(::launch)
+    private fun detach(step: CoroutineStep) =
+        msgOf(step)?.detach()?.asCoroutine() ?: step
+    private fun msgOf(step: CoroutineStep): Message? = null
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    object EventBus : AbstractFlow<Step?>() {
-        override suspend fun collectSafely(collector: FlowCollector<Step?>) {
+    object EventBus : AbstractFlow<Any?>() {
+        override suspend fun collectSafely(collector: FlowCollector<Any?>) {
             // emit signalled events to collector
         }
 
@@ -843,13 +844,9 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             // record context event
             return true
         }
-        fun signal(transit: Short?): Boolean {
+        fun signal(event: Short?): Boolean {
             // record signal event
             return true
-        }
-
-        open class Relay(val transit: Short? = null) : Step {
-            override suspend fun invoke() {}
         }
     }
 
@@ -858,13 +855,17 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     override fun invoke(work: SchedulerWork) = this.work()
 }
 
-val Step.transit
+val Any?.transit
     get() = if (this is Relay) transit
-            else asCallable().event?.transit
+            else asNullable().event?.transit
 
 fun Step.relay(transit: Short? = this.transit) = Relay(transit)
 fun Step.reevaluate(transit: Short? = this.transit) = object : Relay(transit) {
     override suspend fun invoke() = this@reevaluate() }
+
+open class Relay(val transit: Short? = null) : Step {
+    override suspend fun invoke() {}
+}
 
 inline fun <reified T : Resolver> LifecycleOwner.defer(member: UnitKFunction, vararg context: Any?) =
     defer(T::class, this, member, *context)
@@ -921,9 +922,11 @@ private fun service(step: CoroutineStep) =
             it.parameters[1].name == "step"
         }?.call(scope, step) } // message queue reconfiguration
 
+// runnable <-> message
 fun clock(callback: Runnable) = clock?.post?.invoke(callback)
 fun clockAhead(callback: Runnable) = clock?.postAhead?.invoke(callback)
 
+// step <-> runnable
 fun <T> clock(step: suspend CoroutineScope.() -> T) = clock(runnableOf(step))
 fun <T> clockAhead(step: suspend CoroutineScope.() -> T) = clockAhead(runnableOf(step))
 fun <T> clockSafely(step: suspend CoroutineScope.() -> T) = clock(safeRunnableOf(step))
@@ -964,6 +967,14 @@ inline fun <R, S : R> blockAsyncForResult(lock: Any, crossinline predicate: Pred
 
 inline fun <R, S> blockAsync(lock: AnyKProperty, crossinline block: suspend () -> R, crossinline fallback: suspend () -> S) =
     blockAsyncForResult(lock, lock::isNotNull, block, fallback)
+
+private fun Message.asCoroutine(): CoroutineStep = TODO()
+private fun Message.detach(): Message? = null
+private fun Message.reattach() {}
+private fun Message.close() {}
+
+private operator fun Message.get(tag: String): Any? = TODO()
+private operator fun Message.set(tag: String, value: Any?) {}
 
 inline fun <R> sequencer(block: Sequencer.() -> R) = sequencer?.block()
 fun <T, R> capture(context: CoroutineContext, step: suspend LiveDataScope<T>.() -> Unit, capture: (T) -> R) =
@@ -1053,6 +1064,7 @@ private fun relaunch(launcher: KFunction<Job>, instance: JobKProperty, context: 
         launcher.call(context, start, step)
     }.also { instance.markTag() }
 
+fun launch(it: CoroutineStep) = launch(step = it)
 fun launch(context: CoroutineContext = Scheduler, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep) =
     ProcessLifecycleOwner.get().launch(context, start, step)
 fun LifecycleOwner.launch(context: CoroutineContext = Scheduler, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep): Job {
@@ -1338,8 +1350,7 @@ annotation class Keep
 @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
 annotation class Path(
     val name: String = "",
-    val route: SchedulerPath = [],
-    val blacklist: SchedulerPath = []) {
+    val route: SchedulerPath = []) {
     @Retention(SOURCE)
     @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
     annotation class Adjacent(val paths: Array<String> = [])
@@ -1387,12 +1398,16 @@ annotation class Scope(val type: KClass<out CoroutineScope> = Scheduler::class)
 annotation class LaunchScope
 
 @Retention(SOURCE)
+@Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+private annotation class Synchronous
+
+@Retention(SOURCE)
 @Target(EXPRESSION)
 private annotation class Enlisted
 
 @Retention(SOURCE)
 @Target(EXPRESSION)
-private annotation class Unattached
+private annotation class Unlisted
 
 private val AnyKCallable.tag
     get() = annotations.find { it is Tag } as? Tag
@@ -1479,8 +1494,10 @@ fun <T> T?.asNullable(): KCallable<T?> = asNullRef()::obj
 
 fun trueWhenNull(it: Any?) = it === null
 
-fun Any?.asWork() = asType<Work>()
+fun Any?.asMessage() = asType<Message>()
 fun Any?.asLiveWork() = asType<LiveWork>()
+fun Any?.asJob() = asType<Job>()
+fun Any?.asWork() = asType<Work>()
 
 private typealias JobKProperty = KMutableProperty<Job?>
 private typealias ResolverKClass = KClass<out Resolver>

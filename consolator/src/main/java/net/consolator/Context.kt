@@ -241,7 +241,6 @@ fun <T : Any> KClass<out T>.lastAnnotatedFilename() = lastAnnotatedFile().name
 fun Any?.asContext() = asType<Context>()
 fun Any?.asUniqueContext() = asType<UniqueContext>()
 fun Any?.asObjectProvider() = asType<ObjectProvider>()
-fun Any?.asJob() = asType<Job>()
 fun Any?.asString() = asType<String>()
 fun Any?.asAnyArray() = asType<AnyArray>()
 fun Any?.asInt() = asType<Int>()
