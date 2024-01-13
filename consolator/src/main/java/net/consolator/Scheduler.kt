@@ -824,18 +824,14 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
 
     override fun commit(step: CoroutineStep) =
         step.markTagForSchCommit().attach()
-    private fun CoroutineStep.attach(enlist: EnlistFunction? = ::clock) =
+    private fun CoroutineStep.attach(enlist: CoroutineFunction? = ::clock, transfer: CoroutineFunction = ::reattach) =
         when (enlist?.invoke(this)) {
-            null, false -> {
-                /* unhandled, use coroutines */
-                false }
-            Unit -> {
-                /* in back queue, try to remove and use coroutines */
-                false }
-            true -> {
-                /* in message queue */
-                true }
-            else -> { true } }
+            null, false ->
+                transfer(@Unattached this)
+            else ->
+                transfer(@Attached this) }
+    private fun reattach(step: CoroutineStep) =
+        launch(step = step)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     object EventBus : AbstractFlow<Step?>() {
@@ -1386,6 +1382,13 @@ annotation class Scope(val type: KClass<out CoroutineScope> = Scheduler::class)
 @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
 annotation class LaunchScope
 
+@Retention(SOURCE)
+@Target(EXPRESSION)
+private annotation class Attached
+@Retention(SOURCE)
+@Target(EXPRESSION)
+private annotation class Unattached
+
 private val AnyKCallable.tag
     get() = annotations.find { it is Tag } as? Tag
 private val AnyKCallable.event
@@ -1420,9 +1423,9 @@ private typealias PropertyCondition = suspend (AnyKProperty, String, Step) -> Un
 private typealias PredicateFunction = suspend () -> Boolean
 private typealias DelayFunction = suspend () -> Long
 
-private typealias EnlistFunction = (CoroutineStep) -> Any?
 private typealias MessageFunction = (Message) -> Any?
 private typealias RunnableList = MutableList<Runnable>
+private typealias CoroutineFunction = (CoroutineStep) -> Any?
 
 typealias Work = () -> Unit
 typealias Step = suspend () -> Unit
