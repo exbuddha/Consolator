@@ -887,7 +887,7 @@ interface Resolver : ResolverScope {
 fun schedule(step: Step) = Scheduler.postValue(step)
 fun scheduleNow(step: Step) { Scheduler.value = step }
 
-fun service(task: String, vararg context: Any?) {
+fun service(task: String, vararg context: Any?): Any? =
     when (task) {
         START -> {
             clock = Clock(SVC, Thread.MAX_PRIORITY)
@@ -913,8 +913,8 @@ fun service(task: String, vararg context: Any?) {
                     .putExtra(START_TIME_KEY, startTime()))
             }
         }
+        else -> Unit
     }
-}
 private fun service(step: CoroutineStep) =
     (service ?:
     annotatedScopeOf(step) ?:
