@@ -829,7 +829,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             null, false ->
                 transfer(@Unattached this)
             true -> true
-            else -> transfer(@Attached this) }
+            else -> transfer(@Enlisted this) }
     private fun reattach(step: CoroutineStep) =
         launch(step = step)
 
@@ -1388,7 +1388,7 @@ annotation class LaunchScope
 
 @Retention(SOURCE)
 @Target(EXPRESSION)
-private annotation class Attached
+private annotation class Enlisted
 
 @Retention(SOURCE)
 @Target(EXPRESSION)
