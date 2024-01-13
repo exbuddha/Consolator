@@ -61,18 +61,18 @@ fun Context.changeGlobally(ref: WeakContext = weakRef()!!, owner: LifecycleOwner
     signal(stage)
 
 @Diverging([STAGE_BUILD_APP_DB])
-fun Context.stageDbCreated() {
+fun Context.stageDbCreated(scope: Any?) {
     // bootstrap
 }
 
 @Diverging([STAGE_BUILD_SESSION])
-fun Context.stageSessionCreated() {
+fun Context.stageSessionCreated(scope: Any?) {
     // update db records
     State[1] = Resolved
 }
 
 @Diverging([STAGE_BUILD_LOG_DB])
-fun Context.stageLogDbCreated() {
+fun Context.stageLogDbCreated(scope: Any?) {
     mainUncaughtExceptionHandler = @Tag(UNCAUGHT_DB) ExceptionHandler { th, ex ->
         // record in db safely
     }
@@ -80,7 +80,7 @@ fun Context.stageLogDbCreated() {
 }
 
 @Diverging([STAGE_BUILD_NET_DB])
-fun Context.stageNetDbInitialized() {
+fun Context.stageNetDbInitialized(scope: Any?) {
     // update net function pointers
     State[2] += Pending
 }
@@ -141,7 +141,7 @@ fun <T : Context> WeakReference<out T>?.unique(context: T) = this ?: WeakReferen
 interface UniqueContext { var startTime: Long }
 fun Context.startTime() = asType<UniqueContext>()?.startTime ?: now()
 
-typealias ContextStep = suspend Context.() -> Unit
+typealias ContextStep = suspend Context.(Any?) -> Unit
 
 private typealias ExceptionHandler = Thread.UncaughtExceptionHandler
 typealias BundleEditor = Bundle.() -> Unit

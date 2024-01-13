@@ -129,7 +129,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
 
         private val ignore get() = @Tag(IGNORE) emptyStep
 
-        private fun SequencerScope.form(stage: ContextStep): Step = { change(stage) }
+        private fun SequencerScope.form(stage: ContextStep) = suspend { change(stage); Unit }
         private fun SequencerScope.form(stage: ContextStep, vararg step: Step) = step.first() then form(stage)
 
         private fun markTagsForReform(tag: String, stage: ContextStep?, form: Step, job: Job) =
