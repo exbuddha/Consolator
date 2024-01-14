@@ -267,6 +267,14 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         }
         companion object : MutableList<RunnableList> by mutableListOf() {
             fun msgOf(step: CoroutineStep): Message? = null
+            fun delayOf(step: CoroutineStep): Long? = null
+            fun runnableOf(step: CoroutineStep): Runnable? = null
+            inline fun <reified R> scheduled(noinline step: CoroutineStep): R? = when (R::class) {
+                Message::class -> msgOf(step).asType()
+                Long::class -> delayOf(step).asType()
+                Runnable::class -> runnableOf(step).asType()
+                else -> null
+            }
         }
     }
 
@@ -833,7 +841,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     private fun reattach(step: CoroutineStep) =
         trySafelyForResult { detach(step) }?.run(::launch)
     private fun detach(step: CoroutineStep) =
-        Clock.msgOf(step)?.detach()?.asCoroutine() ?: step
+        Clock.scheduled<Message>(step)?.detach()?.asCoroutine() ?: step
 
     @OptIn(ExperimentalCoroutinesApi::class)
     object EventBus : AbstractFlow<Any?>() {
