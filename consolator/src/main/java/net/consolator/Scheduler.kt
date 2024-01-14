@@ -201,7 +201,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         var id = -1
         override fun start() {
             commitAsync(this, { !isAlive }) {
-                id = synchronized(Clock::class) {
+                id = synchronized(Companion) {
                     add(queue)
                     size
                 }
