@@ -265,7 +265,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             handler = null
             queue.clear()
         }
-        companion object : MutableList<RunnableList> by mutableListOf(), (ClockWork) -> Unit {
+        companion object : MutableList<RunnableList> by mutableListOf() {
             inline fun <reified R> scheduled(noinline step: CoroutineStep): R? = when (R::class) {
                 Message::class -> msgOf(step).asType()
                 Runnable::class -> runnableOf(step).asType()
@@ -274,8 +274,6 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             fun runnableOf(step: CoroutineStep): Runnable? = null
             fun delayOf(msg: Message): Long? = null
             fun timeOf(msg: Message): Long? = null
-
-            override fun invoke(work: ClockWork) = this.work()
         }
     }
 
@@ -1455,7 +1453,6 @@ private typealias PropertyCondition = suspend (AnyKProperty, String, Step) -> Un
 private typealias PredicateFunction = suspend () -> Boolean
 private typealias DelayFunction = suspend () -> Long
 
-private typealias ClockWork = Scheduler.Clock.Companion.() -> Unit
 private typealias MessageFunction = (Message) -> Any?
 private typealias RunnableList = MutableList<Runnable>
 private typealias CoroutineFunction = (CoroutineStep) -> Any?
