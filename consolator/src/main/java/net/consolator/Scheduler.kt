@@ -852,7 +852,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             // record context event
             return true
         }
-        fun signal(event: Short?): Boolean {
+        fun signal(event: Transit): Boolean {
             // record signal event
             return true
         }
@@ -863,9 +863,12 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     override fun invoke(work: SchedulerWork) = this.work()
 }
 
-val Any?.transit
-    get() = if (this is Relay) transit
-            else asNullable().event?.transit
+private typealias Transit = Short?
+val Any?.transit: Transit
+    get() = when (this) {
+        is Relay -> transit
+        is Number -> toShort()
+        else -> asNullable().event?.transit }
 
 fun Step.relay(transit: Short? = this.transit) = Relay(transit)
 fun Step.reevaluate(transit: Short? = this.transit) = object : Relay(transit) {
