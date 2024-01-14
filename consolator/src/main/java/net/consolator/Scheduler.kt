@@ -201,8 +201,11 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         var id = -1
         override fun start() {
             commitAsync(this, { !isAlive }) {
+                id = synchronized(Clock::class) {
+                    add(queue)
+                    size
+                }
                 super.start()
-                id = synchronized(Clock::class) { count++ }
             }
         }
         fun alsoStart(): Clock {
@@ -262,10 +265,8 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             handler = null
             queue.clear()
         }
-        companion object {
+        companion object : MutableList<RunnableList> by mutableListOf() {
             fun msgOf(step: CoroutineStep): Message? = null
-            var count = 0
-                private set
         }
     }
 
