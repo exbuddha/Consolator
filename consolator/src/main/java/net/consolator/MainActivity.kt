@@ -1,6 +1,5 @@
 package net.consolator
 
-import android.content.Context
 import android.content.res.Configuration
 import android.os.Bundle
 import androidx.core.os.LocaleListCompat
@@ -21,19 +20,19 @@ open class MainActivity : BaseActivity(), ObjectProvider {
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
-        (this as Context).defer<ConfigurationChangeManager>(::onConfigurationChanged, newConfig) {
+        defer<ConfigurationChangeManager>(::onConfigurationChanged, newConfig) {
             super.onConfigurationChanged(newConfig)
         }
     }
 
     override fun onNightModeChanged(mode: Int) {
-        (this as Context).defer<NightModeChangeManager>(::onNightModeChanged, mode) {
+        defer<NightModeChangeManager>(::onNightModeChanged, mode) {
             super.onNightModeChanged(mode)
         }
     }
 
     override fun onLocalesChanged(locales: LocaleListCompat) {
-        (this as Context).defer<LocalesChangeManager>(::onLocalesChanged, locales) {
+        defer<LocalesChangeManager>(::onLocalesChanged, locales) {
             super.onLocalesChanged(locales)
         }
     }

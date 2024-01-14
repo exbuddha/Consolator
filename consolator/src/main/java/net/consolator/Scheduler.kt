@@ -263,6 +263,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             queue.clear()
         }
         companion object {
+            fun msgOf(step: CoroutineStep): Message? = null
             var count = 0
                 private set
         }
@@ -831,8 +832,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     private fun reattach(step: CoroutineStep) =
         trySafelyForResult { detach(step) }?.run(::launch)
     private fun detach(step: CoroutineStep) =
-        msgOf(step)?.detach()?.asCoroutine() ?: step
-    private fun msgOf(step: CoroutineStep): Message? = null
+        Clock.msgOf(step)?.detach()?.asCoroutine() ?: step
 
     @OptIn(ExperimentalCoroutinesApi::class)
     object EventBus : AbstractFlow<Any?>() {
@@ -873,6 +873,8 @@ inline fun <reified T : Resolver> LifecycleOwner.defer(member: UnitKFunction, va
     defer(T::class, this, member, *context, `super`)
 inline fun <reified T : Resolver> Context.defer(member: UnitKFunction, vararg context: Any?, noinline `super`: Work) =
     defer(T::class, this, member, *context, `super`)
+inline fun <reified T : Resolver> BaseActivity.defer(member: UnitKFunction, vararg context: Any?, noinline `super`: Work) =
+    (this as Context).defer<T>(member, *context, `super` = `super`)
 
 interface Resolver : ResolverScope {
     override fun commit(step: CoroutineStep) =
