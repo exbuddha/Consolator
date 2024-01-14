@@ -1463,7 +1463,7 @@ typealias CoroutineStep = suspend CoroutineScope.() -> Unit
 typealias Process = android.os.Process
 
 val emptyWork = {}
-val emptyStep: Step = {}
+val emptyStep = suspend {}
 
 interface Expiry : MutableSet<Lifetime> {
     fun unsetAll(property: AnyKMutableProperty) {
