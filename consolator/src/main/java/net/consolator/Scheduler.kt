@@ -840,7 +840,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     private fun reattach(step: CoroutineStep) =
         trySafelyForResult { detach(step) }?.run(::launch)
     private fun detach(step: CoroutineStep) =
-        Clock.scheduled<Message>(step)?.detach()?.asCoroutine() ?: step
+        Clock.scheduled<Runnable>(step)?.detach()?.asCoroutine() ?: step
 
     @OptIn(ExperimentalCoroutinesApi::class)
     object EventBus : AbstractFlow<Any?>() {
@@ -977,6 +977,9 @@ inline fun <R, S : R> blockAsyncForResult(lock: Any, crossinline predicate: Pred
 
 inline fun <R, S> blockAsync(lock: AnyKProperty, crossinline block: suspend () -> R, crossinline fallback: suspend () -> S) =
     blockAsyncForResult(lock, lock::isNotNull, block, fallback)
+
+private fun Runnable.asCoroutine(): CoroutineStep = TODO()
+private fun Runnable.detach(): Runnable? = null
 
 private fun Message.asCoroutine(): CoroutineStep = TODO()
 private fun Message.detach(): Message? = null
