@@ -271,7 +271,6 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             fun runnableOf(step: CoroutineStep): Runnable? = null
             inline fun <reified R> scheduled(noinline step: CoroutineStep): R? = when (R::class) {
                 Message::class -> msgOf(step).asType()
-                Long::class -> delayOf(step).asType()
                 Runnable::class -> runnableOf(step).asType()
                 else -> null
             }
