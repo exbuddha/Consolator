@@ -78,19 +78,19 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
                 trySafelyForResult { getStartTimeExtra(intent) }?.let {
                     startTime = it }
                 Sequencer {
-                    if (logDb === null)
+                    ::logDb.renew {
                         unconfined(true)
                             @Tag(STAGE_BUILD_LOG_DB) { self ->
                             coordinateBuildDatabase(self,
                                 ::logDb,
-                                stage = Context::stageLogDbCreated) }
-                    if (netDb === null)
+                                stage = Context::stageLogDbCreated) } }
+                    ::netDb.renew {
                         unconfined(true)
                             @Tag(STAGE_BUILD_NET_DB) { self ->
                             coordinateBuildDatabase(self,
                                 ::netDb,
                                 step = arrayOf(@Tag(STAGE_INIT_NET_DB) { /* update net db records */ }),
-                                stage = Context::stageNetDbInitialized) }
+                                stage = Context::stageNetDbInitialized) } }
                     resume()
                 }
             }
