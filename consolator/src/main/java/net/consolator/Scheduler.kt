@@ -1194,10 +1194,11 @@ private fun returnItsTag(it: Any?) = it.asNullable().tag?.string
 
 fun Any?.markTag(tag: String) = jobs?.save(tag, asNullable())
 fun Any?.markSequentialTag(vararg tag: String?): String? = TODO()
+private fun <T> T.applyMarkTag(tag: String) = apply { markTag(tag) }
 
-private fun Step?.markTagForSchExec() = apply { markTag(SCH_EXEC) }
-private fun CoroutineStep.markTagForSchCommit() = apply { markTag(SCH_COMMIT) }
-private fun CoroutineStep.markTagForSvcCommit() = apply { markTag(SVC_COMMIT) }
+private fun Step?.markTagForSchExec() = applyMarkTag(SCH_EXEC)
+private fun CoroutineStep.markTagForSchCommit() = applyMarkTag(SCH_COMMIT)
+private fun CoroutineStep.markTagForSvcCommit() = applyMarkTag(SVC_COMMIT)
 
 fun markTags(vararg function: Any?) {
     when (function.firstOrNull()) {
