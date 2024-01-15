@@ -882,11 +882,11 @@ val Any?.transit: Transit
         is Number -> toShort()
         else -> asNullable().event?.transit }
 
-fun Step.relay(transit: Short? = this.transit) = Relay(transit)
-fun Step.reevaluate(transit: Short? = this.transit) = object : Relay(transit) {
+fun Step.relay(transit: Transit = this.transit) = Relay(transit)
+fun Step.reevaluate(transit: Transit = this.transit) = object : Relay(transit) {
     override suspend fun invoke() = this@reevaluate() }
 
-open class Relay(val transit: Short? = null) : Step {
+open class Relay(val transit: Transit = null) : Step {
     override suspend fun invoke() {}
 }
 
