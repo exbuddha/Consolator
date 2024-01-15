@@ -280,7 +280,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
                 else -> null }
             fun msgOf(step: CoroutineStep): Message? = null
             fun runnableOf(step: CoroutineStep): Runnable? = null
-            fun stepOf(callback: Runnable): CoroutineStep? = null
+            private fun stepOf(callback: Runnable): CoroutineStep? = null
             fun delayOf(msg: Message): Long? = null
             fun timeOf(msg: Message): Long? = null
         }
