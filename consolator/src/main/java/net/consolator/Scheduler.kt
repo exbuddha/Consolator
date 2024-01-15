@@ -231,12 +231,6 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
                 }
             else msg.callback.exec()
         }
-        private fun isSynchronized(msg: Message) =
-            isSynchronized(msg.callback)
-        private fun isSynchronized(callback: Runnable) =
-            stepOf(callback).asNullable().isSynchronized()
-        private fun AnyKCallable.isSynchronized() =
-            annotations.any { it is Synchronous }
         private fun RunnableList.run(msg: Message? = null): Boolean {
             onEach {
                 synchronized(sLock) {
@@ -251,6 +245,15 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
                 commit(block = @Synchronous ::run)
             else run()
         }
+        private fun isSynchronized(msg: Message) =
+            isSynchronized(msg.callback) ||
+            msg.asCallable().isSynchronized()
+        private fun isSynchronized(callback: Runnable) =
+            stepOf(callback).asNullable().isSynchronized() ||
+            callback.asCallable().isSynchronized() ||
+            callback::run.isSynchronized()
+        private fun AnyKCallable.isSynchronized() =
+            annotations.any { it is Synchronous }
 
         private lateinit var hLock: Lock
         fun <R> commit(msg: Message? = null, block: () -> R) =
