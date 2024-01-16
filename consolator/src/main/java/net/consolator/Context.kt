@@ -178,9 +178,9 @@ inline fun <R> tryCancelingForResult(block: () -> R, exit: (Throwable) -> R? = {
 suspend inline fun <R> tryCancelingSuspended(crossinline block: suspend () -> R) =
     tryCanceling { block() }
 suspend inline fun <T, R> tryCancelingSuspended(scope: T, crossinline block: suspend T.() -> R) =
-    tryCanceling { block(scope) }
+    tryCanceling { scope.block() }
 suspend inline fun <T, R> tryCancelingSuspended(crossinline scope: suspend () -> T, crossinline block: suspend T.() -> R) =
-    tryCanceling { block(scope()) }
+    tryCanceling { scope().block() }
 
 inline fun <R> tryInterrupting(block: () -> R) =
     try { block() } catch (ex: Throwable) { throw InterruptedException() }
