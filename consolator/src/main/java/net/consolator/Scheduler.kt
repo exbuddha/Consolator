@@ -232,7 +232,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             else msg.callback.exec()
         }
         private fun RunnableList.run(msg: Message? = null): Boolean {
-            onEach {
+            precursorOf(msg).onEach {
                 synchronized(sLock) {
                     it.exec()
                     remove(it)
@@ -240,6 +240,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             }
             return true
         }
+        private fun precursorOf(msg: Message?) = queue
         private fun Runnable.exec() {
             if (isSynchronized(this))
                 commit(block = @Synchronous ::run)
