@@ -79,7 +79,7 @@ abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
         ) @Tag(VIEW_ATTACH) {
             registerContext(context)
         } then @Parallel @Path(STAGE_BUILD_APP_DB) {
-            tryCancelingSuspended(retrieveContext(), Context::buildAppDatabase)
+            tryCancelingSuspended(::currentContext, Context::buildAppDatabase)
         } then @Signaling @Event(ACTION_MIGRATE_APP) {
             change(Context::stageDbCreated)
         } given {

@@ -840,7 +840,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
 
     override fun onChanged(step: Step?) {
         step.markTagForSchExec()?.exec() }
-    private fun Step.exec() = runBlocking { invoke() } // or apply (live step) capture function internally
+    private fun Step.exec() = block() // or apply (live step) capture function internally
 
     override fun commit(step: CoroutineStep) =
         step.markTagForSchCommit().attach()
@@ -982,15 +982,15 @@ inline fun <R> blockAsync(lock: Any, crossinline predicate: Predicate, crossinli
         synchronized(lock) {
             runBlocking {
                 if (predicate()) block() } } }
-inline fun <R, S : R> blockAsyncForResult(lock: Any, crossinline predicate: Predicate, crossinline block: suspend () -> R, crossinline fallback: suspend () -> S? = { null }) =
+inline fun <R, S : R> blockAsyncForResult(lock: Any, crossinline predicate: Predicate, crossinline block: suspend () -> R, noinline fallback: suspend () -> S? = { null }) =
     if (predicate())
         synchronized(lock) {
             runBlocking {
                 if (predicate()) block()
                 else fallback() } }
-    else runBlocking { fallback() }
+    else fallback.block()
 
-inline fun <R, S> blockAsync(lock: AnyKProperty, crossinline block: suspend () -> R, crossinline fallback: suspend () -> S) =
+inline fun <R, S> blockAsync(lock: AnyKProperty, crossinline block: suspend () -> R, noinline fallback: suspend () -> S) =
     blockAsyncForResult(lock, lock::isNotNull, block, fallback)
 
 private fun Runnable.asCoroutine(): CoroutineStep = TODO()
@@ -1173,7 +1173,7 @@ suspend fun delayOrYield(dt: Long = 0L) {
     if (dt > 0) delay(dt)
     else if (dt == 0L) yield() }
 
-suspend fun CoroutineScope.retrieveContext() =
+suspend fun CoroutineScope.currentContext() =
     currentJob()[CONTEXT].asContext()!!
 suspend fun CoroutineScope.registerContext(context: WeakContext) {
     currentJob()[CONTEXT] = context }
@@ -1315,6 +1315,10 @@ infix fun AnyFunction.given(predicate: Predicate) = given(predicate, emptyWork)
 
 infix fun <T, R, S> ((T) -> R).thru(next: (R) -> S): (T) -> S = {
     next(this@thru(it)) }
+
+fun <R> (suspend () -> R).block() = runBlocking { invoke() }
+fun <T, R> (suspend T.() -> R).block(scope: T) = runBlocking { invoke(scope) }
+fun <T, U, R> (suspend T.(U) -> R).block(scope: T, value: U) = runBlocking { invoke(scope, value) }
 
 fun <R> KCallable<R>.with(vararg args: Any?): () -> R = {
     this@with.call(*args) }
