@@ -112,26 +112,26 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
                 sequencer { resetByTagOnError(tag, ::buildDatabase) } }?.let { new ->
                     instance.set(new) } }
 
-        private fun SequencerScope.commitAsyncOrResetByTag(lock: AnyKProperty, tag: String, block: Step, condition: PropertyCondition = ::whenNotNullOrResetByTag, post: Step) =
+        private fun SequencerScope.commitAsyncOrResetByTag(lock: AnyKProperty, tag: String, block: AnyStep, condition: PropertyCondition = ::whenNotNullOrResetByTag, post: AnyStep) =
             commitAsyncOrResetByTag(lock, tag) {
                 block()
                 condition(lock, tag, post) }
-        private fun SequencerScope.commitAsyncOrResetByTag(lock: AnyKProperty, tag: String, block: Step) {
-            blockAsync(lock, block) { resetByTag(tag) } }
+        private fun SequencerScope.commitAsyncOrResetByTag(lock: AnyKProperty, tag: String, block: AnyStep) =
+            blockAsync(lock, block) { resetByTag(tag) }
 
         private fun SequencerScope.synchronize(tag: String, stage: ContextStep?) =
             if (stage !== null) form(stage)
             else ignore
-        private fun SequencerScope.synchronize(tag: String, vararg step: Step, stage: ContextStep?) =
+        private fun SequencerScope.synchronize(tag: String, vararg step: AnyStep, stage: ContextStep?) =
             if (stage !== null) form(stage, *step)
             else ignore
 
         private val ignore get() = @Tag(IGNORE) emptyStep
 
-        private fun SequencerScope.form(stage: ContextStep) = suspend { change(stage); Unit }
-        private fun SequencerScope.form(stage: ContextStep, vararg step: Step) = step.first() then form(stage)
+        private fun SequencerScope.form(stage: ContextStep) = suspend { change(stage) }
+        private fun SequencerScope.form(stage: ContextStep, vararg step: AnyStep) = step.first() then form(stage)
 
-        private fun markTagsForReform(tag: String, stage: ContextStep?, form: Step, job: Job) =
+        private fun markTagsForReform(tag: String, stage: ContextStep?, form: AnyStep, job: Job) =
             form.also { markTagsForCtxReform(tag, stage, form, job) }
 
         override fun commit(step: CoroutineStep) =
@@ -1075,13 +1075,13 @@ private fun reset() { sequencer?.reset() }
 private fun resetByTag(tag: String) { sequencer?.resetByTag(tag) }
 private fun tagOf(stage: ContextStep): String = TODO()
 
-private suspend inline fun whenNotNull(instance: AnyKProperty, stage: String, block: Step) {
+private suspend inline fun whenNotNull(instance: AnyKProperty, stage: String, block: AnyStep) {
     if (instance.get() !== null)
         block() }
-private suspend inline fun whenNotNullOrResetByTag(instance: AnyKProperty, stage: String, block: Step) {
+private suspend inline fun whenNotNullOrResetByTag(instance: AnyKProperty, stage: String, block: AnyStep) =
     if (instance.get() !== null)
         block()
-    else resetByTag(stage) }
+    else resetByTag(stage)
 
 fun CoroutineScope.relaunch(instance: JobKProperty, context: CoroutineContext = Scheduler, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep) =
     relaunch(::launch, instance, context, start, step)
@@ -1471,7 +1471,7 @@ private typealias LiveWorkPredicate = (LiveWork) -> Boolean
 private typealias SequencerWork = Sequencer.() -> Unit
 
 private typealias PropertyPredicate = suspend (AnyKProperty) -> Boolean
-private typealias PropertyCondition = suspend (AnyKProperty, String, Step) -> Unit
+private typealias PropertyCondition = suspend (AnyKProperty, String, AnyStep) -> Any?
 
 private typealias PredicateFunction = suspend () -> Boolean
 private typealias DelayFunction = suspend () -> Long
@@ -1482,6 +1482,7 @@ private typealias CoroutineFunction = (CoroutineStep) -> Any?
 
 typealias Work = () -> Unit
 typealias Step = suspend () -> Unit
+typealias AnyStep = suspend () -> Any?
 typealias CoroutineStep = suspend CoroutineScope.() -> Unit
 typealias Process = android.os.Process
 
