@@ -141,7 +141,7 @@ fun <T : Context> WeakReference<out T>?.unique(context: T) = this ?: WeakReferen
 interface UniqueContext { var startTime: Long }
 fun Context.startTime() = asUniqueContext()?.startTime ?: now()
 
-typealias ContextStep = suspend Context.(Any?) -> Unit
+typealias ContextStep = suspend Context.(Any?) -> Any?
 
 private typealias ExceptionHandler = Thread.UncaughtExceptionHandler
 typealias BundleEditor = Bundle.() -> Unit
