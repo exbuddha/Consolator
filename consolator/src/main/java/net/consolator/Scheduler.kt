@@ -39,11 +39,6 @@ sealed interface SchedulerScope : ResolverScope {
         service(step)
 }
 
-private interface SchedulerKey : CoroutineContext.Key<SchedulerElement>
-private interface SchedulerElement : CoroutineContext.Element
-private lateinit var _key: SchedulerKey
-private lateinit var _element: SchedulerElement
-
 object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, StepObserver, (SchedulerWork) -> Unit {
     fun <T : Resolver> defer(resolver: KClass<out T>, provider: Any = resolver, vararg context: Any?): Unit? {
         fun ResolverKProperty.setResolverThenCommit() =
@@ -907,11 +902,8 @@ interface Resolver : ResolverScope {
         context.lastOrNull().asWork()?.invoke()
 }
 
-fun schedule(step: Step) = Scheduler.postValue(step)
-fun scheduleNow(step: Step) { Scheduler.value = step }
-
-fun service(task: String, vararg context: Any?): Any? =
-    when (task) {
+fun service(vararg context: Any?): Any? =
+    when (val task = context.firstOrNull()) {
         START -> {
             clock = Clock(SVC, Thread.MAX_PRIORITY)
                 .alsoStart()
@@ -947,6 +939,9 @@ private fun service(step: CoroutineStep) =
             it.parameters.size == 2 &&
             it.parameters[1].name == "step"
         }?.call(scope, step) } // message queue reconfiguration
+
+fun schedule(step: Step) = Scheduler.postValue(step)
+fun scheduleNow(step: Step) { Scheduler.value = step }
 
 // runnable <-> message
 fun clock(callback: Runnable) = clock?.post?.invoke(callback)
@@ -1084,11 +1079,16 @@ private suspend inline fun whenNotNullOrResetByTag(instance: AnyKProperty, stage
         block()
     else resetByTag(stage)
 
+private interface SchedulerKey : CoroutineContext.Key<SchedulerElement>
+private interface SchedulerElement : CoroutineContext.Element
+private lateinit var _key: SchedulerKey
+private lateinit var _element: SchedulerElement
+
 fun CoroutineScope.relaunch(instance: JobKProperty, context: CoroutineContext = Scheduler, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep) =
     relaunch(::launch, instance, context, start, step)
 fun LifecycleOwner.relaunch(instance: JobKProperty, context: CoroutineContext = Scheduler, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep) =
     relaunch(::launch, instance, context, start, step)
-private fun relaunch(launcher: KFunction<Job>, instance: JobKProperty, context: CoroutineContext, start: CoroutineStart, step: CoroutineStep) =
+private fun relaunch(launcher: JobKFunction, instance: JobKProperty, context: CoroutineContext, start: CoroutineStart, step: CoroutineStep) =
     instance.require({ !it.isActive }) {
         launcher.call(context, start, step)
     }.also { instance.markTag() }
@@ -1143,12 +1143,16 @@ fun SchedulerScope.keepAliveOrClose(job: Job) =
         keepAliveNode(node) || job.close(node) }
 fun SchedulerScope.keepAliveNode(node: SchedulerNode): Boolean = false
 
-fun Job.close(node: SchedulerNode): Boolean = true
-fun Job.close() {}
+fun LifecycleOwner.detach(job: Job? = null) {}
+fun LifecycleOwner.reattach(job: Job? = null) {}
+fun LifecycleOwner.close(job: Job? = null) {}
 
 fun LifecycleOwner.detach(node: SchedulerNode) {}
 fun LifecycleOwner.reattach(node: SchedulerNode) {}
 fun LifecycleOwner.close(node: SchedulerNode) {}
+
+fun Job.close(node: SchedulerNode): Boolean = true
+fun Job.close() {}
 
 val Job.node: SchedulerNode
     get() = TODO()
@@ -1534,6 +1538,7 @@ fun Any?.asLiveWork() = asType<LiveWork>()
 fun Any?.asJob() = asType<Job>()
 fun Any?.asWork() = asType<Work>()
 
+private typealias JobKFunction = KFunction<Job>
 private typealias JobKProperty = KMutableProperty<Job?>
 private typealias ResolverKClass = KClass<out Resolver>
 private typealias ResolverKProperty = KMutableProperty<out Resolver?>
