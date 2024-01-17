@@ -1169,7 +1169,7 @@ fun <R> SchedulerScope.change(ref: WeakContext, owner: LifecycleOwner, member: K
     EventBus.signal(stage)
 
 suspend fun CoroutineScope.repeatSuspended(predicate: PredicateFunction = @Tag(IS_ACTIVE) { isActive }, block: JobFunction, delayTime: DelayFunction = @Tag(YIELD) { 0L }) {
-    markTags(JOB_REPEAT, predicate, block, delayTime, currentJob())
+    markTagsForJobRepeat(predicate, block, delayTime, currentJob())
     while (predicate()) {
         block(this)
         if (isActive)
