@@ -227,10 +227,10 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             else msg.callback.exec()
         }
         private fun RunnableList.run(msg: Message? = null): Boolean {
-            precursorOf(msg).onEach {
+            precursorOf(msg).onEach { callback ->
                 synchronized(sLock) {
-                    it.exec()
-                    remove(it)
+                    callback.exec()
+                    remove(callback)
                 }
             }
             return true
