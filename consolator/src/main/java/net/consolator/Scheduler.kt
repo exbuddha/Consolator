@@ -554,7 +554,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             else ATTACHED_ALREADY }
         fun attach(index: Int, work: LiveWork, tag: String? = null) = commit { with(seq) {
             if (ln in index..size)
-                ln += 1
+                ln += 1 // also, remark previously tagged works
             attach(index, work)
             markTagsForSeqAttach(tag, index, work)
             index } }
@@ -581,7 +581,8 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             attachOnce(before, work)
 
         private fun markTagsForLaunch(step: SequencerStep, index: IntFunction, context: CoroutineContext? = null) =
-            index().let { step after { markTagsForSeqLaunch(step, it, context, currentJob()) } }
+            commit { index() /* readjusted by remarks */ }.let { index ->
+                step after { markTagsForSeqLaunch(step, index, context, currentJob()) } }
 
         fun attach(async: Boolean = false, step: SequencerStep): LiveWork {
             var index = -1
