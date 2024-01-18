@@ -1263,7 +1263,7 @@ private fun markTagsForSeqAttach(vararg function: Any?, i: Int = 0) =
 private fun markTagsForSeqLaunch(vararg function: Any?, i: Int = 0) =
     function[i]?.markTag()?.also { stepTag ->
         val stepTag = stepTag.string
-        val index = function[i + 1]?.asInt()!!
+        val index = function[i + 1]?.asInt()!! // optionally, readjust by remarks or from seq here instead
         val jobId = function[i + 3].asJob().hashCode()
         function[i + 2]?.let { context ->
             jobs?.save("$stepTag#$index@$jobId.$CONTEXT", false, context.asNullable()) } /* context */ }
