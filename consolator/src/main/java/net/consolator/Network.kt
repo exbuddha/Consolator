@@ -12,7 +12,7 @@ import okhttp3.*
 import kotlinx.coroutines.Dispatchers.IO
 
 val isConnected
-    get() = connectivityRequest!!.canBeSatisfiedBy(networkCapabilities)
+    get() = connectivityRequest?.canBeSatisfiedBy(networkCapabilities) ?: false
 var hasInternet = false
     get() = isConnected && field
 val hasMobile
@@ -39,7 +39,9 @@ private var networkCallback: NetworkCallback? = null
             trySafely { reactToNetworkCapabilitiesChanged.invoke(network, networkCapabilities) }
         }
     }.also { field = it }
-var reactToNetworkCapabilitiesChanged: (Network, NetworkCapabilities) -> Unit = { _, _ -> }
+var reactToNetworkCapabilitiesChanged: (Network, NetworkCapabilities) -> Unit = { network, networkCapabilities ->
+    service @Tag(NET_CAP_UPDATE) { updateNetworkCapabilities(network, networkCapabilities) }
+}
 
 fun LifecycleOwner.registerInternetCallback() {
     relaunch(::networkCaller, IO, step = ::repeatNetworkCallFunction)
@@ -211,6 +213,9 @@ private var connectivityRequest: NetworkRequest? = null
     }.also { field = it }
 private inline fun buildNetworkRequest(block: NetworkRequest.Builder.() -> Unit) =
     NetworkRequest.Builder().apply(block).build()
+
+const val NET_CAP = "$NET-cap"
+const val NET_CAP_UPDATE = "$NET_CAP.$UPDATE"
 
 const val INET = "inet"
 const val INET_CALL = "$INET.$CALL"

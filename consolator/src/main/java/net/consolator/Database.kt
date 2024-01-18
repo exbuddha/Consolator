@@ -58,10 +58,10 @@ abstract class BaseSessionEntity(
 ) : BaseEntity(id)
 
 open class TimeSensitiveSessionEntity(
-    override val id: Long,
-    override var sid: Long? = session?.startTime,
     @ColumnInfo(name = RuntimeSessionEntity.DB_TIME, defaultValue = CURRENT_TIMESTAMP)
     open var dbTime: String,
+    override val id: Long,
+    override var sid: Long? = session?.startTime,
 ) : BaseSessionEntity(id, sid)
 
 @Dao
@@ -103,7 +103,7 @@ data class ThreadEntity(
     val rid: Long,
     @ColumnInfo(name = MAIN)
     val main: Boolean,
-) : TimeSensitiveSessionEntity(id, sid, dbTime) {
+) : TimeSensitiveSessionEntity(dbTime, id, sid) {
     companion object {
         const val RUNTIME_ID = "rid"
         const val MAIN = "main"
@@ -139,7 +139,7 @@ data class ExceptionEntity(
     override var dbTime: String,
     override val id: Long,
     override var sid: Long? = session?.startTime,
-) : TimeSensitiveSessionEntity(id, sid, dbTime) {
+) : TimeSensitiveSessionEntity(dbTime, id, sid) {
     companion object {
         const val TYPE = "type_id"
         const val UNHANDLED = "unhandled"
@@ -195,6 +195,17 @@ abstract class NetworkDatabase : RoomDatabase() {
     companion object {}
 }
 
+open class NetworkEntity(
+    open val nid: Int,
+    override var dbTime: String,
+    override val id: Long,
+    override var sid: Long? = session?.startTime,
+) : TimeSensitiveSessionEntity(dbTime, id, sid) {
+    companion object {
+        const val NETWORK_ID = "nid"
+    }
+}
+
 @Entity(tableName = NetworkStateEntity.TABLE)
 data class NetworkStateEntity(
     @ColumnInfo(name = IS_CONNECTED)
@@ -208,7 +219,7 @@ data class NetworkStateEntity(
     override var dbTime: String,
     override val id: Long,
     override var sid: Long? = session?.startTime,
-) : TimeSensitiveSessionEntity(id, sid, dbTime) {
+) : TimeSensitiveSessionEntity(dbTime, id, sid) {
     companion object {
         const val IS_CONNECTED = "is_connected"
         const val HAS_INTERNET = "has_internet"
@@ -220,6 +231,8 @@ data class NetworkStateEntity(
 
 @Entity(tableName = NetworkCapabilitiesEntity.TABLE)
 data class NetworkCapabilitiesEntity(
+    @ColumnInfo(name = NETWORK_ID)
+    override val nid: Int,
     @ColumnInfo(name = CAPABILITIES)
     var capabilities: String,
     @ColumnInfo(name = DOWNSTREAM)
@@ -231,7 +244,7 @@ data class NetworkCapabilitiesEntity(
     override var dbTime: String,
     override val id: Long,
     override var sid: Long? = session?.startTime,
-) : TimeSensitiveSessionEntity(id, sid, dbTime) {
+) : NetworkEntity(nid, dbTime, id, sid) {
     companion object {
         const val CAPABILITIES = "capabilities"
         const val DOWNSTREAM = "downstream"
@@ -270,8 +283,8 @@ abstract class NetworkDao {
     @Query("DELETE FROM ${NetworkStateEntity.TABLE}")
     abstract suspend fun dropNetworkStates()
 
-    @Query("INSERT INTO ${NetworkCapabilitiesEntity.TABLE}(${NetworkCapabilitiesEntity.CAPABILITIES},${NetworkCapabilitiesEntity.DOWNSTREAM},${NetworkCapabilitiesEntity.UPSTREAM},${NetworkCapabilitiesEntity.STRENGTH},sid) VALUES (:capabilities,:downstream,:upstream,:strength,:sid)")
-    abstract suspend fun updateNetworkCapabilities(capabilities: String, downstream: Int, upstream: Int, strength: Int, sid: Long = session!!.id)
+    @Query("INSERT INTO ${NetworkCapabilitiesEntity.TABLE}(${NetworkEntity.NETWORK_ID},${NetworkCapabilitiesEntity.CAPABILITIES},${NetworkCapabilitiesEntity.DOWNSTREAM},${NetworkCapabilitiesEntity.UPSTREAM},${NetworkCapabilitiesEntity.STRENGTH},sid) VALUES (:nid,:capabilities,:downstream,:upstream,:strength,:sid)")
+    abstract suspend fun updateNetworkCapabilities(capabilities: String, downstream: Int, upstream: Int, strength: Int, nid: Int = network.hashCode(), sid: Long = session!!.id)
 
     @Update(onConflict = OnConflictStrategy.REPLACE)
     abstract suspend fun updateNetworkCapabilities(networkCapabilitiesEntity: NetworkCapabilitiesEntity)

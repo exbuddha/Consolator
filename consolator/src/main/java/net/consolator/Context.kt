@@ -108,14 +108,15 @@ suspend fun updateNetworkState() {
             hasInternet,
             hasMobile,
             hasWifi) } }
-suspend fun updateNetworkCapabilities(networkCapabilities: NetworkCapabilities) {
-    networkDao {
-        with(networkCapabilities) {
+suspend fun updateNetworkCapabilities(network: Network? = net.consolator.network, networkCapabilities: NetworkCapabilities? = net.consolator.networkCapabilities) {
+    networkCapabilities?.run {
+        networkDao {
             updateNetworkCapabilities(
                 capabilities.toJson(),
                 linkDownstreamBandwidthKbps,
                 linkUpstreamBandwidthKbps,
-                signalStrength) } } }
+                signalStrength,
+                network.hashCode()) } } }
 
 fun Context.registerReceiver(filter: IntentFilter) =
     ContextCompat.registerReceiver(this, receiver, filter, null,
@@ -313,6 +314,7 @@ const val IS_ACTIVE = "$IS-$ACTIVE"
 const val PREDICATE = "predicate"
 const val SUCCESS = "success"
 const val ERROR = "error"
+const val UPDATE = "update"
 const val EXCEPTION = "exception"
 const val CAUSE = "cause"
 const val MESSAGE = "message"

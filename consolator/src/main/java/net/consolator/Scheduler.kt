@@ -84,7 +84,9 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
                             @Tag(STAGE_BUILD_NET_DB) { self ->
                             coordinateBuildDatabase(self,
                                 ::netDb,
-                                step = arrayOf(@Tag(STAGE_INIT_NET_DB) { /* update net db records */ }),
+                                step = arrayOf(@Tag(STAGE_INIT_NET_DB) suspend {
+                                    updateNetworkCapabilities()
+                                    updateNetworkState() }),
                                 stage = Context::stageNetDbInitialized) }
                     resume()
                 }
@@ -96,12 +98,12 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             returnItsTag(identifier)?.let { tag ->
                 commitAsyncOrResetByTag(instance, tag, {
                     buildDatabaseOrResetByTag(instance, tag) },
-                    post = markTagsForReform(tag, stage, synchronize(tag, stage), currentJob())) }
-        private suspend inline fun <reified D : RoomDatabase> SequencerScope.coordinateBuildDatabase(identifier: Any?, instance: KMutableProperty<out D?>, vararg step: Step, noinline stage: ContextStep?) =
+                    post = markTagsForReform(tag, stage, synchronize(identifier, stage), currentJob())) }
+        private suspend inline fun <reified D : RoomDatabase> SequencerScope.coordinateBuildDatabase(identifier: Any?, instance: KMutableProperty<out D?>, vararg step: AnyStep, noinline stage: ContextStep?) =
             returnItsTag(identifier)?.let { tag ->
                 commitAsyncOrResetByTag(instance, tag, {
                     buildDatabaseOrResetByTag(instance, tag) },
-                    post = markTagsForReform(tag, stage, synchronize(tag, *step, stage = stage), currentJob())) }
+                    post = markTagsForReform(tag, stage, synchronize(identifier, *step, stage = stage), currentJob())) }
         private suspend inline fun <reified D : RoomDatabase> SequencerScope.buildDatabaseOrResetByTag(instance: KMutableProperty<out D?>, tag: String) {
             ref?.get()?.run<Context, D?> {
                 sequencer { resetByTagOnError(tag, ::buildDatabase) } }?.let { new ->
@@ -114,10 +116,10 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         private fun SequencerScope.commitAsyncOrResetByTag(lock: AnyKProperty, tag: String, block: AnyStep) =
             blockAsync(lock, block) { resetByTag(tag) }
 
-        private fun SequencerScope.synchronize(tag: String, stage: ContextStep?) =
+        private fun SequencerScope.synchronize(identifier: Any?, stage: ContextStep?) =
             if (stage !== null) form(stage)
             else ignore
-        private fun SequencerScope.synchronize(tag: String, vararg step: AnyStep, stage: ContextStep?) =
+        private fun SequencerScope.synchronize(identifier: Any?, vararg step: AnyStep, stage: ContextStep?) =
             if (stage !== null) form(stage, *step)
             else ignore
 
@@ -930,7 +932,7 @@ fun service(vararg context: Any?): Any? =
         }
         else -> Unit
     }
-private fun service(step: CoroutineStep) =
+fun service(step: CoroutineStep) =
     (service ?:
     annotatedScopeOf(step) ?:
     Scheduler).let { scope ->
