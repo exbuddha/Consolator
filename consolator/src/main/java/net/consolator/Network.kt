@@ -21,49 +21,38 @@ val hasWifi
     get() = networkCapabilities?.hasTransport(TRANSPORT_WIFI) ?: false
 
 fun registerNetworkCallback() {
-    connectivityManager.registerDefaultNetworkCallback(networkCallback!!)
-}
+    networkCallback?.let { connectivityManager.registerDefaultNetworkCallback(it) } }
 fun unregisterNetworkCallback() {
-    connectivityManager.unregisterNetworkCallback(networkCallback!!)
-    clearNetworkCallbackObjects()
-}
+    networkCallback?.let { connectivityManager.unregisterNetworkCallback(it) }
+    clearNetworkCallbackObjects() }
 private fun clearNetworkCallbackObjects() {
     networkCallback = null
-    connectivityRequest = null
-}
+    connectivityRequest = null }
 
 private var networkCallback: NetworkCallback? = null
     get() = field ?: object : NetworkCallback() {
         override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
             super.onCapabilitiesChanged(network, networkCapabilities)
-            trySafely { reactToNetworkCapabilitiesChanged.invoke(network, networkCapabilities) }
-        }
+            trySafely { reactToNetworkCapabilitiesChanged.invoke(network, networkCapabilities) } }
     }.also { field = it }
 var reactToNetworkCapabilitiesChanged: (Network, NetworkCapabilities) -> Unit = { network, networkCapabilities ->
-    service @Tag(NET_CAP_UPDATE) { updateNetworkCapabilities(network, networkCapabilities) }
-}
+    service @Tag(NET_CAP_UPDATE) { updateNetworkCapabilities(network, networkCapabilities) } }
 
 fun LifecycleOwner.registerInternetCallback() {
-    relaunch(::networkCaller, IO, step = ::repeatNetworkCallFunction)
-}
+    relaunch(::networkCaller, IO, step = ::repeatNetworkCallFunction) }
 fun registerInternetCallback() {
-    Scheduler.relaunch(::networkCaller, IO, step = ::repeatNetworkCallFunction)
-}
+    Scheduler.relaunch(::networkCaller, IO, step = ::repeatNetworkCallFunction) }
 fun pauseInternetCallback() {
-    repeatNetCallback = false
-}
+    repeatNetCallback = false }
 fun resumeInternetCallback() {
-    repeatNetCallback = true
-}
+    repeatNetCallback = true }
 fun unregisterInternetCallback() {
     networkCaller?.cancel()
     netCallDelayTime = -1L
-    clearInternetCallbackObjects()
-}
+    clearInternetCallbackObjects() }
 private fun clearInternetCallbackObjects() {
     networkCaller = null
-    netCall = null
-}
+    netCall = null }
 
 @JobTreeRoot @NetworkListener
 @Tag(INET)
@@ -80,8 +69,7 @@ var netCall: Call? = null
 private suspend fun repeatNetworkCallFunction(scope: CoroutineScope) {
     scope.repeatSuspended(
         block = networkCallFunction,
-        delayTime = @Tag(INET_DELAY) { netCallDelayTime })
-}
+        delayTime = @Tag(INET_DELAY) { netCallDelayTime }) }
 private var networkCallFunction: JobFunction = @Tag(INET_FUNCTION) { scope ->
     if (repeatNetCallback && isNetCallTimeIntervalExceeded) {
         info(INET_TAG, "Trying to send out http request for network caller...")
@@ -92,24 +80,18 @@ private var networkCallFunction: JobFunction = @Tag(INET_FUNCTION) { scope ->
                     trySafelyCanceling { reactToNetCallResponseReceived.commit(scope, response) } }
             }, { ex ->
                 trySafelyCanceling { reactToNetCallRequestFailed.commit(scope, ex) }
-            })
-        }
-    }
-}
+            }) } } }
 private var reactToNetCallResponseReceived: JobResponseFunction = @Tag(INET_SUCCESS) { _, response ->
     with(response) {
         hasInternet = isSuccessful
         if (isSuccessful)
             lastNetCallResponseTime = now()
         netCallDelayTime = -1L
-        close()
-    }
-    info(INET_TAG, "Received response for internet availability.")
-}
+        close() }
+    info(INET_TAG, "Received response for internet availability.") }
 private var reactToNetCallRequestFailed: JobThrowableFunction = @Tag(INET_ERROR) { _, _ ->
     hasInternet = false
-    warning(INET_TAG, "Failed to send http request for internet availability.")
-}
+    warning(INET_TAG, "Failed to send http request for internet availability.") }
 
 @Tag(INET_DELAY)
 private var netCallDelayTime = -1L
@@ -121,13 +103,11 @@ private var minNetCallTimeInterval = 5000L
 @Tag(INET_INTERVAL)
 private var netCallTimeInterval = minNetCallTimeInterval
     set(value) {
-        field = maxOf(value, minNetCallTimeInterval)
-    }
+        field = maxOf(value, minNetCallTimeInterval) }
 private var lastNetCallResponseTime = 0L
     set(value) {
         if (value > field || value == 0L)
-            field = value
-    }
+            field = value }
 private val isNetCallTimeIntervalExceeded
     get() = isTimeIntervalExceeded(netCallTimeInterval, lastNetCallResponseTime)
 private var repeatNetCallback = true
@@ -163,8 +143,7 @@ operator fun NetCall.get(cmd: String): Any? = when (cmd) {
     INET_DELAY -> netCallDelayTime
     INET_INTERVAL -> netCallTimeInterval
     INET_MIN_INTERVAL -> minNetCallTimeInterval
-    else -> null
-}
+    else -> null }
 operator fun NetCall.set(cmd: String, value: Any?) {
     // keep old value
     lock(cmd) {
@@ -175,10 +154,7 @@ operator fun NetCall.set(cmd: String, value: Any?) {
             INET_ERROR -> reactToNetCallRequestFailed = take(value)
             INET_DELAY -> netCallDelayTime = take(value)
             INET_INTERVAL -> netCallTimeInterval = take(value)
-            INET_MIN_INTERVAL -> minNetCallTimeInterval = take(value)
-        }
-    }
-}
+            INET_MIN_INTERVAL -> minNetCallTimeInterval = take(value) } } }
 private inline fun <reified T : Any> take(value: Any?): T = value.asType()!!
 
 private typealias Respond = (Response) -> Unit
