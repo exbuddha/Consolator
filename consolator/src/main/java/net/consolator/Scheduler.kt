@@ -42,7 +42,7 @@ sealed interface SchedulerScope : ResolverScope {
 object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, StepObserver, (SchedulerWork) -> Unit {
     fun <T : Resolver> defer(resolver: KClass<out T>, provider: Any = resolver, vararg context: Any?): Unit? {
         fun ResolverKProperty.setResolverThenCommit() =
-            reconstruct(provider).getter.call()?.commit(context)
+            reconstruct(provider).get()?.commit(context)
         return when (resolver) {
             MigrationManager::class ->
                 ::applicationMigrationManager.setResolverThenCommit()
