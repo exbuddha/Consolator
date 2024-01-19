@@ -265,7 +265,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         private var sLock = Any()
         var post = fun(callback: Runnable) =
             handler?.post(callback) ?:
-            synchronized(sLock) { queue.add(callback); Unit }
+            synchronized<Unit>(sLock) { queue.add(callback) }
         var postAhead = fun(callback: Runnable) =
             handler?.postAtFrontOfQueue(callback) ?:
             synchronized(sLock) { queue.add(0, callback) }
