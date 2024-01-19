@@ -1120,8 +1120,10 @@ private fun LifecycleOwner.determineScope(step: CoroutineStep) =
     annotatedScopeOf(step) ?: lifecycleScope
 private fun CoroutineScope.determineCoroutine(context: CoroutineContext, start: CoroutineStart, step: CoroutineStep) =
     Triple(
+        // context key <-> step
+        // must return background io context by jit reconfiguration
         if (context.isSchedulerContext()) context
-        else Scheduler + context, // buggy! must return background io context by jit reconfiguration
+        else Scheduler + context,
         start,
         step)
 private fun CoroutineContext.isSchedulerContext() =
