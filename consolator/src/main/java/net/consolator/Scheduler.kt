@@ -1110,8 +1110,8 @@ fun launch(context: CoroutineContext = Scheduler, start: CoroutineStart = Corout
 fun LifecycleOwner.launch(context: CoroutineContext = Scheduler, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep): Job {
     val (scope, task) = determineScopeAndCoroutine(context, start, step)
     val (context, start, step) = task
-    return scope.launch(context, start, step).also { job ->
-        markTagsForJobLaunch(context, start, step, job) } }
+    return scope.launch(context, start, step after { job ->
+        markTagsForJobLaunch(context, start, step, job) }) }
 
 private fun LifecycleOwner.determineScopeAndCoroutine(context: CoroutineContext, start: CoroutineStart, step: CoroutineStep) =
     determineScope(step).let { scope ->
@@ -1446,7 +1446,7 @@ annotation class LaunchScope
 
 @Retention(SOURCE)
 @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
-private annotation class Synchronous
+private annotation class Synchronous(val node: SchedulerNode = Annotation::class)
 
 @Retention(SOURCE)
 @Target(EXPRESSION)
