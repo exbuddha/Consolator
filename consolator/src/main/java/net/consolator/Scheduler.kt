@@ -230,8 +230,9 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         }
         private fun RunnableList.run(msg: Message? = null): Boolean {
             precursorOf(msg).onEach { callback ->
+                callback.exec()
                 synchronized(sLock) {
-                    callback.exec()
+                    // readjust by remarks and use index instead
                     remove(callback)
                 }
             }
@@ -263,12 +264,19 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             }
 
         private var sLock = Any()
+        private fun attach(callback: Runnable) =
+            synchronized<Unit>(sLock) { queue.add(callback) }
+        private fun attach(index: Int, callback: Runnable) =
+            synchronized(sLock) {
+                /* add remark */
+                queue.add(index, callback) }
+
         var post = fun(callback: Runnable) =
             handler?.post(callback) ?:
-            synchronized<Unit>(sLock) { queue.add(callback) }
+            attach(callback)
         var postAhead = fun(callback: Runnable) =
             handler?.postAtFrontOfQueue(callback) ?:
-            synchronized(sLock) { queue.add(0, callback) }
+            attach(0, callback)
 
         fun clearObjects() {
             handler = null
