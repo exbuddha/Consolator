@@ -1073,7 +1073,7 @@ private suspend inline fun whenNotNull(instance: AnyKProperty, stage: String, bl
     if (instance.get() !== null)
         block() }
 private suspend inline fun whenNotNullOrResetByTag(instance: AnyKProperty, stage: String, block: AnyStep) =
-    if (instance.get() !== null)
+    if (instance.isNotNull())
         block()
     else resetByTag(stage)
 
