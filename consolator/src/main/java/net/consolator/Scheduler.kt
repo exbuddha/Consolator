@@ -43,31 +43,7 @@ private interface Synchronizer<T> {
     fun <R> commit(lock: T? = null, block: () -> R): R
 }
 
-object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, StepObserver, Synchronizer<Step>, (SchedulerWork) -> Unit {
-    fun <T : Resolver> defer(resolver: KClass<out T>, provider: Any = resolver, vararg context: Any?): Unit? {
-        fun ResolverKProperty.setResolverThenCommit() =
-            reconstruct(provider).get()?.commit(context)
-        return when (resolver) {
-            MigrationManager::class ->
-                ::applicationMigrationManager.setResolverThenCommit()
-            ConfigurationChangeManager::class ->
-                ::activityConfigurationChangeManager.setResolverThenCommit()
-            NightModeChangeManager::class ->
-                ::activityNightModeChangeManager.setResolverThenCommit()
-            LocalesChangeManager::class ->
-                ::activityLocalesChangeManager.setResolverThenCommit()
-            MemoryManager::class ->
-                ::applicationMemoryManager.setResolverThenCommit()
-            else -> null
-        }
-    }
-
-    private var activityConfigurationChangeManager: ConfigurationChangeManager? = null
-    private var activityNightModeChangeManager: NightModeChangeManager? = null
-    private var activityLocalesChangeManager: LocalesChangeManager? = null
-    var applicationMigrationManager: MigrationManager? = null
-    var applicationMemoryManager: MemoryManager? = null
-
+object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), StepObserver, Synchronizer<Step>, (SchedulerWork) -> Unit {
     sealed interface BaseServiceScope : IBinder, (Intent?) -> IBinder, ResolverScope, VolatileContext, UniqueContext {
         override fun invoke(intent: Intent?): IBinder {
             mode = getModeExtra(intent)
@@ -804,6 +780,30 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     var sequencer: Sequencer? = null
         get() = field.singleton()
 
+    fun <T : Resolver> defer(resolver: KClass<out T>, provider: Any = resolver, vararg context: Any?): Unit? {
+        fun ResolverKProperty.setResolverThenCommit() =
+            reconstruct(provider).get()?.commit(context)
+        return when (resolver) {
+            MigrationManager::class ->
+                ::applicationMigrationManager.setResolverThenCommit()
+            ConfigurationChangeManager::class ->
+                ::activityConfigurationChangeManager.setResolverThenCommit()
+            NightModeChangeManager::class ->
+                ::activityNightModeChangeManager.setResolverThenCommit()
+            LocalesChangeManager::class ->
+                ::activityLocalesChangeManager.setResolverThenCommit()
+            MemoryManager::class ->
+                ::applicationMemoryManager.setResolverThenCommit()
+            else -> null
+        }
+    }
+
+    private var activityConfigurationChangeManager: ConfigurationChangeManager? = null
+    private var activityNightModeChangeManager: NightModeChangeManager? = null
+    private var activityLocalesChangeManager: LocalesChangeManager? = null
+    var applicationMigrationManager: MigrationManager? = null
+    var applicationMemoryManager: MemoryManager? = null
+
     fun windDownClock() {
         clock?.apply {
             Process.setThreadPriority(threadId, Process.THREAD_PRIORITY_DEFAULT)
@@ -834,6 +834,18 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         }
     }
 
+    override fun commit(step: CoroutineStep) =
+        step.markTagForSchCommit().attach()
+    private fun CoroutineStep.attach(enlist: CoroutineFunction? = ::clock, transfer: CoroutineFunction = ::reattach) =
+        when (enlist?.invoke(this)) {
+            null, false -> transfer(@Unlisted this)
+            true -> true
+            else -> transfer(@Enlisted this) }
+    private fun reattach(step: CoroutineStep) =
+        trySafelyForResult { detach(step) }?.run(::launch)
+    private fun detach(step: CoroutineStep) =
+        Clock.scheduled<Runnable>(step)?.detach()?.asCoroutine() ?: step
+
     override fun <R> fold(initial: R, operation: (R, CoroutineContext.Element) -> R): R {
         // context expansion by attachment: register operation callback.
         // return a default state or a new one depending on the initial value.
@@ -851,18 +863,6 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     override fun onChanged(step: Step?) {
         step.markTagForSchExec()?.run { commit(this, ::block) } }
     override fun <R> commit(lock: Step?, block: () -> R) = block() // or apply (live step) capture function internally
-
-    override fun commit(step: CoroutineStep) =
-        step.markTagForSchCommit().attach()
-    private fun CoroutineStep.attach(enlist: CoroutineFunction? = ::clock, transfer: CoroutineFunction = ::reattach) =
-        when (enlist?.invoke(this)) {
-            null, false -> transfer(@Unlisted this)
-            true -> true
-            else -> transfer(@Enlisted this) }
-    private fun reattach(step: CoroutineStep) =
-        trySafelyForResult { detach(step) }?.run(::launch)
-    private fun detach(step: CoroutineStep) =
-        Clock.scheduled<Runnable>(step)?.detach()?.asCoroutine() ?: step
 
     @OptIn(ExperimentalCoroutinesApi::class)
     object EventBus : AbstractFlow<Any?>() {
