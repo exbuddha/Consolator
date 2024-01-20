@@ -916,24 +916,11 @@ interface Resolver : ResolverScope {
 fun service(vararg context: Any?): Any? =
     when (val task = context.firstOrNull()) {
         START -> {
-            clock = Clock(SVC, Thread.MAX_PRIORITY)
-                .alsoStart()
             Scheduler.observe()
-            currentThreadJob()[CLOCK_INIT] = launch(IO) {
-                repeatSuspended(
-                    block = { clock?.apply {
-                        if (handler !== null) {
-                            info(SVC_TAG, "Sending out initial clock message.")
-                            postAhead.invoke {
-                                // turn clock until scope is active
-                                info(SVC_TAG, "Clock is detected.")
-                            }
-                            cancel()
-                        }
-                        else debug(SVC_TAG, "Waiting for clock to start...")
-                    } },
-                    delayTime = { currentJob()[DELAY].asLong() ?: VIEW_MIN_DELAY })
-            }
+            clock = Clock(SVC, Thread.MAX_PRIORITY) @Tag(CLOCK_INIT) @Synchronous {
+                // turn clock until scope is active
+                info(SVC_TAG, "Clock is detected.")
+            }.alsoStart()
             with(foregroundContext) {
                 startService(intendFor(BaseService::class)
                     .putExtra(START_TIME_KEY, startTime()))
