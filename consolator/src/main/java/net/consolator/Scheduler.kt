@@ -200,14 +200,13 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             }
             queue.run()
         }
-        private fun turn(msg: Message) {
+        private fun turn(msg: Message) =
             if (isSynchronized(msg))
                 commit(msg) {
-                    queue.run(msg) || return@commit
-                    msg.callback.run()
+                    if (queue.run(msg))
+                        msg.callback.run()
                 }
             else msg.callback.exec()
-        }
         private fun RunnableList.run(msg: Message? = null): Boolean {
             precursorOf(msg).onEach { callback ->
                 callback.exec()
