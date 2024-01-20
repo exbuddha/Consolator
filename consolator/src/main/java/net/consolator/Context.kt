@@ -217,21 +217,22 @@ inline fun <reified T> KMutableProperty<out T?>.reconstruct(provider: Any = T::c
             provider.emptyConstructor().call()
         else
             provider.asObjectProvider()?.invoke(T::class) } }
-fun <T> KMutableProperty<out T?>.renew(constructor: () -> T? = ::get) {
-    if (get() === null)
+inline fun <T> KMutableProperty<out T?>.renew(constructor: () -> T? = ::get) {
+    if (isNull())
         set(constructor()) }
-fun <T> KMutableProperty<out T?>.require(predicate: (T) -> Boolean = ::trueWhenNull, constructor: () -> T? = ::get) =
+inline fun <T> KMutableProperty<out T?>.require(predicate: (T) -> Boolean = ::trueWhenNull, constructor: () -> T? = ::get) =
     get().let { old ->
         if (old === null || predicate(old))
             constructor().also { new -> set(new) }
         else old }
-fun <T> KMutableProperty<out T?>.requireAsync(predicate: (T) -> Boolean = ::trueWhenNull, constructor: () -> T? = ::get) =
+inline fun <T> KMutableProperty<out T?>.requireAsync(predicate: (T) -> Boolean = ::trueWhenNull, constructor: () -> T? = ::get) =
     require(predicate) {
         synchronized(this) {
             require(predicate, constructor) } }
 fun <T> KMutableProperty<out T?>.set(vararg args: Any?) = setter.call(*args)
 
 fun <T> KProperty<T?>.get() = getter.call()
+fun <T> KProperty<T?>.isNull() = get() === null
 fun <T> KProperty<T?>.isNotNull() = get() !== null
 
 @Retention(SOURCE)
