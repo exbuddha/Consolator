@@ -39,7 +39,11 @@ sealed interface SchedulerScope : ResolverScope {
         service(step)
 }
 
-object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, StepObserver, (SchedulerWork) -> Unit {
+private interface Synchronizer<T> {
+    fun <R> commit(lock: T? = null, block: () -> R): R
+}
+
+object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, StepObserver, Synchronizer<Step>, (SchedulerWork) -> Unit {
     fun <T : Resolver> defer(resolver: KClass<out T>, provider: Any = resolver, vararg context: Any?): Unit? {
         fun ResolverKProperty.setResolverThenCommit() =
             reconstruct(provider).get()?.commit(context)
@@ -180,7 +184,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     open class Clock(
         name: String,
         priority: Int = currentThread.priority
-    ) : HandlerThread(name, priority) {
+    ) : HandlerThread(name, priority), Synchronizer<Any> {
         var handler: Handler? = null
         private var queue: RunnableList
 
@@ -255,11 +259,11 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
             annotations.any { it is Synchronous }
 
         private lateinit var hLock: Lock
-        fun <R> commit(msg: Message? = null, block: () -> R) =
-            synchronized(hLock(msg, block)) {
-                hLock = Lock.Closed(msg, block)
+        override fun <R> commit(lock: Any?, block: () -> R) =
+            synchronized(hLock(lock, block)) {
+                hLock = Lock.Closed(lock, block)
                 block().also {
-                    hLock = Lock.Open(msg, block, it)
+                    hLock = Lock.Open(lock, block, it)
                 }
             }
 
@@ -295,7 +299,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         }
     }
 
-    class Sequencer {
+    class Sequencer : Synchronizer<LiveWork> {
         fun io(async: Boolean = false, step: SequencerStep) = attach(IO, async, step)
         fun io(index: Int, async: Boolean = false, step: SequencerStep) = attach(index, IO, async, step)
         fun ioStart(step: SequencerStep) = io(false, step).also { start() }
@@ -383,9 +387,8 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         private var latestStep: LiveStep? = null
         private var latestCapture: Any? = null
 
-        fun <R> commit(block: () -> R) = synchronized(mLock, block)
-        private val mLock: Any
-            get() = seq // lock resolution may interrupt thread here
+        private val mLock: Any get() = seq
+        override fun <R> commit(lock: LiveWork?, block: () -> R) = synchronized(mLock, block)
 
         private fun init() {
             ln = -1
@@ -846,8 +849,8 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
     }
 
     override fun onChanged(step: Step?) {
-        step.markTagForSchExec()?.exec() }
-    private fun Step.exec() = block() // or apply (live step) capture function internally
+        step.markTagForSchExec()?.run { commit(this, ::block) } }
+    override fun <R> commit(lock: Step?, block: () -> R) = block() // or apply (live step) capture function internally
 
     override fun commit(step: CoroutineStep) =
         step.markTagForSchCommit().attach()
