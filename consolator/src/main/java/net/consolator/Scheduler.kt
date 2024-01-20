@@ -1070,7 +1070,7 @@ private fun resetByTag(tag: String) { sequencer?.resetByTag(tag) }
 private fun tagOf(stage: ContextStep): String = TODO()
 
 private suspend inline fun whenNotNull(instance: AnyKProperty, stage: String, block: AnyStep) {
-    if (instance.get() !== null)
+    if (instance.isNotNull())
         block() }
 private suspend inline fun whenNotNullOrResetByTag(instance: AnyKProperty, stage: String, block: AnyStep) =
     if (instance.isNotNull())
