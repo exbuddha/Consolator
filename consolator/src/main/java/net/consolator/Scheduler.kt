@@ -129,7 +129,7 @@ object Scheduler : MutableLiveData<Step?>(), SchedulerScope, CoroutineContext, S
         private fun SequencerScope.form(stage: ContextStep, vararg step: AnyStep) = step.first() then form(stage)
 
         private fun markTagsForReform(tag: String, stage: ContextStep?, form: AnyStep, job: Job) =
-            form.also { markTagsForCtxReform(tag, stage, form, job) }
+            form after { markTagsForCtxReform(tag, stage, form, job) }
 
         override fun commit(step: CoroutineStep) =
             step.markTagForSvcCommit().attach(::clockAhead)
