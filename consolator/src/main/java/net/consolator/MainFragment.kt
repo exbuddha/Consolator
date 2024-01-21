@@ -18,8 +18,8 @@ class MainFragment : BaseFragment() {
         info(UI_TAG, "Main fragment view is created.")
     }
 
-    override var overlay = fun(_: View, bundle: Bundle?): Pair<Fragment?, Int?> =
-        when (bundle?.getShort(ACTION_KEY, -1)) {
+    override var overlay = fun(_: View, _: Bundle?, action: Short): Pair<Fragment?, Int?> =
+        when (action) {
             COMMIT_NAV_MAIN_UI ->
                 UI(requireActivity(), ::screenEventInterceptor).apply {
                     // ...

@@ -28,14 +28,13 @@ import net.consolator.Scheduler.applicationMemoryManager
 import net.consolator.Scheduler.applicationMigrationManager
 
 abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
-    protected abstract var overlay: (View, Bundle?) -> Pair<Fragment?, Int?>
+    protected abstract var overlay: (View, Bundle?, Short) -> Pair<Fragment?, Int?>
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         fun transit(action: Short) {
             val (overlay, transition) =
-                overlay(view, savedInstanceState.reconstruct().apply {
-                    putShort(ACTION_KEY, action) })
+                overlay(view, savedInstanceState, action)
             if (overlay !== null)
                 schedule {
                     parentFragmentManager.commit {
