@@ -984,7 +984,7 @@ inline fun <R, S : R> blockAsyncForResult(lock: Any, crossinline predicate: Pred
                 else fallback() } }
     else fallback.block()
 
-inline fun <R, S> blockAsync(lock: AnyKProperty, crossinline block: suspend () -> R, noinline fallback: suspend () -> S) =
+inline fun <R> blockAsync(lock: AnyKProperty, crossinline block: suspend () -> R, noinline fallback: Step = emptyStep) =
     blockAsyncForResult(lock, lock::isNotNull, block, fallback)
 
 private fun Runnable.asCoroutine(): CoroutineStep = TODO()
