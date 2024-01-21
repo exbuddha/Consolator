@@ -53,8 +53,7 @@ abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
                     }
                     ACTION_MIGRATE_APP ->
                         defer<MigrationManager>(::onViewCreated)
-                }
-            }
+                } }
         } onError { job ->
             transit(ABORT_NAV_MAIN_UI)
             State[1] += Pending
@@ -99,9 +98,7 @@ abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
                 // catch cancellation and/or error
                 when (err) {
                     is CancellationException -> State[1] += Suspending
-                }
-            }
-        }
+                } } }
     }
 
     override fun onResume() {
