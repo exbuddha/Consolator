@@ -44,7 +44,7 @@ private interface Synchronizer<T> {
 }
 
 object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), StepObserver, Synchronizer<Step>, (SchedulerWork) -> Unit {
-    sealed interface BaseServiceScope : IBinder, (Intent?) -> IBinder, ResolverScope, VolatileContext, UniqueContext {
+    sealed interface BaseServiceScope : ResolverScope, IBinder, (Intent?) -> IBinder, VolatileContext, UniqueContext {
         override fun invoke(intent: Intent?): IBinder {
             mode = getModeExtra(intent)
             if (intent !== null && intent.hasCategory(START_TIME_KEY))
