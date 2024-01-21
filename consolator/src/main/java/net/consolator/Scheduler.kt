@@ -203,13 +203,13 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         private fun turn(msg: Message) =
             if (isSynchronized(msg))
                 commit(msg) {
-                    if (queue.run(msg))
+                    if (queue.run(msg, false))
                         msg.callback.run()
                 }
             else msg.callback.exec()
-        private fun RunnableList.run(msg: Message? = null): Boolean {
+        private fun RunnableList.run(msg: Message? = null, isNotLocked: Boolean = true): Boolean {
             precursorOf(msg).onEach { callback ->
-                callback.exec()
+                callback.exec(isNotLocked)
                 synchronized(sLock) {
                     // readjust by remarks and use index instead
                     remove(callback)
@@ -218,8 +218,8 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             return true
         }
         private fun precursorOf(msg: Message?) = queue
-        private fun Runnable.exec() {
-            if (isSynchronized(this))
+        private fun Runnable.exec(isNotLocked: Boolean = true) {
+            if (isNotLocked && isSynchronized(this))
                 commit(block = @Synchronous ::run)
             else run()
         }
