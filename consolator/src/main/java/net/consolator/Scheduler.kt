@@ -49,8 +49,8 @@ fun commit(step: CoroutineStep) =
     Scheduler).let { scope ->
         scope::class.memberFunctions.find {
             it.name == "commit" &&
-                    it.parameters.size == 2 &&
-                    it.parameters[1].name == "step"
+            it.parameters.size == 2 &&
+            it.parameters[1].name == "step"
         }?.call(scope, step) } // message queue reconfiguration
 fun commit(vararg context: Any?): Any? =
     when (val task = context.firstOrNull()) {
