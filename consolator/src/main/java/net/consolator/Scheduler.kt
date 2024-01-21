@@ -243,7 +243,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         private fun precursorOf(msg: Message?) = queue
         private fun Runnable.exec(isNotLocked: Boolean = true) {
             if (isNotLocked && isSynchronized(this))
-                commit(block = @Synchronous ::run)
+                commit(block = ::run)
             else run()
         }
         private fun isSynchronized(msg: Message) =
@@ -1329,7 +1329,7 @@ fun <R> call(vararg args: Any?): (KCallable<R>) -> R = {
     it.call(*args) }
 
 suspend fun currentJob() = currentCoroutineContext().job
-fun currentThreadJob() = runBlocking { currentJob() }
+fun currentThreadJob() = ::currentJob.block()
 
 val currentThread
     get() = Thread.currentThread()
