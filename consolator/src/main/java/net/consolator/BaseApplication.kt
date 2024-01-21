@@ -23,7 +23,7 @@ open class BaseApplication : Application(), ObjectProvider, UniqueContext {
     override fun onCreate() {
         super.onCreate()
         instance = this
-        service(START)
+        commit(START)
     }
 
     override fun onTrimMemory(level: Int) {

@@ -36,12 +36,35 @@ interface ResolverScope : CoroutineScope {
 
 sealed interface SchedulerScope : ResolverScope {
     override fun commit(step: CoroutineStep) =
-        service(step)
+        net.consolator.commit(step)
 }
 
 private interface Synchronizer<T> {
     fun <R> commit(lock: T? = null, block: () -> R): R
 }
+
+fun commit(step: CoroutineStep) =
+    (service ?:
+    annotatedScopeOf(step) ?:
+    Scheduler).let { scope ->
+        scope::class.memberFunctions.find {
+            it.name == "commit" &&
+                    it.parameters.size == 2 &&
+                    it.parameters[1].name == "step"
+        }?.call(scope, step) } // message queue reconfiguration
+fun commit(vararg context: Any?): Any? =
+    when (val task = context.firstOrNull()) {
+        START -> {
+            Scheduler.observe()
+            clock = Clock(SVC, Thread.MAX_PRIORITY) @Tag(CLOCK_INIT) @Synchronous {
+                // turn clock until scope is active
+                info(SVC_TAG, "Clock is detected.")
+            }.alsoStart()
+            with(foregroundContext) {
+                startService(intendFor(BaseService::class)
+                    .putExtra(START_TIME_KEY, startTime()))
+            } }
+        else -> Unit }
 
 object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), StepObserver, Synchronizer<Step>, (SchedulerWork) -> Unit {
     sealed interface BaseServiceScope : ResolverScope, IBinder, (Intent?) -> IBinder, VolatileContext, UniqueContext {
@@ -914,31 +937,6 @@ interface Resolver : ResolverScope {
     fun commit(vararg context: Any?) =
         context.lastOrNull().asWork()?.invoke()
 }
-
-fun service(vararg context: Any?): Any? =
-    when (val task = context.firstOrNull()) {
-        START -> {
-            Scheduler.observe()
-            clock = Clock(SVC, Thread.MAX_PRIORITY) @Tag(CLOCK_INIT) @Synchronous {
-                // turn clock until scope is active
-                info(SVC_TAG, "Clock is detected.")
-            }.alsoStart()
-            with(foregroundContext) {
-                startService(intendFor(BaseService::class)
-                    .putExtra(START_TIME_KEY, startTime()))
-            }
-        }
-        else -> Unit
-    }
-fun service(step: CoroutineStep) =
-    (service ?:
-    annotatedScopeOf(step) ?:
-    Scheduler).let { scope ->
-        scope::class.memberFunctions.find {
-            it.name == "commit" &&
-            it.parameters.size == 2 &&
-            it.parameters[1].name == "step"
-        }?.call(scope, step) } // message queue reconfiguration
 
 fun schedule(step: Step) = Scheduler.postValue(step)
 fun scheduleNow(step: Step) { Scheduler.value = step }
