@@ -910,7 +910,7 @@ inline fun <reified T : Resolver> BaseActivity.defer(member: UnitKFunction, vara
 
 interface Resolver : ResolverScope {
     override fun commit(step: CoroutineStep) =
-        commit(arrayOf(blockOf(step)))
+        commit(blockOf(step))
     fun commit(vararg context: Any?) =
         context.lastOrNull().asWork()?.invoke()
 }
