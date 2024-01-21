@@ -29,24 +29,21 @@ import net.consolator.Scheduler.applicationMigrationManager
 
 abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
     protected abstract var overlay: (View, Bundle?) -> Pair<Fragment?, Int?>
-    private inline fun transit(view: View, savedInstanceState: Bundle?, crossinline editor: BundleEditor) {
-        val (overlay, transition) =
-            overlay(view, savedInstanceState.reconstruct().apply { editor() })
-        if (overlay !== null)
-            schedule {
-                parentFragmentManager.commit {
-                    setTransition(transition ?: TRANSIT_FRAGMENT_OPEN)
-                    replace(
-                        this@BaseFragment.id,
-                        overlay)
-                }
-            }
-    }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        fun transit(action: Short) = transit(view, savedInstanceState) {
-            putShort(ACTION_KEY, action) }
+        fun transit(action: Short) {
+            val (overlay, transition) =
+                overlay(view, savedInstanceState.reconstruct().apply {
+                    putShort(ACTION_KEY, action) })
+            if (overlay !== null)
+                schedule {
+                    parentFragmentManager.commit {
+                        setTransition(transition ?: TRANSIT_FRAGMENT_OPEN)
+                        replace(
+                            this@BaseFragment.id,
+                            overlay)
+                    } } }
         launch(start = LAZY) @MainViewGroup @Listening {
             EventBus.collectSafely {
                 when (it?.transit) {

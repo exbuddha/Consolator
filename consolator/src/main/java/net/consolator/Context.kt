@@ -145,7 +145,6 @@ fun Context.startTime() = asUniqueContext()?.startTime ?: now()
 typealias ContextStep = suspend Context.(Any?) -> Any?
 
 private typealias ExceptionHandler = Thread.UncaughtExceptionHandler
-typealias BundleEditor = Bundle.() -> Unit
 
 typealias AnyArray = Array<*>
 typealias AnyFunction = () -> Any?
