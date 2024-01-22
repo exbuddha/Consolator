@@ -5,7 +5,6 @@ import android.view.*
 import android.view.GestureDetector.*
 import androidx.fragment.app.*
 import kotlin.reflect.*
-import kotlinx.coroutines.*
 
 object UI : (Context, ScreenEventInterceptor?) -> Pair<Fragment, Int?> {
     override fun invoke(context: Context, interceptor: ScreenEventInterceptor?): Pair<Fragment, Int?> =
@@ -25,22 +24,18 @@ private open class OverlayFragment(
                 // optionally, other/all event listener functionality can be given to this class.
             }
 
-    private fun <R> intercept(member: KFunction<R>, vararg args: Any, postback: Runnable? = null) =
+    private fun <R> intercept(member: KFunction<R>, vararg args: Any, postback: AnyToAnyFunction? = null) =
         interceptor?.invoke(this, member, args, postback).let { result ->
             fun postback(): Boolean {
-                postback?.run() ?: return false
-                return true
-            }
+                postback?.invoke(result) ?: return false
+                return true }
             if (result === null)
                 postback()
             else {
                 val (callback, filter) = result
                 if (filter == true)
                     callback?.invoke() ?: postback()
-                else
-                    postback()
-            }
-        }
+                else postback() } }
 }
 
-private typealias ScreenEventInterceptor = (Any, AnyKFunction, AnyArray, Runnable?) -> Pair<Predicate?, Boolean?>?
+private typealias ScreenEventInterceptor = (Any, AnyKFunction, AnyArray, AnyToAnyFunction?) -> Interception

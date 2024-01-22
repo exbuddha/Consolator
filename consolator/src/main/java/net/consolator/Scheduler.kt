@@ -145,9 +145,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             intent?.getIntExtra(MODE_KEY, mode ?: START_NOT_STICKY)
 
         fun clearObjects() {
-            mode = null
-        }
-        companion object {}
+            mode = null }
 
         override fun getInterfaceDescriptor(): String? {
             return null
@@ -286,14 +284,16 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         }
         companion object : MutableList<RunnableList> by mutableListOf() {
             inline fun <reified R> scheduled(noinline step: CoroutineStep): R? = when (R::class) {
-                Message::class -> msgOf(step).asType()
+                Any::class -> (runnableOf(step) ?: msgOf(step)).asType()
                 Runnable::class -> runnableOf(step).asType()
+                Message::class -> msgOf(step).asType()
                 else -> null }
             fun msgOf(step: CoroutineStep): Message? = null
             fun runnableOf(step: CoroutineStep): Runnable? = null
-            private fun stepOf(callback: Runnable): CoroutineStep? = null
-            fun delayOf(msg: Message): Long? = null
-            fun timeOf(msg: Message): Long? = null
+            fun stepOf(callback: Runnable): CoroutineStep? = null
+
+            fun delayOf(step: CoroutineStep): Long? = null
+            fun timeOf(step: CoroutineStep): Long? = null
         }
     }
 
@@ -866,7 +866,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
     private fun reattach(step: CoroutineStep) =
         trySafelyForResult { detach(step) }?.run(::launch)
     private fun detach(step: CoroutineStep) =
-        Clock.scheduled<Runnable>(step)?.detach()?.asCoroutine() ?: step
+        Clock.scheduled<Any>(step)?.detach()?.asCoroutine() ?: step
 
     override fun <R> fold(initial: R, operation: (R, CoroutineContext.Element) -> R): R {
         // context expansion by attachment: register operation callback.
@@ -987,10 +987,20 @@ inline fun <R, S : R> blockAsyncForResult(lock: Any, crossinline predicate: Pred
 inline fun <R> blockAsync(lock: AnyKProperty, crossinline block: suspend () -> R, noinline fallback: Step = emptyStep) =
     blockAsyncForResult(lock, lock::isNotNull, block, fallback)
 
+private fun Any.detach(): Runnable? = when (this) {
+    is Runnable -> detach()
+    is Message -> detach()?.asRunnable()
+    else -> null }
+
 private fun Runnable.asCoroutine(): CoroutineStep = TODO()
+private fun Runnable.asMessage() =
+    with(Clock) { stepOf(this@asMessage)?.let { msgOf(it) } }
 private fun Runnable.detach(): Runnable? = null
+private fun Runnable.reattach() {}
+private fun Runnable.close() {}
 
 private fun Message.asCoroutine(): CoroutineStep = TODO()
+private fun Message.asRunnable() = callback
 private fun Message.detach(): Message? = null
 private fun Message.reattach() {}
 private fun Message.close() {}

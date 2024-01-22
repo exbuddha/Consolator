@@ -29,5 +29,7 @@ class MainFragment : BaseFragment() {
             else ->
                 throw BaseImplementationRestriction
         }
-    private inline fun <reified R> screenEventInterceptor(listener: Any, callback: KFunction<R>, vararg args: Any?, postback: Runnable?): Pair<Predicate?, Boolean?>? = null
+    private inline fun <reified R> screenEventInterceptor(listener: Any, callback: KFunction<R>, vararg args: Any?, noinline postback: AnyToAnyFunction?): Interception = null
 }
+
+typealias Interception = Pair<Predicate?, Boolean?>?
