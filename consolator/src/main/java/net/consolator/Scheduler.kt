@@ -1553,10 +1553,8 @@ private fun <R> AnyKCallable.commit(block: () -> R) = synchronized(this, block)
 
 private typealias ID = Short
 sealed interface State {
-    object Failed : Resolved
     object Succeeded : Resolved
-    object Pending : Unresolved, Ambiguous
-    object Suspending : Ambiguous
+    object Failed : Resolved
 
     interface Resolved : State {
         companion object : Resolved }
@@ -1570,7 +1568,7 @@ sealed interface State {
         fun of(string: String): State = Ambiguous
         operator fun get(id: ID): State = when (id.toInt()) {
             2 -> if (logDb === null || netDb === null)
-                Unresolved
+                    Unresolved
                 else Resolved
             else ->
                 Lock.Open
@@ -1603,8 +1601,8 @@ sealed interface State {
     operator fun set(id: ID, state: Any) {}
     operator fun plus(state: Any): State {
         when {
-            this === State[2] && state is Pending ->
-                if (State[2] is Unresolved)
+            this === State[2] && state is Ambiguous ->
+                if (State[2] !is Resolved)
                     State[2] = Succeeded
         }
         return this

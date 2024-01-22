@@ -14,10 +14,10 @@ import net.consolator.Event.Retrying
 import net.consolator.Event.Signaling
 import net.consolator.Path.Parallel
 import net.consolator.Scheduler.EventBus
-import net.consolator.State.Pending
+import net.consolator.State.Ambiguous
+import net.consolator.State.Failed
 import net.consolator.State.Resolved
 import net.consolator.State.Succeeded
-import net.consolator.State.Suspending
 import net.consolator.State.Unresolved
 import kotlinx.coroutines.CoroutineStart.LAZY
 import kotlinx.coroutines.Dispatchers.IO
@@ -56,7 +56,7 @@ abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
                 } }
         } onError { job ->
             transit(ABORT_NAV_MAIN_UI)
-            State[1] += Pending
+            State[1] = Failed
             keepAliveOrClose(job)
         } onTimeout {
             State[1] = Unresolved
@@ -90,14 +90,14 @@ abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
         } otherwise(
             SchedulerScope::retry
         ) onError {
-            State[1] = Suspending
+            State[1] = Ambiguous
         } onCancel(
             SchedulerScope::retry
         ) then {
             enact(it) { err ->
                 // catch cancellation and/or error
                 when (err) {
-                    is CancellationException -> State[1] += Suspending
+                    is CancellationException -> State[1] += Ambiguous
                 } } }
     }
 

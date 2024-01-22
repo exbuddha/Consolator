@@ -3,7 +3,6 @@ package net.consolator
 import android.content.*
 import android.content.pm.*
 import android.net.*
-import android.os.*
 import android.util.*
 import androidx.annotation.*
 import androidx.core.content.*
@@ -17,7 +16,7 @@ import kotlin.reflect.*
 import kotlinx.coroutines.*
 import com.google.gson.Gson
 import net.consolator.Path.Diverging
-import net.consolator.State.Pending
+import net.consolator.State.Ambiguous
 import net.consolator.State.Resolved
 import net.consolator.Scheduler.EventBus.signal
 import android.Manifest.permission.ACCESS_NETWORK_STATE
@@ -68,7 +67,7 @@ fun Context.stageDbCreated(scope: Any?) {
 @Diverging([STAGE_BUILD_SESSION])
 fun Context.stageSessionCreated(scope: Any?) {
     // update db records
-    State[1] = Resolved
+    State[1] += Resolved
 }
 
 @Diverging([STAGE_BUILD_LOG_DB])
@@ -76,13 +75,13 @@ fun Context.stageLogDbCreated(scope: Any?) {
     mainUncaughtExceptionHandler = @Tag(UNCAUGHT_DB) ExceptionHandler { th, ex ->
         // record in db safely
     }
-    State[2] += Pending
+    State[2] += Ambiguous
 }
 
 @Diverging([STAGE_BUILD_NET_DB])
 fun Context.stageNetDbInitialized(scope: Any?) {
     // update net function pointers
-    State[2] += Pending
+    State[2] += Ambiguous
 }
 
 fun <D : RoomDatabase> Context.createDatabase(cls: Class<D>, name: String?) =
