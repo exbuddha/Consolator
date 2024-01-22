@@ -60,7 +60,7 @@ fun Context.changeGlobally(ref: WeakContext = weakRef()!!, owner: LifecycleOwner
     signal(stage)
 
 @Diverging([STAGE_BUILD_APP_DB])
-fun Context.stageDbCreated(scope: Any?) {
+fun Context.stageAppDbCreated(scope: Any?) {
     // bootstrap
 }
 
