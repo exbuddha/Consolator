@@ -41,9 +41,6 @@ private interface Synchronizer<T> {
     fun <R> commit(lock: T? = null, block: () -> R): R
 }
 
-@OptIn(ExperimentalCoroutinesApi::class)
-abstract class Buffer : AbstractFlow<Any?>()
-
 fun commit(step: CoroutineStep) =
     (service ?:
     annotatedScopeOf(step) ?:
@@ -186,48 +183,37 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         var handler: Handler? = null
         private var queue: RunnableList
 
-        init {
-            queue = java.util.LinkedList()
-        }
+        init { queue = java.util.LinkedList() }
         constructor() : this(CLK)
         constructor(callback: Runnable) : this() {
-            queue.add(callback)
-        }
+            queue.add(callback) }
         constructor(name: String, priority: Int = currentThread.priority, callback: Runnable) : this(name, priority) {
-            queue.add(callback)
-        }
+            queue.add(callback) }
 
         var id = -1
         override fun start() {
             commitAsync(this, { !isAlive }) {
                 id = synchronized(Companion) {
                     add(queue)
-                    size
-                }
+                    size }
                 super.start()
-            }
-        }
+            } }
         fun alsoStart(): Clock {
             start()
-            return this
-        }
+            return this }
 
         override fun run() {
             hLock = Lock.Open()
             handler = object : Handler(looper) {
                 override fun handleMessage(msg: Message) {
                     super.handleMessage(msg)
-                    turn(msg)
-                }
-            }
-            queue.run()
-        }
+                    turn(msg) } }
+            queue.run() }
         private fun turn(msg: Message) =
             if (isSynchronized(msg))
                 commit(msg) {
                     if (queue.run(msg, false))
-                        msg.callback.run()
-                }
+                        msg.callback.run() }
             else msg.callback.exec()
         private fun RunnableList.run(msg: Message? = null, isNotLocked: Boolean = true): Boolean {
             precursorOf(msg).onEach { callback ->
@@ -235,16 +221,14 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
                 synchronized(sLock) {
                     // readjust by remarks and use index instead
                     remove(callback)
-                }
-            }
+                } }
             return true
         }
         private fun precursorOf(msg: Message?) = queue
         private fun Runnable.exec(isNotLocked: Boolean = true) {
             if (isNotLocked && isSynchronized(this))
                 commit(block = ::run)
-            else run()
-        }
+            else run() }
         private fun isSynchronized(msg: Message) =
             isSynchronized(msg.callback) ||
             msg.asCallable().isSynchronized()
@@ -260,9 +244,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             synchronized(hLock(lock, block)) {
                 hLock = Lock.Closed(lock, block)
                 block().also {
-                    hLock = Lock.Open(lock, block, it)
-                }
-            }
+                    hLock = Lock.Open(lock, block, it) } }
 
         private var sLock = Any()
         private fun attach(callback: Runnable) =
@@ -281,8 +263,8 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
 
         fun clearObjects() {
             handler = null
-            queue.clear()
-        }
+            queue.clear() }
+
         companion object : MutableList<RunnableList> by mutableListOf() {
             inline fun <reified R> scheduled(noinline step: CoroutineStep): R? = when (R::class) {
                 Any::class -> (runnableOf(step) ?: msgOf(step)).asType()
@@ -392,45 +374,36 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         private fun init() {
             ln = -1
             clearFlags()
-            clearLatestObjects()
-        }
+            clearLatestObjects() }
         fun start() {
             init()
-            resume()
-        }
+            resume() }
         fun resume(index: Int) {
             ln = index
-            resume()
-        }
+            resume() }
         fun resume(tag: String) {
             fun indexOf(tag: String): Int = TODO()
-            resume(indexOf(tag))
-        }
+            resume(indexOf(tag)) }
         fun resume() {
             isActive = true
-            advance()
-        }
+            advance() }
         fun retry() {
             ln -= 1
-            resume()
-        }
+            resume() }
         var activate = fun() = Unit
         private fun prepare() {
-            if (ln < -1) ln = -1
-        }
+            if (ln < -1) ln = -1 }
         fun jump(index: Int) =
             if (hasError) null
             else (index < seq.size && (!isObserving || seq[index].third)).also {
-                if (it) ln = index
-            }
+                if (it) ln = index }
         var next = fun(index: Int) = jump(index)
         private fun advance() {
             activate()
             prepare()
             while (next(ln + 1) ?: return)
                 work.let { run(it) ?: bypass(it) } || return
-            isCompleted = finish()
-        }
+            isCompleted = finish() }
         fun observe(work: LiveWork): Boolean? {
             val (step, _, async) = work
             try {
@@ -438,44 +411,36 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
                 step().let { step ->
                     latestStep = step // live step <-> work
                     step?.observeForever(observer) ?:
-                    return null
-                }
+                    return null }
             } catch (ex: Throwable) {
                 error(ex)
-                return false
-            }
+                return false }
             isObserving = true
-            return async
-        }
+            return async }
         var run = fun(work: LiveWork) = observe(work)
         fun capture(work: LiveWork): Boolean {
             work.second.let { capture ->
                 latestCapture = capture
                 capture?.invoke(work)?.let { async ->
                     if (async is Boolean) return async
-                }
-            }
-            return false
-        }
+                } }
+            return false }
         var bypass = fun(work: LiveWork) = capture(work)
         fun end() = !(ln < seq.size || isObserving)
         var finish = fun() = end()
 
         fun reset(step: LiveStep? = latestStep) {
             step?.removeObserver(observer)
-            isObserving = false
-        }
+            isObserving = false }
         fun resetByTag(tag: String) {}
 
         fun cancel(ex: Throwable) {
             isCancelled = true
-            this.ex = ex
-        }
+            this.ex = ex }
         fun cancelByTag(tag: String, ex: Throwable) = cancel(ex)
         fun error(ex: Throwable) {
             hasError = true
-            this.ex = ex
-        }
+            this.ex = ex }
         fun errorByTag(tag: String, ex: Throwable) = error(ex)
         var interrupt = fun(ex: Throwable) = ex
         var interruptByTag = fun(tag: String, ex: Throwable) = ex
@@ -523,20 +488,16 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             isObserving = false
             isCompleted = false
             isCancelled = false
-            clearError()
-        }
+            clearError() }
         fun clearError() {
             hasError = false
-            ex = null
-        }
+            ex = null }
         fun clearLatestObjects() {
             latestStep = null
-            latestCapture = null
-        }
+            latestCapture = null }
         fun clearObjects() {
             seq.clear()
-            clearLatestObjects()
-        }
+            clearLatestObjects() }
         companion object : (SequencerWork) -> Unit? {
             override fun invoke(work: SequencerWork) = sequencer?.work()
             const val ATTACHED_ALREADY = -1
@@ -818,8 +779,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             MemoryManager::class ->
                 ::applicationMemoryManager.setResolverThenCommit()
             else -> null
-        }
-    }
+        } }
 
     private var activityConfigurationChangeManager: ConfigurationChangeManager? = null
     private var activityNightModeChangeManager: NightModeChangeManager? = null
@@ -906,6 +866,9 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
 
     override fun invoke(work: SchedulerWork) = this.work()
 }
+
+@OptIn(ExperimentalCoroutinesApi::class)
+abstract class Buffer : AbstractFlow<Any?>()
 
 private typealias Transit = Short?
 val Any?.transit: Transit
