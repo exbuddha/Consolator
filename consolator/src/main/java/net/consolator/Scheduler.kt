@@ -1119,6 +1119,7 @@ private fun CoroutineContext.isSchedulerContext() =
 infix fun Job.then(next: SchedulerStep): CoroutineStep = {}
 infix fun Job.after(prev: SchedulerStep): CoroutineStep = {}
 infix fun Job.given(predicate: JobPredicate): CoroutineStep = {}
+infix fun Job.otherwise(next: SchedulerStep): CoroutineStep = {}
 infix fun Job.onCancel(action: SchedulerStep): CoroutineStep = {}
 infix fun Job.onError(action: SchedulerStep): CoroutineStep = {}
 infix fun Job.onTimeout(action: SchedulerStep): CoroutineStep = {}
@@ -1348,7 +1349,11 @@ annotation class Event(val transit: Short = 0) {
     @Target(FUNCTION, EXPRESSION)
     annotation class Listening(
         val timeout: Long = 0L,
-        val channel: Short = 0)
+        val channel: Short = 0) {
+        @Retention(SOURCE)
+        @Target(EXPRESSION)
+        annotation class OnEvent(val transit: Short)
+    }
 
     @Retention(SOURCE)
     @Target(FUNCTION, EXPRESSION)
