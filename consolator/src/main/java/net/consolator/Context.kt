@@ -91,7 +91,7 @@ fun <D : RoomDatabase> Context.createDatabase(cls: KClass<D>) =
     createDatabase(cls.java, cls.lastAnnotatedFilename())
 inline fun <reified D : RoomDatabase> Context.buildDatabase() =
     with(D::class, ::createDatabase)
-fun Context.buildAppDatabase() = commitAsync(AppDatabase, { db === null }) {
+fun Context.buildAppDatabase() = commitAsync(::db, { db === null }) {
     db = buildDatabase() }
 
 suspend fun buildSession() {
