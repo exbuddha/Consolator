@@ -29,19 +29,20 @@ import net.consolator.Scheduler.clock
 import net.consolator.Scheduler.sequencer
 
 interface ResolverScope : CoroutineScope {
-    override val coroutineContext
-        get() = Scheduler
+    override val coroutineContext get() = Scheduler
     fun commit(step: CoroutineStep): Any?
 }
 
 sealed interface SchedulerScope : ResolverScope {
-    override fun commit(step: CoroutineStep) =
-        net.consolator.commit(step)
+    override fun commit(step: CoroutineStep) = net.consolator.commit(step)
 }
 
 private interface Synchronizer<T> {
     fun <R> commit(lock: T? = null, block: () -> R): R
 }
+
+@OptIn(ExperimentalCoroutinesApi::class)
+abstract class Buffer : AbstractFlow<Any?>()
 
 fun commit(step: CoroutineStep) =
     (service ?:
@@ -886,8 +887,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         step.markTagForSchExec()?.run { commit(this, ::block) } }
     override fun <R> commit(lock: Step?, block: () -> R) = block() // or apply (live step) capture function internally
 
-    @OptIn(ExperimentalCoroutinesApi::class)
-    object EventBus : AbstractFlow<Any?>() {
+    object EventBus : Buffer() {
         override suspend fun collectSafely(collector: FlowCollector<Any?>) {
             // emit signalled events to collector
         }
