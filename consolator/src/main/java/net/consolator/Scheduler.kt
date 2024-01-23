@@ -1545,18 +1545,19 @@ sealed interface State {
         operator fun invoke(): State = Lock.Open
         fun of(string: String): State = Ambiguous
         operator fun get(id: ID): State = when (id.toInt()) {
-            1 -> if (db === null || session === null)
-                    Unresolved
-                else Resolved
-            2 -> if (logDb === null || netDb === null)
-                    Unresolved
-                else Resolved
+            1 -> resolvedUnless { db === null || session === null }
+            2 -> resolvedUnless { logDb === null || netDb === null }
             else ->
                 Lock.Open
         }
         operator fun set(id: ID, lock: Any) { when (id.toInt()) {
             1 -> if (lock is Resolved) Scheduler.windDownClock()
         } }
+
+        private fun resolvedUnless(predicate: Predicate) =
+            if (predicate()) Unresolved
+            else Resolved
+
         operator fun plus(lock: Any): State = Ambiguous
         operator fun plusAssign(lock: Any) {}
         operator fun minus(lock: Any): State = Ambiguous
@@ -1576,10 +1577,10 @@ sealed interface State {
     }
 
     operator fun invoke(vararg param: Any?): Lock = this as Lock
-    operator fun inc() = this
-    operator fun dec() = this
     operator fun get(id: ID) = this
     operator fun set(id: ID, state: Any) {}
+    operator fun inc() = this
+    operator fun dec() = this
     operator fun plus(state: Any): State {
         when {
             this === State[2] && state is Ambiguous ->
