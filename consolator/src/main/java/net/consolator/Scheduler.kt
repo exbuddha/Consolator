@@ -950,7 +950,7 @@ inline fun <R, S : R> blockAsyncForResult(lock: Any, crossinline predicate: Pred
 inline fun <R> blockAsync(lock: AnyKProperty, crossinline block: suspend () -> R, noinline fallback: Step = emptyStep) =
     blockAsyncForResult(lock, lock::isNotNull, block, fallback)
 
-private fun Any.detach(): Runnable? = when (this) {
+private fun Any.detach() = when (this) {
     is Runnable -> detach()
     is Message -> detach()?.asRunnable()
     else -> null }
