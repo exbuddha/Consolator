@@ -1014,11 +1014,11 @@ private fun <T, R> LifecycleOwner.disposer(liveStep: Pair<LiveData<T>, (T) -> R>
         step.removeObservers(this)
         capture(value) }
 
-suspend fun SequencerScope.change(transit: Short) = reset {
-    EventBus.signal(transit)
-}
 suspend fun SequencerScope.change(stage: ContextStep) = resetByTag(tagOf(stage)) {
     EventBus.signal(stage)
+}
+suspend fun SequencerScope.change(event: Transit) = reset {
+    EventBus.signal(event)
 }
 
 suspend fun SequencerScope.reset() = net.consolator.reset()
@@ -1131,6 +1131,9 @@ val Job.node: SchedulerNode
 
 fun SchedulerScope.change(stage: ContextStep) =
     EventBus.signal(stage)
+fun SchedulerScope.change(event: Transit) =
+    EventBus.signal(event)
+
 fun <R> SchedulerScope.change(member: KFunction<R>, stage: ContextStep) =
     EventBus.signal(stage)
 fun <R> SchedulerScope.change(owner: LifecycleOwner, member: KFunction<R>, stage: ContextStep) =
