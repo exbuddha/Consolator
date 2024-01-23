@@ -32,6 +32,7 @@ abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        if (State[1] is Resolved) return
         fun transit(action: Short) {
             val (overlay, transition) =
                 overlay(view, savedInstanceState, action)
@@ -63,6 +64,7 @@ abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
 
     override fun onAttach(context: Context) {
         super.onAttach(context)
+        if (State[1] is Resolved) return
         val context = context.weakRef()!!
         launch(IO, LAZY) @JobTreeRoot @MainViewGroup @Retrying(
             delay = VIEW_MIN_DELAY,

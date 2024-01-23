@@ -1545,6 +1545,9 @@ sealed interface State {
         operator fun invoke(): State = Lock.Open
         fun of(string: String): State = Ambiguous
         operator fun get(id: ID): State = when (id.toInt()) {
+            1 -> if (db === null || session === null)
+                    Unresolved
+                else Resolved
             2 -> if (logDb === null || netDb === null)
                     Unresolved
                 else Resolved

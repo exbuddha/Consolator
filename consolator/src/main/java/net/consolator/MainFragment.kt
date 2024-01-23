@@ -10,12 +10,14 @@ import net.consolator.BaseApplication.Companion.COMMIT_NAV_MAIN_UI
 
 class MainFragment : BaseFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        // show animation or progress bar
         super.onViewCreated(view, savedInstanceState)
-        parentFragmentManager.commit {
-            show(this@MainFragment)
+        if (savedInstanceState === null) {
+            // show animation or progress bar
+            parentFragmentManager.commit {
+                show(this@MainFragment)
+            }
+            info(UI_TAG, "Main fragment view is created.")
         }
-        info(UI_TAG, "Main fragment view is created.")
     }
 
     override var overlay = fun(_: View, _: Bundle?, action: Short): Pair<Fragment?, Int?> =
