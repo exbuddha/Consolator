@@ -28,7 +28,7 @@ import net.consolator.Scheduler.applicationMemoryManager
 import net.consolator.Scheduler.applicationMigrationManager
 
 abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
-    protected abstract var overlay: (View, Bundle?, Short) -> Pair<Fragment?, Int?>
+    protected abstract var overlay: (View, Bundle?, Short) -> Transition
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -65,7 +65,7 @@ abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
     override fun onAttach(context: Context) {
         super.onAttach(context)
         if (State[1] is Resolved) return
-        val context = context.weakRef()!!
+        val context = context.weakRef()
         launch(IO, LAZY) @JobTreeRoot @MainViewGroup @Retrying(
             delay = VIEW_MIN_DELAY,
             pathwise = [FromLastCancellation::class]
@@ -133,3 +133,5 @@ abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
         const val UI_TAG = "FRAGMENT"
     }
 }
+
+typealias Transition = Pair<Fragment?, Int?>

@@ -20,14 +20,14 @@ class MainFragment : BaseFragment() {
         }
     }
 
-    override var overlay = fun(_: View, _: Bundle?, action: Short): Pair<Fragment?, Int?> =
+    override var overlay = fun(_: View, _: Bundle?, action: Short) =
         when (action) {
             COMMIT_NAV_MAIN_UI ->
                 UI(requireActivity(), ::screenEventInterceptor).apply {
                     // ...
                 }
             ABORT_NAV_MAIN_UI ->
-                Pair(null, null) // continue animation or alternatives
+                null to null /* continue animation or alternatives */
             else ->
                 throw BaseImplementationRestriction
         }

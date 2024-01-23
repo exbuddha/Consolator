@@ -54,9 +54,9 @@ fun Context.change(stage: ContextStep) =
     signal(stage)
 fun Context.changeLocally(owner: LifecycleOwner, stage: ContextStep) =
     signal(stage)
-fun Context.changeBroadly(ref: WeakContext = weakRef()!!, stage: ContextStep) =
+fun Context.changeBroadly(ref: WeakContext = weakRef(), stage: ContextStep) =
     signal(stage)
-fun Context.changeGlobally(ref: WeakContext = weakRef()!!, owner: LifecycleOwner, stage: ContextStep) =
+fun Context.changeGlobally(ref: WeakContext = weakRef(), owner: LifecycleOwner, stage: ContextStep) =
     signal(stage)
 
 @Diverging([STAGE_BUILD_APP_DB])
@@ -134,7 +134,7 @@ fun Context.intendFor(cls: AnyKClass) = intendFor(cls.java)
 interface VolatileContext { val ref: WeakContext? }
 typealias WeakContext = WeakReference<out Context>
 fun Context.weakRef() =
-    if (this is VolatileContext) ref
+    if (this is VolatileContext) ref!!
     else WeakReference(this)
 fun <T : Context> WeakReference<out T>?.unique(context: T) = this ?: WeakReference(context)
 
