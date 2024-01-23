@@ -40,8 +40,8 @@ abstract class BaseActivity : AppCompatActivity(), VolatileContext {
         }
     }
 
-    override val ref: WeakContext? = null
-        get() = field.unique(this)
+    override var ref: WeakContext? = null
+        get() = field.unique(this).also { field = it }
 
     abstract inner class ConfigurationChangeManager : ConfigurationManager()
     abstract inner class NightModeChangeManager : ConfigurationManager()

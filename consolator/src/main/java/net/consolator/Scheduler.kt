@@ -760,9 +760,9 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
     fun ignore() = removeObserver(this)
 
     var clock: Clock? = null
-        get() = field.singleton()
+        get() = field.singleton().also { field = it }
     var sequencer: Sequencer? = null
-        get() = field.singleton()
+        get() = field.singleton().also { field = it }
 
     fun <T : Resolver> defer(resolver: KClass<out T>, provider: Any = resolver, vararg context: Any?): Unit? {
         fun ResolverKProperty.setResolverThenCommit() =

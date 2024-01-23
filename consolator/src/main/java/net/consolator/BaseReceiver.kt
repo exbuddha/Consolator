@@ -8,5 +8,4 @@ class BaseReceiver : BroadcastReceiver() {
             else -> {}
         }
     }
-    companion object
 }

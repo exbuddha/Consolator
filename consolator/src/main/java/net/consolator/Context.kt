@@ -27,7 +27,7 @@ import net.consolator.Scheduler.clock
 var instance: BaseApplication? = null
 var service: BaseService? = null
 var receiver: BaseReceiver? = null
-    get() = field.singleton()
+    get() = field.singleton().also { field = it }
 
 var db: AppDatabase? = null
 var logDb: LogDatabase? = null
@@ -131,7 +131,7 @@ fun Context.isPermissionGranted(permission: String) =
 fun Context.intendFor(cls: Class<*>) = Intent(this, cls)
 fun Context.intendFor(cls: AnyKClass) = intendFor(cls.java)
 
-interface VolatileContext { val ref: WeakContext? }
+interface VolatileContext { var ref: WeakContext? }
 typealias WeakContext = WeakReference<out Context>
 fun Context.weakRef() =
     if (this is VolatileContext) ref!!

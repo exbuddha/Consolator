@@ -25,8 +25,8 @@ open class BaseService : Service(), Scheduler.BaseServiceScope {
         super.onDestroy()
     }
 
-    override val ref: WeakContext? = null
-        get() = field.unique(this)
+    override var ref: WeakContext? = null
+        get() = field.unique(this).also { field = it }
 }
 
 typealias Sequencer = Scheduler.Sequencer
