@@ -193,7 +193,7 @@ inline fun <R> tryInterruptingForResult(noinline step: suspend CoroutineScope.()
     try { blockOf(step)() } catch (ex: InterruptedException) { throw InterruptedStepException(step, cause = ex) } catch (ex: Throwable) { exit(ex) }
 
 inline fun <reified T : Any> Any?.asType(): T? =
-    if (this is T) this else null
+    T::class.safeCast(this)
 inline fun <reified T : Any> T?.singleton(lock: Any = T::class.lock(), vararg args: Any?) =
     commitAsyncForResult(lock, { this === null }, { T::class.new(*args) }, { this }) as T
 inline fun <reified T : Any> T?.reconstruct(vararg args: Any?): T = this ?: T::class.new(*args)
