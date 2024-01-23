@@ -13,9 +13,8 @@ object UI : (Context, ScreenEventInterceptor?) -> Transition {
 
 private open class OverlayFragment(
     private var context: WeakContext,
-    private var interceptor: ScreenEventInterceptor?)
-    : Fragment(),
-    OnContextClickListener {
+    private var interceptor: ScreenEventInterceptor?
+) : Fragment(), OnContextClickListener {
     override fun onContextClick(event: MotionEvent) =
         intercept(
             OnContextClickListener::onContextClick, event) {
