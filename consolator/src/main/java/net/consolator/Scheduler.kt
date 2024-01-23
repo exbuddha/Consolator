@@ -1546,7 +1546,7 @@ sealed interface State {
 
     companion object {
         operator fun invoke(): State = Lock.Open
-        fun of(string: String): State = Ambiguous
+        fun of(vararg args: Any?): State = Ambiguous
         operator fun get(id: ID): State = when (id.toInt()) {
             1 -> resolvedUnless { db === null || session === null }
             2 -> resolvedUnless { logDb === null || netDb === null }
