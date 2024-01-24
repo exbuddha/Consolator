@@ -498,6 +498,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         fun clearObjects() {
             seq.clear()
             clearLatestObjects() }
+
         companion object : (SequencerWork) -> Unit? {
             override fun invoke(work: SequencerWork) = sequencer?.work()
             const val ATTACHED_ALREADY = -1
