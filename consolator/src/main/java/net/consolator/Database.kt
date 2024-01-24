@@ -326,23 +326,17 @@ private fun Long.toDbTime() = plus(dbTimeDiff!!)
 
 private fun clearObjects() {
     dateTimeFormat = null
-    dbTimeDiff = null
-}
+    dbTimeDiff = null }
 fun clearAppDbObjects() {
-    db = null
-}
+    db = null }
 fun clearLogDbObjects() {
-    logDb = null
-}
+    logDb = null }
 fun clearNetDbObjects() {
-    netDb = null
-}
+    netDb = null }
 fun clearAllDbObjects() {
     clearAppDbObjects()
     clearLogDbObjects()
     clearNetDbObjects()
-    clearObjects()
-}
+    clearObjects() }
 fun clearSessionObjects() {
-    session = null
-}
+    session = null }
