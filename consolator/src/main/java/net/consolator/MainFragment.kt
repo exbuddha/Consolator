@@ -2,7 +2,6 @@ package net.consolator
 
 import android.os.Bundle
 import android.view.View
-import androidx.fragment.app.Fragment
 import androidx.fragment.app.commit
 import kotlin.reflect.KFunction
 import net.consolator.BaseApplication.Companion.ABORT_NAV_MAIN_UI
