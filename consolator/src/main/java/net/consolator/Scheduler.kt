@@ -831,16 +831,12 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         Clock.scheduled<Any>(step)?.detach()?.asCoroutine() ?: step
 
     override fun <R> fold(initial: R, operation: (R, CoroutineContext.Element) -> R): R {
-        // context expansion by attachment: register operation callback.
-        // return a default state or a new one depending on the initial value.
         return operation(initial, _element)
     }
     override fun <E : CoroutineContext.Element> get(key: CoroutineContext.Key<E>): E? {
-        // context element lookup
         return null
     }
     override fun minusKey(key: CoroutineContext.Key<*>): CoroutineContext {
-        // context convergence by detachment: unregister element and restate.
         return this
     }
 
