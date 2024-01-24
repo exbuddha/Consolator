@@ -1,7 +1,6 @@
 package page.consolator
 
-import net.consolator.MainActivity
-import net.consolator.MainApplication
+import net.consolator.*
 
 class UserApplication : MainApplication()
 
