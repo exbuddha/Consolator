@@ -31,7 +31,8 @@ class MainFragment : BaseFragment() {
             else ->
                 throw BaseImplementationRestriction
         }
-    private inline fun <reified R> screenEventInterceptor(listener: Any, callback: KFunction<R>, vararg args: Any?, noinline postback: AnyToAnyFunction?): Interception = null
+    private inline fun <reified R> screenEventInterceptor(listener: Any, callback: KFunction<R>, vararg args: Any?, noinline postback: PostbackFunction?): Interception = null
 }
 
 typealias Interception = Pair<Predicate?, Boolean?>?
+typealias PostbackFunction = (Interception) -> Unit

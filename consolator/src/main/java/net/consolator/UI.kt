@@ -6,14 +6,14 @@ import android.view.GestureDetector.*
 import androidx.fragment.app.*
 import kotlin.reflect.*
 
-object UI : (Context, ScreenEventInterceptor?) -> Transition {
-    override fun invoke(context: Context, interceptor: ScreenEventInterceptor?): Transition =
+object UI : (Context, InterceptFunction?) -> Transition {
+    override fun invoke(context: Context, interceptor: InterceptFunction?): Transition =
         OverlayFragment(context.weakRef(), interceptor) to null
 }
 
 private open class OverlayFragment(
     private var context: WeakContext,
-    private var interceptor: ScreenEventInterceptor?
+    private var interceptor: InterceptFunction?
 ) : Fragment(), OnContextClickListener {
     override fun onContextClick(event: MotionEvent) =
         intercept(
@@ -23,7 +23,7 @@ private open class OverlayFragment(
                 // optionally, other/all event listener functionality can be given to this class. */
             }
 
-    private fun <R> intercept(member: KFunction<R>, vararg args: Any, postback: AnyToAnyFunction? = null) =
+    private fun <R> intercept(member: KFunction<R>, vararg args: Any, postback: PostbackFunction? = null) =
         interceptor?.invoke(this, member, args, postback).let { result ->
             fun postback(): Boolean {
                 postback?.invoke(result) ?: return false
@@ -37,4 +37,4 @@ private open class OverlayFragment(
                 else postback() } }
 }
 
-private typealias ScreenEventInterceptor = (Any, AnyKFunction, AnyArray, AnyToAnyFunction?) -> Interception
+private typealias InterceptFunction = (Any, AnyKFunction, AnyArray, PostbackFunction?) -> Interception
