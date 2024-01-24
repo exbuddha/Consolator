@@ -792,24 +792,20 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
     fun windDownClock() {
         clock?.apply {
             Process.setThreadPriority(threadId, Process.THREAD_PRIORITY_DEFAULT)
-        }
-    }
+        } }
     fun windDown() {
         windDownClock()
-        sequencer = null
-    }
+        sequencer = null }
 
     fun clearResolverObjects() {
         activityConfigurationChangeManager = null
         activityNightModeChangeManager = null
         activityLocalesChangeManager = null
         applicationMigrationManager = null
-        applicationMemoryManager = null
-    }
+        applicationMemoryManager = null }
     fun clearObjects() {
         clock = null
-        sequencer = null
-    }
+        sequencer = null }
 
     override val coroutineContext
         get() = IO
