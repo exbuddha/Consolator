@@ -29,7 +29,8 @@ import net.consolator.Scheduler.clock
 import net.consolator.Scheduler.sequencer
 
 interface ResolverScope : CoroutineScope {
-    override val coroutineContext get() = Scheduler
+    override val coroutineContext: CoroutineContext
+        get() = Scheduler
     fun commit(step: CoroutineStep): Any?
 }
 
@@ -810,6 +811,9 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         sequencer = null
     }
 
+    override val coroutineContext
+        get() = IO
+
     init {
         _key = object : SchedulerKey {}
         _element = object : SchedulerElement {
@@ -1082,7 +1086,6 @@ private fun LifecycleOwner.determineScope(step: CoroutineStep) =
 private fun CoroutineScope.determineCoroutine(context: CoroutineContext, start: CoroutineStart, step: CoroutineStep) =
     Triple(
         // context key <-> step
-        // must return background io context by jit reconfiguration
         if (context.isSchedulerContext()) context
         else Scheduler + context,
         start,
