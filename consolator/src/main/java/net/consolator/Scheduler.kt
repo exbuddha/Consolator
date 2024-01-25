@@ -95,7 +95,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
                                     updateNetworkCapabilities()
                                     updateNetworkState() }),
                                 stage = Context::stageNetDbInitialized) }
-                    resume()
+                    commit { resume() }
                 }
             }
             return this
@@ -401,8 +401,8 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             if (ln < -1) ln = -1 }
         fun jump(index: Int) =
             if (hasError) null
-            else (index < seq.size && (!isObserving || seq[index].third)).also {
-                if (it) ln = index }
+            else commit { (index < seq.size && (!isObserving || seq[index].isAsynchronous())).also { allowed ->
+                if (allowed) ln = index } }
         var next = fun(index: Int) = jump(index)
         private fun advance() {
             activate()
@@ -664,6 +664,8 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         private fun nullStepTo(block: CaptureFunction) = Triple(nullStep, block, false)
         private val nullStep: LiveStepFunction = @Tag(NULL_STEP) { null }
         private val nullBlock: CaptureFunction? = null
+
+        private fun LiveWork.isAsynchronous() = third
 
         private fun LiveWork.isSameWork(work: LiveWork) =
             this === work || (first === work.first && second === work.second)
