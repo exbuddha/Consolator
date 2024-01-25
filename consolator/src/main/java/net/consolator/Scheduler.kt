@@ -42,6 +42,11 @@ private interface Synchronizer<T> {
     fun <R> commit(lock: T? = null, block: () -> R): R
 }
 
+private interface AttachOperator<S> {
+    fun attach(step: S, vararg args: Any?): Any?
+    fun attach(index: Int, step: S, vararg args: Any?): Any?
+}
+
 fun commit(step: CoroutineStep) =
     (service ?:
     annotatedScopeOf(step) ?:
@@ -65,7 +70,7 @@ fun commit(vararg context: Any?): Any? =
             } }
         else -> Unit }
 
-object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), StepObserver, Synchronizer<Step>, (SchedulerWork) -> Unit {
+object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), StepObserver, Synchronizer<Step>, AttachOperator<CoroutineStep>, (SchedulerWork) -> Unit {
     sealed interface BaseServiceScope : ResolverScope, IBinder, (Intent?) -> IBinder, VolatileContext, UniqueContext {
         override fun invoke(intent: Intent?): IBinder {
             mode = getModeExtra(intent)
@@ -134,7 +139,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             form after { markTagsForCtxReform(tag, stage, form, job) }
 
         override fun commit(step: CoroutineStep) =
-            step.markTagForSvcCommit().attach(::clockAhead)
+            attach(step.markTagForSvcCommit(), ::handleAhead)
 
         fun getStartTimeExtra(intent: Intent?) =
             intent?.getLongExtra(START_TIME_KEY, foregroundContext.asUniqueContext()?.startTime ?: now())
@@ -180,7 +185,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
     open class Clock(
         name: String,
         priority: Int = currentThread.priority
-    ) : HandlerThread(name, priority), Synchronizer<Any> {
+    ) : HandlerThread(name, priority), Synchronizer<Any>, AttachOperator<Runnable> {
         var handler: Handler? = null
         private var queue: RunnableList
 
@@ -248,12 +253,12 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
                     hLock = Lock.Open(lock, block, it) } }
 
         private var sLock = Any()
-        private fun attach(callback: Runnable) =
-            synchronized<Unit>(sLock) { queue.add(callback) }
-        private fun attach(index: Int, callback: Runnable) =
+        override fun attach(step: Runnable, vararg args: Any?) =
+            synchronized<Unit>(sLock) { queue.add(step) }
+        override fun attach(index: Int, step: Runnable, vararg args: Any?) =
             synchronized(sLock) {
                 /* add remark */
-                queue.add(index, callback) }
+                queue.add(index, step) }
 
         var post = fun(callback: Runnable) =
             handler?.post(callback) ?:
@@ -281,7 +286,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         }
     }
 
-    class Sequencer : Synchronizer<LiveWork> {
+    class Sequencer : Synchronizer<LiveWork>, AttachOperator<LiveWork> {
         fun io(async: Boolean = false, step: SequencerStep) = attach(IO, async, step)
         fun io(index: Int, async: Boolean = false, step: SequencerStep) = attach(index, IO, async, step)
         fun ioStart(step: SequencerStep) = io(false, step).also { start() }
@@ -509,10 +514,10 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             add(element)
         private fun LiveSequence.attach(index: Int, element: LiveWork) =
             add(index, element)
-        fun attach(work: LiveWork, tag: String? = null) = commit { with(seq) {
-            attach(work)
+        override fun attach(step: LiveWork, vararg args: Any?) = commit { with(seq) {
+            attach(step)
             size - 1 }.also { index ->
-                markTagsForSeqAttach(tag, index, work) } }
+                markTagsForSeqAttach(args.firstOrNull(), index, step) } }
         fun attachOnce(work: LiveWork) = commit {
             if (work.isNotAttached())
                 attach(work)
@@ -525,11 +530,11 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             if (work.isNotAttached(first, last))
                 attach(work)
             else ATTACHED_ALREADY }
-        fun attach(index: Int, work: LiveWork, tag: String? = null) = commit { with(seq) {
+        override fun attach(index: Int, step: LiveWork, vararg args: Any?) = commit { with(seq) {
             if (ln in index..size)
                 ln += 1 // also, remark previously tagged works
-            attach(index, work)
-            markTagsForSeqAttach(tag, index, work)
+            attach(index, step)
+            markTagsForSeqAttach(args.firstOrNull(), index, step)
             index } }
         fun attachOnce(index: Int, work: LiveWork) = commit {
             if (work.isNotAttached(index)) {
@@ -819,14 +824,18 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
     }
 
     override fun commit(step: CoroutineStep) =
-        step.markTagForSchCommit().attach()
-    private fun CoroutineStep.attach(enlist: CoroutineFunction? = ::clock, transfer: CoroutineFunction = ::reattach) =
-        when (enlist?.invoke(this)) {
-            null, false -> transfer(@Unlisted this)
-            true -> true
-            else -> transfer(@Enlisted this) }
-    private fun reattach(step: CoroutineStep) =
-        trySafelyForResult { detach(step) }?.run(::launch)
+        attach(step.markTagForSchCommit())
+    override fun attach(step: CoroutineStep, vararg args: Any?): Any? {
+        val enlist: CoroutineFunction? = (args.firstOrNull() ?: ::handle).asType()
+        val transfer: CoroutineFunction? = (args.secondOrNull() ?: ::reattach).asType()
+        return when (val result = enlist?.invoke(step)) {
+            null, false -> transfer?.invoke(@Unlisted step)
+            true, is Job -> result
+            else -> transfer?.invoke(@Enlisted step) } }
+    override fun attach(index: Int, step: CoroutineStep, vararg args: Any?) =
+        attach(step, *args)
+    private fun reattach(step: CoroutineStep, handler: CoroutineFunction = ::launch) =
+        trySafelyForResult { detach(step) }?.run(handler)
     private fun detach(step: CoroutineStep) =
         Clock.scheduled<Any>(step)?.detach()?.asCoroutine() ?: step
 
@@ -899,21 +908,21 @@ interface Resolver : ResolverScope {
 }
 
 fun schedule(step: Step) = Scheduler.postValue(step)
-fun scheduleNow(step: Step) { Scheduler.value = step }
+fun scheduleAhead(step: Step) { Scheduler.value = step }
 
 // runnable <-> message
-fun clock(callback: Runnable) = clock?.post?.invoke(callback)
-fun clockAhead(callback: Runnable) = clock?.postAhead?.invoke(callback)
+fun post(callback: Runnable) = clock?.post?.invoke(callback)
+fun postAhead(callback: Runnable) = clock?.postAhead?.invoke(callback)
 
 // step <-> runnable
-fun <T> clock(step: suspend CoroutineScope.() -> T) = clock(runnableOf(step))
-fun <T> clockAhead(step: suspend CoroutineScope.() -> T) = clockAhead(runnableOf(step))
-fun <T> clockSafely(step: suspend CoroutineScope.() -> T) = clock(safeRunnableOf(step))
-fun <T> clockAheadSafely(step: suspend CoroutineScope.() -> T) = clockAhead(safeRunnableOf(step))
-fun <T> clockInterrupting(step: suspend CoroutineScope.() -> T) = clock(interruptingRunnableOf(step))
-fun <T> clockAheadInterrupting(step: suspend CoroutineScope.() -> T) = clockAhead(interruptingRunnableOf(step))
-fun <T> clockSafelyInterrupting(step: suspend CoroutineScope.() -> T) = clock(safeInterruptingRunnableOf(step))
-fun <T> clockAheadSafelyInterrupting(step: suspend CoroutineScope.() -> T) = clockAhead(safeInterruptingRunnableOf(step))
+fun handle(step: CoroutineStep) = post(runnableOf(step))
+fun handleAhead(step: CoroutineStep) = postAhead(runnableOf(step))
+fun handleSafely(step: CoroutineStep) = post(safeRunnableOf(step))
+fun handleAheadSafely(step: CoroutineStep) = postAhead(safeRunnableOf(step))
+fun handleInterrupting(step: CoroutineStep) = post(interruptingRunnableOf(step))
+fun handleAheadInterrupting(step: CoroutineStep) = postAhead(interruptingRunnableOf(step))
+fun handleSafelyInterrupting(step: CoroutineStep) = post(safeInterruptingRunnableOf(step))
+fun handleAheadSafelyInterrupting(step: CoroutineStep) = postAhead(safeInterruptingRunnableOf(step))
 
 fun <T> blockOf(step: suspend CoroutineScope.() -> T): () -> T = { runBlocking(block = step) }
 fun <T> runnableOf(step: suspend CoroutineScope.() -> T) = Runnable { runBlocking(block = step) }

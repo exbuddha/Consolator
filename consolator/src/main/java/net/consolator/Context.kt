@@ -192,6 +192,10 @@ inline fun <R> trySafelyInterrupting(noinline step: suspend CoroutineScope.() ->
 inline fun <R> tryInterruptingForResult(noinline step: suspend CoroutineScope.() -> R, blockOf: (suspend CoroutineScope.() -> R) -> () -> R = ::blockOf, exit: (Throwable) -> R? = { null }) =
     try { blockOf(step)() } catch (ex: InterruptedException) { throw InterruptedStepException(step, cause = ex) } catch (ex: Throwable) { exit(ex) }
 
+fun <T> Array<out T>.secondOrNull(): T? =
+    if (size > 1) get(1)
+    else null
+
 inline fun <reified T : Any> Any?.asType(): T? =
     T::class.safeCast(this)
 inline fun <reified T : Any> T?.singleton(lock: Any = T::class.lock(), vararg args: Any?) =
