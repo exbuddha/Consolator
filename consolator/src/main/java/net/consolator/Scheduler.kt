@@ -404,8 +404,10 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             if (ln < -1) ln = -1 }
         fun jump(index: Int) =
             if (hasError) null
-            else synchronize { (index < seq.size && (!isObserving || seq[index].isAsynchronous())).also { allowed ->
-                if (allowed) ln = index } }
+            else synchronize {
+                val index = index /* readjusted by remarks */
+                (index < seq.size && (!isObserving || seq[index].isAsynchronous())).also { allowed ->
+                    if (allowed) ln = index } }
         var next = fun(index: Int) = jump(index)
         private fun advance() {
             activate()
