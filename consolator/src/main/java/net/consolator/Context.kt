@@ -90,8 +90,8 @@ fun <D : RoomDatabase> Context.createDatabase(cls: KClass<D>) =
     createDatabase(cls.java, cls.lastAnnotatedFilename())
 inline fun <reified D : RoomDatabase> Context.buildDatabase() =
     with(D::class, ::createDatabase)
-fun Context.buildAppDatabase() = commitAsync(::db, { db === null }) {
-    db = buildDatabase() }
+fun Context.buildAppDatabase() =
+    commitAsync(::db, { db === null }) { db = buildDatabase() }
 
 suspend fun buildSession() {
     if (session === null)
@@ -128,6 +128,7 @@ val Context.isInternetAccessPermitted
     get() = isPermissionGranted(INTERNET)
 fun Context.isPermissionGranted(permission: String) =
     ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
+
 fun Context.intendFor(cls: Class<*>) = Intent(this, cls)
 fun Context.intendFor(cls: AnyKClass) = intendFor(cls.java)
 
@@ -136,7 +137,8 @@ typealias WeakContext = WeakReference<out Context>
 fun Context.weakRef() =
     if (this is VolatileContext) ref!!
     else WeakReference(this)
-fun <T : Context> WeakReference<out T>?.unique(context: T) = this ?: WeakReference(context)
+fun <T : Context> WeakReference<out T>?.unique(context: T) =
+    this ?: WeakReference(context)
 
 interface UniqueContext { var startTime: Long }
 fun Context.startTime() = asUniqueContext()?.startTime ?: now()
@@ -200,7 +202,8 @@ inline fun <reified T : Any> Any?.asType(): T? =
     T::class.safeCast(this)
 inline fun <reified T : Any> T?.singleton(lock: Any = T::class.lock(), vararg args: Any?) =
     commitAsyncForResult(lock, { this === null }, { T::class.new(*args) }, { this }) as T
-inline fun <reified T : Any> T?.reconstruct(vararg args: Any?): T = this ?: T::class.new(*args)
+inline fun <reified T : Any> T?.reconstruct(vararg args: Any?): T =
+    this ?: T::class.new(*args)
 
 fun <T : Any> KClass<out T>.lock() = objectInstance ?: this
 fun <T : Any> KClass<out T>.reconstruct(vararg args: Any?) =

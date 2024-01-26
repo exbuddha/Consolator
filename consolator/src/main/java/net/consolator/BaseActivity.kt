@@ -15,12 +15,10 @@ abstract class BaseActivity : AppCompatActivity(), VolatileContext {
             setContentView(layoutId)
             if (isNetworkStateAccessPermitted) {
                 enableNetworkCallbacks = ::registerNetworkCallback
-                disableNetworkCallbacks = ::unregisterNetworkCallback
-            }
+                disableNetworkCallbacks = ::unregisterNetworkCallback }
             if (isInternetAccessPermitted) {
                 enableNetworkCallbacks = enableNetworkCallbacks?.then(::registerInternetCallback)
-                disableNetworkCallbacks = disableNetworkCallbacks?.then(::unregisterInternetCallback)
-            }
+                disableNetworkCallbacks = disableNetworkCallbacks?.then(::unregisterInternetCallback) }
         }
     }
 
@@ -36,8 +34,7 @@ abstract class BaseActivity : AppCompatActivity(), VolatileContext {
 
     override fun onLowMemory() {
         defer<MemoryManager>(::onLowMemory) {
-            super.onLowMemory()
-        }
+            super.onLowMemory() }
     }
 
     override var ref: WeakContext? = null

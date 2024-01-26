@@ -14,9 +14,7 @@ open class BaseApplication : Application(), ObjectProvider, UniqueContext {
                 putLong(START, startTime)
                 putLong(NOW, now())
                 putBoolean(MAIN, th.isMainThread())
-                putException(ex)
-            }
-        }
+                putException(ex) } }
         Thread.setDefaultUncaughtExceptionHandler(mainUncaughtExceptionHandler)
     }
 
@@ -28,21 +26,18 @@ open class BaseApplication : Application(), ObjectProvider, UniqueContext {
 
     override fun onTrimMemory(level: Int) {
         defer<MemoryManager>(::onTrimMemory, level) {
-            super.onTrimMemory(level)
-        }
+            super.onTrimMemory(level) }
     }
     override fun onLowMemory() {
         defer<MemoryManager>(::onLowMemory) {
-            super.onLowMemory()
-        }
+            super.onLowMemory() }
     }
 
     private fun SharedPreferences.Editor.putException(ex: Throwable) {
         putString(EXCEPTION_MESSAGE, ex.message)
         ex.cause?.let { cause ->
             putString(EXCEPTION_CAUSE, cause::class.qualifiedName)
-            putString(EXCEPTION_CAUSE_MESSAGE, cause.message)
-        }
+            putString(EXCEPTION_CAUSE_MESSAGE, cause.message) }
     }
 
     override fun invoke(type: AnyKClass) = when (type) {

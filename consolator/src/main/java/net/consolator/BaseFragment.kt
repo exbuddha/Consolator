@@ -112,8 +112,7 @@ abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
 
     override fun onLowMemory() {
         defer<MemoryManager>(::onLowMemory) {
-            super.onLowMemory()
-        }
+            super.onLowMemory() }
     }
 
     @Retention(SOURCE)

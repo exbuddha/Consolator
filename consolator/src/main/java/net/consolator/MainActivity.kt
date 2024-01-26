@@ -15,26 +15,22 @@ open class MainActivity : BaseActivity(), ObjectProvider {
             supportFragmentManager.commit {
                 setReorderingAllowed(true)
                 add<MainFragment>(containerViewId)
-                setVisible(false)
-            }
+                setVisible(false) }
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         defer<ConfigurationChangeManager>(::onConfigurationChanged, newConfig) {
-            super.onConfigurationChanged(newConfig)
-        }
+            super.onConfigurationChanged(newConfig) }
     }
 
     override fun onNightModeChanged(mode: Int) {
         defer<NightModeChangeManager>(::onNightModeChanged, mode) {
-            super.onNightModeChanged(mode)
-        }
+            super.onNightModeChanged(mode) }
     }
 
     override fun onLocalesChanged(locales: LocaleListCompat) {
         defer<LocalesChangeManager>(::onLocalesChanged, locales) {
-            super.onLocalesChanged(locales)
-        }
+            super.onLocalesChanged(locales) }
     }
 
     inner class ConfigurationChangeManager : BaseActivity.ConfigurationChangeManager()

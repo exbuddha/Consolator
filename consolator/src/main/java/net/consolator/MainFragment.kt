@@ -13,8 +13,7 @@ class MainFragment : BaseFragment() {
         if (savedInstanceState === null) {
             // show animation or progress bar
             parentFragmentManager.commit {
-                show(this@MainFragment)
-            }
+                show(this@MainFragment) }
             info(UI_TAG, "Main fragment view is created.")
         }
     }

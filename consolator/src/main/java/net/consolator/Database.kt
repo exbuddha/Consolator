@@ -16,9 +16,7 @@ abstract class AppDatabase : RoomDatabase() {
     companion object {
         const val CURRENT_TIMESTAMP = "CURRENT_TIMESTAMP"
         const val ID = "_id"
-        const val DB_TAG = "DATABASE"
-    }
-}
+        const val DB_TAG = "DATABASE" } }
 
 abstract class BaseEntity(
     @PrimaryKey
@@ -48,9 +46,7 @@ data class RuntimeSessionEntity(
         const val APP_ID = "app_id"
         const val BUILD_TYPE = "build_type"
         const val BUILD_VERSION = "build_ver"
-        const val TABLE = "sessions"
-    }
-}
+        const val TABLE = "sessions" } }
 
 abstract class BaseSessionEntity(
     override val id: Long,
@@ -90,9 +86,7 @@ abstract class RuntimeDao {
 ])
 @File("log.db")
 abstract class LogDatabase : RoomDatabase() {
-    abstract fun logDao(): LogDao
-    companion object {}
-}
+    abstract fun logDao(): LogDao }
 
 @Entity(tableName = ThreadEntity.TABLE)
 data class ThreadEntity(
@@ -107,9 +101,7 @@ data class ThreadEntity(
     companion object {
         const val RUNTIME_ID = "rid"
         const val MAIN = "main"
-        const val TABLE = "threads"
-    }
-}
+        const val TABLE = "threads" } }
 
 @Entity(tableName = ExceptionEntity.TABLE, foreignKeys = [
     ForeignKey(
@@ -146,9 +138,7 @@ data class ExceptionEntity(
         const val THREAD = "thread_id"
         const val MESSAGE = "message"
         const val CAUSE = "cause"
-        const val TABLE = "exceptions"
-    }
-}
+        const val TABLE = "exceptions" } }
 
 @Entity(tableName = StackTraceElementEntity.TABLE, foreignKeys = [
     ForeignKey(
@@ -166,9 +156,7 @@ data class StackTraceElementEntity(
     companion object {
         const val EXCEPTION_ID = "exception_id"
         const val ELEMENT = "element"
-        const val TABLE = "stack_trace_elements"
-    }
-}
+        const val TABLE = "stack_trace_elements" } }
 
 @Entity(tableName = ExceptionTypeEntity.TABLE)
 data class ExceptionTypeEntity(
@@ -178,9 +166,7 @@ data class ExceptionTypeEntity(
 ) : BaseEntity(id) {
     companion object {
         const val TYPE = "type"
-        const val TABLE = "exception_types"
-    }
-}
+        const val TABLE = "exception_types" } }
 
 @Dao
 abstract class LogDao
@@ -191,9 +177,7 @@ abstract class LogDao
 ])
 @File("net.db")
 abstract class NetworkDatabase : RoomDatabase() {
-    abstract fun networkDao(): NetworkDao
-    companion object {}
-}
+    abstract fun networkDao(): NetworkDao }
 
 open class NetworkEntity(
     open val nid: Int,
@@ -202,9 +186,7 @@ open class NetworkEntity(
     override var sid: Long? = session?.startTime,
 ) : TimeSensitiveSessionEntity(dbTime, id, sid) {
     companion object {
-        const val NETWORK_ID = "nid"
-    }
-}
+        const val NETWORK_ID = "nid" } }
 
 @Entity(tableName = NetworkStateEntity.TABLE)
 data class NetworkStateEntity(
@@ -225,9 +207,7 @@ data class NetworkStateEntity(
         const val HAS_INTERNET = "has_internet"
         const val HAS_WIFI = "has_wifi"
         const val HAS_MOBILE = "has_mobile"
-        const val TABLE = "network_states"
-    }
-}
+        const val TABLE = "network_states" } }
 
 @Entity(tableName = NetworkCapabilitiesEntity.TABLE)
 data class NetworkCapabilitiesEntity(
@@ -250,9 +230,7 @@ data class NetworkCapabilitiesEntity(
         const val DOWNSTREAM = "downstream"
         const val UPSTREAM = "upstream"
         const val STRENGTH = "strength"
-        const val TABLE = "network_capabilities"
-    }
-}
+        const val TABLE = "network_capabilities" } }
 
 @Dao
 abstract class NetworkDao {
