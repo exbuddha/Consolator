@@ -50,7 +50,7 @@ private interface AttachOperator<S> {
 fun commit(step: CoroutineStep) =
     (service ?:
     annotatedScopeOf(step) ?:
-    foregroundLifecycleOwner?.lifecycle?.coroutineScope ?:
+    foregroundLifecycleOwner?.lifecycleScope ?:
     Scheduler).let { scope ->
         (scope::class.memberFunctions.find {
             it.name == "commit" &&
