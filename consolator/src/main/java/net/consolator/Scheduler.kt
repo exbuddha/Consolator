@@ -371,7 +371,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
 
         private val observer: StepObserver
         private var seq: LiveSequence = mutableListOf()
-        private var ln = -1
+        private var ln = -1 // return the first among marked for observation
         private val work
             get() = seq[ln]
         private var latestStep: LiveStep? = null
@@ -407,7 +407,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             else synchronize {
                 val index = index /* readjusted by remarks */
                 (index < seq.size && (!isObserving || seq[index].isAsynchronous())).also { allowed ->
-                    if (allowed) ln = index } }
+                    if (allowed) ln = index /* also mark for observation */ } }
         var next = fun(index: Int) = jump(index)
         private fun advance() {
             activate()
