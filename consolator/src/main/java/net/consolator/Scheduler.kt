@@ -39,7 +39,7 @@ sealed interface SchedulerScope : ResolverScope {
 }
 
 private interface Synchronizer<T> {
-    fun <R> commit(lock: T? = null, block: () -> R): R
+    fun <R> synchronize(lock: T? = null, block: () -> R): R
 }
 
 private interface AttachOperator<S> {
@@ -50,12 +50,13 @@ private interface AttachOperator<S> {
 fun commit(step: CoroutineStep) =
     (service ?:
     annotatedScopeOf(step) ?:
+    foregroundLifecycleOwner?.lifecycle?.coroutineScope ?:
     Scheduler).let { scope ->
-        scope::class.memberFunctions.find {
+        (scope::class.memberFunctions.find {
             it.name == "commit" &&
             it.parameters.size == 2 &&
             it.parameters[1].name == "step"
-        }?.call(scope, step) } // message queue reconfiguration
+        } ?: Scheduler::commit).call(scope, step) } // message queue reconfiguration
 fun commit(vararg context: Any?): Any? =
     when (val task = context.firstOrNull()) {
         START -> {
@@ -95,7 +96,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
                                     updateNetworkCapabilities()
                                     updateNetworkState() }),
                                 stage = Context::stageNetDbInitialized) }
-                    commit { resume() }
+                    synchronize { resume() }
                 }
             }
             return this
@@ -217,7 +218,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             queue.run() }
         private fun turn(msg: Message) =
             if (isSynchronized(msg))
-                commit(msg) {
+                synchronize(msg) {
                     if (queue.run(msg, false))
                         msg.callback.run() }
             else msg.callback.exec()
@@ -233,7 +234,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         private fun precursorOf(msg: Message?) = queue
         private fun Runnable.exec(isNotLocked: Boolean = true) {
             if (isNotLocked && isSynchronized(this))
-                commit(block = ::run)
+                synchronize(block = ::run)
             else run() }
         private fun isSynchronized(msg: Message) =
             isSynchronized(msg.callback) ||
@@ -246,7 +247,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             annotations.any { it is Synchronous }
 
         private lateinit var hLock: Lock
-        override fun <R> commit(lock: Any?, block: () -> R) =
+        override fun <R> synchronize(lock: Any?, block: () -> R) =
             synchronized(hLock(lock, block)) {
                 hLock = Lock.Closed(lock, block)
                 block().also {
@@ -287,6 +288,8 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
     }
 
     class Sequencer : Synchronizer<LiveWork>, AttachOperator<LiveWork> {
+        /* when a step is identified by tag as thread-blocking, it may only run safely on the clock;
+        // otherwise, it may be attached to the current synchronizer scope. */
         fun io(async: Boolean = false, step: SequencerStep) = attach(IO, async, step)
         fun io(index: Int, async: Boolean = false, step: SequencerStep) = attach(index, IO, async, step)
         fun ioStart(step: SequencerStep) = io(false, step).also { start() }
@@ -375,7 +378,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         private var latestCapture: Any? = null
 
         private val mLock: Any get() = seq
-        override fun <R> commit(lock: LiveWork?, block: () -> R) = synchronized(mLock, block)
+        override fun <R> synchronize(lock: LiveWork?, block: () -> R) = synchronized(mLock, block)
 
         private fun init() {
             ln = -1
@@ -401,7 +404,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             if (ln < -1) ln = -1 }
         fun jump(index: Int) =
             if (hasError) null
-            else commit { (index < seq.size && (!isObserving || seq[index].isAsynchronous())).also { allowed ->
+            else synchronize { (index < seq.size && (!isObserving || seq[index].isAsynchronous())).also { allowed ->
                 if (allowed) ln = index } }
         var next = fun(index: Int) = jump(index)
         private fun advance() {
@@ -514,38 +517,38 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             add(element)
         private fun LiveSequence.attach(index: Int, element: LiveWork) =
             add(index, element)
-        override fun attach(step: LiveWork, vararg args: Any?) = commit { with(seq) {
+        override fun attach(step: LiveWork, vararg args: Any?) = synchronize { with(seq) {
             attach(step)
             size - 1 }.also { index ->
                 markTagsForSeqAttach(args.firstOrNull(), index, step) } }
-        fun attachOnce(work: LiveWork) = commit {
+        fun attachOnce(work: LiveWork) = synchronize {
             if (work.isNotAttached())
                 attach(work)
             else ATTACHED_ALREADY }
-        fun attachOnce(range: IntRange, work: LiveWork) = commit {
+        fun attachOnce(range: IntRange, work: LiveWork) = synchronize {
             if (work.isNotAttached(range))
                 attach(work)
             else ATTACHED_ALREADY }
-        fun attachOnce(first: Int, last: Int, work: LiveWork) = commit {
+        fun attachOnce(first: Int, last: Int, work: LiveWork) = synchronize {
             if (work.isNotAttached(first, last))
                 attach(work)
             else ATTACHED_ALREADY }
-        override fun attach(index: Int, step: LiveWork, vararg args: Any?) = commit { with(seq) {
+        override fun attach(index: Int, step: LiveWork, vararg args: Any?) = synchronize { with(seq) {
             if (ln in index..size)
                 ln += 1 // also, remark previously tagged works
             attach(index, step)
             markTagsForSeqAttach(args.firstOrNull(), index, step)
             index } }
-        fun attachOnce(index: Int, work: LiveWork) = commit {
+        fun attachOnce(index: Int, work: LiveWork) = synchronize {
             if (work.isNotAttached(index)) {
                 attach(index, work)
                 index }
             else ATTACHED_ALREADY }
-        fun attachOnce(range: IntRange, index: Int, work: LiveWork) = commit {
+        fun attachOnce(range: IntRange, index: Int, work: LiveWork) = synchronize {
             if (work.isNotAttached(range, index))
                 attach(index, work)
             else ATTACHED_ALREADY }
-        fun attachOnce(first: Int, last: Int, index: Int, work: LiveWork) = commit {
+        fun attachOnce(first: Int, last: Int, index: Int, work: LiveWork) = synchronize {
             if (work.isNotAttached(first, last, index))
                 attach(index, work)
             else ATTACHED_ALREADY }
@@ -560,7 +563,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
 
         private fun markTagsForLaunch(step: SequencerStep, index: IntFunction, context: CoroutineContext? = null) =
             step after { currentJob().let { job ->
-                commit { markTagsForSeqLaunch(step, index() /* readjusted by remarks */, context, job) } } }
+                synchronize { markTagsForSeqLaunch(step, index() /* readjusted by remarks */, context, job) } } }
 
         fun attach(async: Boolean = false, step: SequencerStep): LiveWork {
             var index = -1
@@ -852,8 +855,8 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
     }
 
     override fun onChanged(step: Step?) {
-        step.markTagForSchExec()?.run { commit(this, ::block) } }
-    override fun <R> commit(lock: Step?, block: () -> R) = block() // or apply (live step) capture function internally
+        step.markTagForSchExec()?.run { synchronize(this, ::block) } }
+    override fun <R> synchronize(lock: Step?, block: () -> R) = block() // or apply (live step) capture function internally
 
     object EventBus : Buffer() {
         override suspend fun collectSafely(collector: FlowCollector<Any?>) {
