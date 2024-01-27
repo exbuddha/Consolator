@@ -37,15 +37,13 @@ open class BaseApplication : Application(), ObjectProvider, UniqueContext {
         putString(EXCEPTION_MESSAGE, ex.message)
         ex.cause?.let { cause ->
             putString(EXCEPTION_CAUSE, cause::class.qualifiedName)
-            putString(EXCEPTION_CAUSE_MESSAGE, cause.message) }
-    }
+            putString(EXCEPTION_CAUSE_MESSAGE, cause.message) } }
 
     override fun invoke(type: AnyKClass) = when (type) {
         MemoryManager::class ->
             ::applicationMemoryManager.require(constructor = ::MemoryManager)!!
         else ->
-            throw BaseImplementationRestriction
-    }
+            throw BaseImplementationRestriction }
 
     companion object {
         const val ACTION_MIGRATE_APP: Short = 1

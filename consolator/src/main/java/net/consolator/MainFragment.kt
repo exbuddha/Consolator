@@ -14,8 +14,7 @@ class MainFragment : BaseFragment() {
             // show animation or progress bar
             parentFragmentManager.commit {
                 show(this@MainFragment) }
-            info(UI_TAG, "Main fragment view is created.")
-        }
+            info(UI_TAG, "Main fragment view is created.") }
     }
 
     override var overlay = fun(view: View, savedInstanceState: Bundle?, action: Short) =

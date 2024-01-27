@@ -18,8 +18,7 @@ abstract class BaseActivity : AppCompatActivity(), VolatileContext {
                 disableNetworkCallbacks = ::unregisterNetworkCallback }
             if (isInternetAccessPermitted) {
                 enableNetworkCallbacks = enableNetworkCallbacks?.then(::registerInternetCallback)
-                disableNetworkCallbacks = disableNetworkCallbacks?.then(::unregisterInternetCallback) }
-        }
+                disableNetworkCallbacks = disableNetworkCallbacks?.then(::unregisterInternetCallback) } }
     }
 
     override fun onStart() {

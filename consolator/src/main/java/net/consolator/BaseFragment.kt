@@ -125,8 +125,7 @@ abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
         MemoryManager::class ->
             ::applicationMemoryManager.require(constructor = ::MemoryManager)!!
         else ->
-            throw BaseImplementationRestriction
-    }
+            throw BaseImplementationRestriction }
 
     companion object {
         const val UI_TAG = "FRAGMENT"
