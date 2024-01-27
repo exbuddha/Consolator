@@ -18,19 +18,18 @@ class MainFragment : BaseFragment() {
         }
     }
 
-    override var overlay = fun(_: View, _: Bundle?, action: Short) =
+    override var overlay = fun(view: View, savedInstanceState: Bundle?, action: Short) =
         when (action) {
             COMMIT_NAV_MAIN_UI ->
-                UI(requireActivity(), ::screenEventInterceptor).apply {
+                UI(requireActivity(), view, savedInstanceState, action, ::screenEventInterceptor).apply {
                     // ...
                 }
             ABORT_NAV_MAIN_UI ->
                 null to null /* continue animation or alternatives */
             else ->
-                throw BaseImplementationRestriction
-        }
+                throw BaseImplementationRestriction }
     private inline fun <reified R> screenEventInterceptor(listener: Any, callback: KFunction<R>, vararg args: Any?, noinline postback: PostbackFunction?): Interception = null
 }
 
-typealias Interception = Pair<Predicate?, Boolean?>?
-typealias PostbackFunction = (Interception) -> Unit
+typealias Interception = Pair<AnyFunction?, Boolean?>?
+typealias PostbackFunction = (Interception) -> Any?
