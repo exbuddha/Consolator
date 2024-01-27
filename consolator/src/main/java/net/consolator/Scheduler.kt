@@ -42,7 +42,7 @@ private interface Synchronizer<T> {
     fun <R> synchronize(lock: T? = null, block: () -> R): R
 }
 
-private interface AttachOperator<S> {
+private interface AttachOperator<in S> {
     fun attach(step: S, vararg args: Any?): Any?
     fun attach(index: Int, step: S, vararg args: Any?): Any?
 }
@@ -104,12 +104,12 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
 
         private suspend inline fun <reified D : RoomDatabase> SequencerScope.coordinateBuildDatabase(identifier: Any?, instance: KMutableProperty<out D?>, noinline stage: ContextStep?) =
             returnItsTag(identifier)?.let { tag ->
-                commitAsyncOrResetByTag(instance, tag, {
+                blockAsyncOrResetByTag(instance, tag, {
                     buildDatabaseOrResetByTag(instance, tag) },
                     post = markTagsForReform(tag, stage, synchronize(identifier, stage), currentJob())) }
         private suspend inline fun <reified D : RoomDatabase> SequencerScope.coordinateBuildDatabase(identifier: Any?, instance: KMutableProperty<out D?>, vararg step: AnyStep, noinline stage: ContextStep?) =
             returnItsTag(identifier)?.let { tag ->
-                commitAsyncOrResetByTag(instance, tag, {
+                blockAsyncOrResetByTag(instance, tag, {
                     buildDatabaseOrResetByTag(instance, tag) },
                     post = markTagsForReform(tag, stage, synchronize(identifier, *step, stage = stage), currentJob())) }
         private suspend inline fun <reified D : RoomDatabase> SequencerScope.buildDatabaseOrResetByTag(instance: KMutableProperty<out D?>, tag: String) {
@@ -117,12 +117,14 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
                 sequencer { resetByTagOnError(tag, ::buildDatabase) } }?.let { new ->
                     instance.set(new) } }
 
-        private fun SequencerScope.commitAsyncOrResetByTag(lock: AnyKProperty, tag: String, block: AnyStep, condition: PropertyCondition = ::whenNotNullOrResetByTag, post: AnyStep) =
-            commitAsyncOrResetByTag(lock, tag) {
+        private suspend fun SequencerScope.blockAsyncOrResetByTag(lock: AnyKProperty, tag: String, block: AnyStep, post: AnyStep, condition: PropertyCondition) =
+            blockAsyncOrResetByTag(lock, tag) {
                 block()
                 condition(lock, tag, post) }
-        private fun SequencerScope.commitAsyncOrResetByTag(lock: AnyKProperty, tag: String, block: AnyStep) =
-            blockAsync(lock, block) { resetByTag(tag) }
+        private suspend fun SequencerScope.blockAsyncOrResetByTag(lock: AnyKProperty, tag: String, block: AnyStep, post: AnyStep) =
+            blockAsyncOrResetByTag(lock, tag, block, post, ::whenNotNullOrResetByTag)
+        private suspend fun SequencerScope.blockAsyncOrResetByTag(lock: AnyKProperty, tag: String, block: AnyStep) =
+            blockAsyncForResult(lock, block) { resetByTag(tag) }
 
         private fun SequencerScope.synchronize(identifier: Any?, stage: ContextStep?) =
             if (stage !== null) form(stage)
@@ -960,7 +962,9 @@ inline fun <R, S : R> blockAsyncForResult(lock: Any, crossinline predicate: Pred
                 else fallback() } }
     else fallback.block()
 
-inline fun <R> blockAsync(lock: AnyKProperty, crossinline block: suspend () -> R, noinline fallback: Step = emptyStep) =
+inline fun <R> blockAsync(lock: AnyKProperty, crossinline block: suspend () -> R) =
+    blockAsync(lock, lock::isNotNull, block)
+inline fun <R, S : R> blockAsyncForResult(lock: AnyKProperty, crossinline block: suspend () -> R, noinline fallback: suspend () -> S? = { null }) =
     blockAsyncForResult(lock, lock::isNotNull, block, fallback)
 
 private fun Any.detach() = when (this) {
@@ -1540,7 +1544,7 @@ typealias AnyKProperty = KProperty<*>
 typealias AnyKMutableProperty = KMutableProperty<*>
 
 private operator fun AnyKCallable.plus(lock: AnyKCallable) = this
-private fun <R> AnyKCallable.commit(block: () -> R) = synchronized(this, block)
+private fun <R> AnyKCallable.synchronize(block: () -> R) = synchronized(this, block)
 
 private typealias ID = Short
 sealed interface State {
