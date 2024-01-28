@@ -228,7 +228,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             precursorOf(msg).onEach { callback ->
                 callback.exec(isNotLocked)
                 synchronized(sLock) {
-                    // readjust by remarks and use index instead
+                    // readjust by attach remarks and use index instead
                     remove(callback)
                 } }
             return true
@@ -375,9 +375,11 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
 
         private val observer: StepObserver
         private var seq: LiveSequence = mutableListOf()
-        private var ln = -1 // return the first among marked for observation
+        private var ln = -1
+            get() = if (queue.size > 0) queue.removeFirst() else field
         private val work
             get() = seq[ln]
+        private val queue: MutableList<Int> = java.util.LinkedList()
         private var latestStep: LiveStep? = null
         private var latestCapture: Any? = null
 
@@ -408,15 +410,15 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             if (ln < -1) ln = -1 }
         fun jump(index: Int) =
             if (hasError) null
-            else synchronize {
-                val index = index /* readjusted by remarks */
+            else {
+                val index = synchronize { index } /* readjusted by attach remarks */
                 (index < seq.size && (!isObserving || seq[index].isAsynchronous())).also { allowed ->
-                    if (allowed) ln = index /* also mark for observation */ } }
+                    if (allowed) queue.add(index) } }
         var next = fun(index: Int) = jump(index)
         private fun advance() {
             activate()
             prepare()
-            while (next(ln + 1) ?: return)
+            while (next(ln) ?: return)
                 work.let { run(it) ?: bypass(it) } || return
             isCompleted = finish() }
         fun observe(work: LiveWork): Boolean? {
