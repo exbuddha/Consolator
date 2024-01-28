@@ -376,7 +376,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         private val observer: StepObserver
         private var seq: LiveSequence = mutableListOf()
         private var ln = -1
-            get() = if (queue.size > 0) queue.removeFirst() else field
+            get() = with(queue) { if (size > 0) removeFirst() else field }
         private val work
             get() = seq[ln]
         private val queue: MutableList<Int> = java.util.LinkedList()
