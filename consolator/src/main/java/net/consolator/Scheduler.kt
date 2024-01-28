@@ -257,11 +257,13 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
 
         private var sLock = Any()
         override fun attach(step: Runnable, vararg args: Any?) =
-            synchronized<Unit>(sLock) { queue.add(step) }
+            synchronized<Unit>(sLock) { with(queue) {
+                add(step)
+                markTagsForClkAttach(size, step) } }
         override fun attach(index: Int, step: Runnable, vararg args: Any?) =
             synchronized(sLock) {
-                /* add remark */
-                queue.add(index, step) }
+                queue.add(index, step)
+                markTagsForClkAttach(index, step) }
 
         var post = fun(callback: Runnable) =
             handler?.post(callback) ?:
@@ -922,6 +924,8 @@ fun scheduleAhead(step: Step) { Scheduler.value = step }
 // runnable <-> message
 fun post(callback: Runnable) = clock?.post?.invoke(callback)
 fun postAhead(callback: Runnable) = clock?.postAhead?.invoke(callback)
+private fun tagOf(msg: Message): String? = TODO()
+private fun tagOf(what: Int): String? = TODO()
 
 // step <-> runnable
 fun handle(step: CoroutineStep) = post(runnableOf(step))
@@ -932,6 +936,7 @@ fun handleInterrupting(step: CoroutineStep) = post(interruptingRunnableOf(step))
 fun handleAheadInterrupting(step: CoroutineStep) = postAhead(interruptingRunnableOf(step))
 fun handleSafelyInterrupting(step: CoroutineStep) = post(safeInterruptingRunnableOf(step))
 fun handleAheadSafelyInterrupting(step: CoroutineStep) = postAhead(safeInterruptingRunnableOf(step))
+private fun tagOf(callback: Runnable): String? = TODO()
 
 fun <T> blockOf(step: suspend CoroutineScope.() -> T): () -> T = { runBlocking(block = step) }
 fun <T> runnableOf(step: suspend CoroutineScope.() -> T) = Runnable { runBlocking(block = step) }
@@ -1214,6 +1219,8 @@ fun markTags(vararg function: Any?) {
             markTagsForSeqLaunch(*function, i = 1)
         JOB_REPEAT ->
             markTagsForJobRepeat(*function, i = 1)
+        CLK_ATTACH ->
+            markTagsForClkAttach(*function, i = 1)
         SEQ_ATTACH ->
             markTagsForSeqAttach(*function, i = 1)
         CTX_REFORM ->
@@ -1239,6 +1246,20 @@ private fun markTagsForJobRepeat(vararg function: Any?, i: Int = 0) =
             jobs?.save("$blockTag@$jobId.$DELAY", delay.asCallable()) } /* delay */
         function[i]?.let { predicate ->
             jobs?.save("$blockTag@$jobId.$PREDICATE", predicate.asCallable()) } /* predicate */ }
+private fun markTagsForClkAttach(vararg function: Any?, i: Int = 0) =
+    function[i + 1]?.let { step -> when (step) {
+        is Runnable -> {
+            val step = step.asRunnable()!!
+            val stepTag = tagOf(step)
+            jobs?.save("$stepTag.$CALLBACK", step.asCallable()) /* callback */
+            function[i]?.let { index ->
+                jobs?.save("$stepTag.$INDEX", index.asCallable()) } /* index */ }
+        is Message -> {
+            val step = step.asMessage()!!
+            jobs?.save("${tagOf(step)}.$MSG", step.asCallable()) /* message */ }
+        else -> {
+            val step = step.asInt()!!
+            jobs?.save("${tagOf(step)}.$WHAT", step.asCallable()) /* what */ } } }
 private fun markTagsForSeqAttach(vararg function: Any?, i: Int = 0) =
     function[i]?.asString().let { stepTag ->
         val stepTag = stepTag ?: NULL_STEP
@@ -1527,6 +1548,7 @@ fun <T> T?.asNullable(): KCallable<T?> = asNullRef()::obj
 fun trueWhenNull(it: Any?) = it === null
 
 fun Any?.asMessage() = asType<Message>()
+fun Any?.asRunnable() = asType<Runnable>()
 fun Any?.asLiveWork() = asType<LiveWork>()
 fun Any?.asJob() = asType<Job>()
 fun Any?.asWork() = asType<Work>()
