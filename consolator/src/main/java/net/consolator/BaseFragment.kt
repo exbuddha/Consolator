@@ -5,6 +5,7 @@ import android.os.*
 import android.view.*
 import androidx.fragment.app.*
 import androidx.fragment.app.FragmentTransaction.*
+import androidx.lifecycle.*
 import kotlin.annotation.AnnotationRetention.*
 import kotlin.annotation.AnnotationTarget.*
 import kotlinx.coroutines.*
@@ -28,14 +29,14 @@ import net.consolator.Scheduler.applicationMemoryManager
 import net.consolator.Scheduler.applicationMigrationManager
 
 abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
-    protected abstract var overlay: (View, Bundle?, Short) -> Transition
+    protected abstract var overlay: (ViewModelStoreOwner, Bundle?, Short) -> Transition
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         if (State[1] is Resolved) return
         fun transit(action: Short) {
             val (overlay, transition) =
-                overlay(view, savedInstanceState, action)
+                overlay(this, savedInstanceState, action)
             if (overlay !== null)
                 schedule {
                     parentFragmentManager.commit {

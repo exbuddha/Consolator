@@ -5,10 +5,11 @@ import android.os.*
 import android.view.*
 import android.view.GestureDetector.*
 import androidx.fragment.app.*
+import androidx.lifecycle.*
 import kotlin.reflect.*
 import kotlin.reflect.jvm.*
 
-var UI = fun(context: Context, _: View, _: Bundle?, _: Short, interceptor: InterceptFunction?): Transition =
+var UI = fun(context: Context, _: ViewModelStoreOwner, _: Bundle?, _: Short, interceptor: InterceptFunction?): Transition =
     OverlayFragment(context.weakRef(), interceptor) to null
 
 private open class OverlayFragment(

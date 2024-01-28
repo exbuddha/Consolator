@@ -3,6 +3,7 @@ package net.consolator
 import android.os.Bundle
 import android.view.View
 import androidx.fragment.app.commit
+import androidx.lifecycle.ViewModelStoreOwner
 import kotlin.reflect.KFunction
 import net.consolator.BaseApplication.Companion.ABORT_NAV_MAIN_UI
 import net.consolator.BaseApplication.Companion.COMMIT_NAV_MAIN_UI
@@ -17,10 +18,10 @@ class MainFragment : BaseFragment() {
             info(UI_TAG, "Main fragment view is created.") }
     }
 
-    override var overlay = fun(view: View, savedInstanceState: Bundle?, action: Short) =
+    override var overlay = fun(viewModelStoreOwner: ViewModelStoreOwner, savedInstanceState: Bundle?, action: Short) =
         when (action) {
             COMMIT_NAV_MAIN_UI ->
-                UI(requireActivity(), view, savedInstanceState, action, ::screenEventInterceptor).apply {
+                UI(requireActivity(), viewModelStoreOwner, savedInstanceState, action, ::screenEventInterceptor).apply {
                     // ...
                 }
             ABORT_NAV_MAIN_UI ->
