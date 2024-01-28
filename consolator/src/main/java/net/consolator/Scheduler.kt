@@ -924,6 +924,7 @@ fun scheduleAhead(step: Step) { Scheduler.value = step }
 // runnable <-> message
 fun post(callback: Runnable) = clock?.post?.invoke(callback)
 fun postAhead(callback: Runnable) = clock?.postAhead?.invoke(callback)
+private fun tagOf(callback: Runnable): String? = TODO()
 private fun tagOf(msg: Message): String? = TODO()
 private fun tagOf(what: Int): String? = TODO()
 
@@ -936,7 +937,6 @@ fun handleInterrupting(step: CoroutineStep) = post(interruptingRunnableOf(step))
 fun handleAheadInterrupting(step: CoroutineStep) = postAhead(interruptingRunnableOf(step))
 fun handleSafelyInterrupting(step: CoroutineStep) = post(safeInterruptingRunnableOf(step))
 fun handleAheadSafelyInterrupting(step: CoroutineStep) = postAhead(safeInterruptingRunnableOf(step))
-private fun tagOf(callback: Runnable): String? = TODO()
 
 fun <T> blockOf(step: suspend CoroutineScope.() -> T): () -> T = { runBlocking(block = step) }
 fun <T> runnableOf(step: suspend CoroutineScope.() -> T) = Runnable { runBlocking(block = step) }
