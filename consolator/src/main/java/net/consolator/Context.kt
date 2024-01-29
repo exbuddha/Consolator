@@ -87,7 +87,7 @@ fun Context.stageNetDbInitialized(scope: Any?) {
 fun <D : RoomDatabase> Context.createDatabase(cls: Class<D>, name: String?) =
     Room.databaseBuilder(this, cls, name).build()
 fun <D : RoomDatabase> Context.createDatabase(cls: KClass<D>) =
-    createDatabase(cls.java, cls.lastAnnotatedFilename())
+    with(cls) { createDatabase(java, lastAnnotatedFilename()) }
 inline fun <reified D : RoomDatabase> Context.buildDatabase() =
     with(D::class, ::createDatabase)
 fun Context.buildAppDatabase() =

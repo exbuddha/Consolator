@@ -15,6 +15,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import net.consolator.BaseActivity.*
 import net.consolator.application.*
+import java.util.LinkedList
 import net.consolator.Scheduler.EventBus
 import net.consolator.Scheduler.Lock
 import net.consolator.Scheduler.Sequencer
@@ -190,9 +191,8 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         priority: Int = currentThread.priority
     ) : HandlerThread(name, priority), Synchronizer<Any>, AttachOperator<Runnable> {
         var handler: Handler? = null
-        private var queue: RunnableList
+        private var queue: RunnableList = LinkedList()
 
-        init { queue = java.util.LinkedList() }
         constructor() : this(CLK)
         constructor(callback: Runnable) : this() {
             queue.add(callback) }
@@ -379,7 +379,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             get() = with(queue) { if (size > 0) removeFirst() else field }
         private val work
             get() = seq[ln]
-        private val queue: MutableList<Int> = java.util.LinkedList()
+        private val queue: MutableList<Int> = LinkedList()
         private var latestStep: LiveStep? = null
         private var latestCapture: Any? = null
 
@@ -861,8 +861,8 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         return this
     }
 
-    override fun onChanged(step: Step?) {
-        step.markTagForSchExec()?.run { synchronize(this, ::block) } }
+    override fun onChanged(value: Step?) {
+        value.markTagForSchExec()?.run { synchronize(this, ::block) } }
     override fun <R> synchronize(lock: Step?, block: () -> R) = block() // or apply (live step) capture function internally
 
     object EventBus : Buffer() {
