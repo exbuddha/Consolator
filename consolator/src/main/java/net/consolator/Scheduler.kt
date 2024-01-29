@@ -98,10 +98,8 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
                                     updateNetworkState() }),
                                 stage = Context::stageNetDbInitialized) }
                     synchronize { resume() }
-                }
-            }
-            return this
-        }
+                } }
+            return this }
 
         private suspend inline fun <reified D : RoomDatabase> SequencerScope.coordinateBuildDatabase(identifier: Any?, instance: KMutableProperty<out D?>, noinline stage: ContextStep?) =
             returnItsTag(identifier)?.let { tag ->
@@ -387,6 +385,11 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         private var latestStep: LiveStep? = null
         private var latestCapture: Any? = null
 
+        fun setLifecycleOwner(index: Int, owner: LifecycleOwner) {}
+        fun unsetLifecycleOwner(index: Int) {}
+        private fun LiveWork.hasLifecycleOwner() = false
+        private fun lifecycleOwnerOf(work: LiveWork): LifecycleOwner = TODO()
+
         private val mLock: Any get() = seq
         override fun <R> synchronize(lock: LiveWork?, block: () -> R) = synchronized(mLock, block)
 
@@ -406,12 +409,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         fun resume() {
             isActive = true
             advance() }
-        fun retry() {
-            ln -= 1
-            resume() }
         var activate = fun() = Unit
-        private fun prepare() {
-            if (ln < -1) ln = -1 }
         fun jump(index: Int) =
             if (hasError) null
             else synchronize {
@@ -421,7 +419,6 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         var next = fun(index: Int) = jump(index)
         private fun advance() {
             activate()
-            prepare()
             while (next(ln) ?: return)
                 work.let { run(it) ?: bypass(it) } || return
             isCompleted = finish() }
@@ -430,8 +427,11 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             try {
                 val step = step() // process tags to reuse live step
                 latestStep = step // live step <-> work
-                step?.observeForever(observer) ?:
-                return null
+                if (step !== null)
+                    if (work.hasLifecycleOwner())
+                        step.observe(lifecycleOwnerOf(work), observer)
+                    else step.observeForever(observer)
+                else return null
             } catch (ex: Throwable) {
                 error(ex)
                 return false }
@@ -445,7 +445,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             return if (async is Boolean) async
             else false }
         var bypass = fun(work: LiveWork) = capture(work)
-        fun end() = !(ln < seq.size || isObserving)
+        fun end() = queue.isEmpty() && !isObserving
         var finish = fun() = end()
 
         fun reset(step: LiveStep? = latestStep) {
