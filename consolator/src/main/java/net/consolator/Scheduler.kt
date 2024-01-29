@@ -512,6 +512,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             latestCapture = null }
         fun clearObjects() {
             seq.clear()
+            queue.clear()
             clearLatestObjects() }
 
         companion object : (SequencerWork) -> Unit? {
