@@ -831,14 +831,6 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
     override val coroutineContext
         get() = IO
 
-    init {
-        _key = object : SchedulerKey {}
-        _element = object : SchedulerElement {
-            override val key
-                get() = _key
-        }
-    }
-
     override fun commit(step: CoroutineStep) =
         attach(step.markTagForSchCommit())
     override fun attach(step: CoroutineStep, vararg args: Any?): Any? {
@@ -856,7 +848,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         Clock.scheduled<Any>(step)?.detach()?.asCoroutine() ?: step
 
     override fun <R> fold(initial: R, operation: (R, CoroutineContext.Element) -> R): R {
-        return operation(initial, _element)
+        return operation(initial, SchedulerElement)
     }
     override fun <E : CoroutineContext.Element> get(key: CoroutineContext.Key<E>): E? {
         return null
@@ -1075,10 +1067,14 @@ private suspend inline fun whenNotNullOrResetByTag(instance: AnyKProperty, stage
         block()
     else resetByTag(stage)
 
-private interface SchedulerKey : CoroutineContext.Key<SchedulerElement>
-private interface SchedulerElement : CoroutineContext.Element
-private lateinit var _key: SchedulerKey
-private lateinit var _element: SchedulerElement
+private interface SchedulerKey : CoroutineContext.Key<SchedulerElement> {
+    companion object : SchedulerKey
+}
+private interface SchedulerElement : CoroutineContext.Element {
+    companion object : SchedulerElement {
+        override val key
+            get() = SchedulerKey }
+}
 
 fun CoroutineScope.relaunch(instance: JobKProperty, context: CoroutineContext = Scheduler, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep) =
     relaunch(::launch, instance, context, start, step)
@@ -1111,7 +1107,7 @@ private fun CoroutineScope.determineCoroutine(context: CoroutineContext, start: 
         start,
         step)
 private fun CoroutineContext.isSchedulerContext() =
-    this is Scheduler || this[_key] is SchedulerKey
+    this is Scheduler || this[SchedulerKey] is SchedulerElement
 
 infix fun Job.then(next: SchedulerStep): CoroutineStep = {}
 infix fun Job.after(prev: SchedulerStep): CoroutineStep = {}
