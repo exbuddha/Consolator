@@ -424,11 +424,10 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         fun observe(work: LiveWork): Boolean? {
             val (step, _, async) = work
             try {
-                // process tags to reuse live step
-                step().let { step ->
-                    latestStep = step // live step <-> work
-                    step?.observeForever(observer) ?:
-                    return null }
+                val step = step() // process tags to reuse live step
+                latestStep = step // live step <-> work
+                step?.observeForever(observer) ?:
+                return null
             } catch (ex: Throwable) {
                 error(ex)
                 return false }
@@ -436,12 +435,11 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             return async }
         var run = fun(work: LiveWork) = observe(work)
         fun capture(work: LiveWork): Boolean {
-            work.second.let { capture ->
-                latestCapture = capture
-                capture?.invoke(work)?.let { async ->
-                    if (async is Boolean) return async
-                } }
-            return false }
+            val capture = work.second
+            latestCapture = capture
+            val async = capture?.invoke(work)
+            return if (async is Boolean) async
+            else false }
         var bypass = fun(work: LiveWork) = capture(work)
         fun end() = !(ln < seq.size || isObserving)
         var finish = fun() = end()
