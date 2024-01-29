@@ -214,9 +214,8 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         override fun run() {
             hLock = Lock.Open()
             handler = object : Handler(looper) {
-                override fun handleMessage(msg: Message) {
-                    super.handleMessage(msg)
-                    turn(msg) } }
+                override fun handleMessage(msg: Message) =
+                    DEFAULT_HANDLE(msg) }
             queue.run() }
         private fun turn(msg: Message) =
             if (isSynchronized(msg))
@@ -288,6 +287,8 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
 
             fun delayOf(step: CoroutineStep): Long? = null
             fun timeOf(step: CoroutineStep): Long? = null
+
+            private val DEFAULT_HANDLE: HandlerFunction = { turn(it) }
         }
     }
 
@@ -1497,6 +1498,7 @@ private typealias PredicateFunction = suspend () -> Boolean
 private typealias DelayFunction = suspend () -> Long
 
 private typealias MessageFunction = (Message) -> Any?
+private typealias HandlerFunction = Clock.(Message) -> Unit
 private typealias RunnableList = MutableList<Runnable>
 private typealias CoroutineFunction = (CoroutineStep) -> Any?
 
