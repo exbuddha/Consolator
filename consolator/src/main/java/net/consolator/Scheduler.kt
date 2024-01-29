@@ -60,7 +60,7 @@ fun commit(step: CoroutineStep) =
         } ?: Scheduler::commit).call(scope, step) } // message queue reconfiguration
 fun commit(vararg context: Any?): Any? =
     when (val task = context.firstOrNull()) {
-        START -> {
+        (task === START) -> {
             Scheduler.observe()
             clock = Clock(SVC, Thread.MAX_PRIORITY) @Tag(CLOCK_INIT) @Synchronous {
                 // turn clock until scope is active
@@ -280,11 +280,12 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
                 Any::class -> (runnableOf(step) ?: msgOf(step)).asType()
                 Runnable::class -> runnableOf(step).asType()
                 Message::class -> msgOf(step).asType()
-                else -> null }
+                else -> estimatedDelayOf(step).asType() }
             fun msgOf(step: CoroutineStep): Message? = null
             fun runnableOf(step: CoroutineStep): Runnable? = null
             fun stepOf(callback: Runnable): CoroutineStep? = null
 
+            fun estimatedDelayOf(step: CoroutineStep): Long? = null
             fun delayOf(step: CoroutineStep): Long? = null
             fun timeOf(step: CoroutineStep): Long? = null
 
@@ -377,9 +378,11 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         private val observer: StepObserver
         private var seq: LiveSequence = mutableListOf()
         private var ln = -1
-            get() = with(queue) { if (size > 0) removeFirst() else field }
+            get() = with(queue) {
+                if (size > 0) removeFirst() /* readjusted by latest attach remarks */
+                else field }
         private val work
-            get() = seq[ln]
+            get() = synchronize { seq[ln] }
         private val queue: MutableList<Int> = LinkedList()
         private var latestStep: LiveStep? = null
         private var latestCapture: Any? = null
@@ -411,9 +414,9 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             if (ln < -1) ln = -1 }
         fun jump(index: Int) =
             if (hasError) null
-            else {
-                val index = synchronize { index } /* readjusted by attach remarks */
-                (index < seq.size && (!isObserving || seq[index].isAsynchronous())).also { allowed ->
+            else synchronize {
+                /* readjust index by attach remarks */
+                (index >= 0 && index < seq.size && (!isObserving || seq[index].isAsynchronous())).also { allowed ->
                     if (allowed) queue.add(index) } }
         var next = fun(index: Int) = jump(index)
         private fun advance() {
@@ -571,7 +574,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
 
         private fun markTagsForLaunch(step: SequencerStep, index: IntFunction, context: CoroutineContext? = null) =
             step after { currentJob().let { job ->
-                synchronize { markTagsForSeqLaunch(step, index() /* readjusted by remarks */, context, job) } } }
+                synchronize { markTagsForSeqLaunch(step, index() /* readjusted by attach remarks */, context, job) } } }
 
         fun attach(async: Boolean = false, step: SequencerStep): LiveWork {
             var index = -1
