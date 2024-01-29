@@ -135,26 +135,25 @@ private fun NetCall.asNullable() =
     if (this === ::netCall) ::netCall
     else call().asNullable()
 private fun <R> NetCall.lock(cmd: String, block: () -> R) = synchronized(asNullable(), block)
-operator fun NetCall.get(cmd: String): Any? = when (cmd) {
-    INET_CALL -> this
-    INET_FUNCTION -> networkCallFunction
-    INET_SUCCESS -> reactToNetCallResponseReceived
-    INET_ERROR -> reactToNetCallRequestFailed
-    INET_DELAY -> netCallDelayTime
-    INET_INTERVAL -> netCallTimeInterval
-    INET_MIN_INTERVAL -> minNetCallTimeInterval
+operator fun NetCall.get(cmd: String): Any? = when {
+    cmd === INET_CALL -> this
+    cmd === INET_FUNCTION -> networkCallFunction
+    cmd === INET_SUCCESS -> reactToNetCallResponseReceived
+    cmd === INET_ERROR -> reactToNetCallRequestFailed
+    cmd === INET_DELAY -> netCallDelayTime
+    cmd === INET_INTERVAL -> netCallTimeInterval
+    cmd === INET_MIN_INTERVAL -> minNetCallTimeInterval
     else -> null }
 operator fun NetCall.set(cmd: String, value: Any?) {
     // keep old value
-    lock(cmd) {
-        when (cmd) {
-            INET_CALL -> netCall = take(value)
-            INET_FUNCTION -> networkCallFunction = take(value)
-            INET_SUCCESS -> reactToNetCallResponseReceived = take(value)
-            INET_ERROR -> reactToNetCallRequestFailed = take(value)
-            INET_DELAY -> netCallDelayTime = take(value)
-            INET_INTERVAL -> netCallTimeInterval = take(value)
-            INET_MIN_INTERVAL -> minNetCallTimeInterval = take(value) } } }
+    lock(cmd) { when {
+        cmd === INET_CALL -> netCall = take(value)
+        cmd === INET_FUNCTION -> networkCallFunction = take(value)
+        cmd === INET_SUCCESS -> reactToNetCallResponseReceived = take(value)
+        cmd === INET_ERROR -> reactToNetCallRequestFailed = take(value)
+        cmd === INET_DELAY -> netCallDelayTime = take(value)
+        cmd === INET_INTERVAL -> netCallTimeInterval = take(value)
+        cmd === INET_MIN_INTERVAL -> minNetCallTimeInterval = take(value) } } }
 private inline fun <reified T : Any> take(value: Any?): T = value.asType()!!
 
 private typealias Respond = (Response) -> Unit
