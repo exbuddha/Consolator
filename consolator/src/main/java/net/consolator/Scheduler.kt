@@ -261,7 +261,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
                 add(step)
                 markTagsForClkAttach(size, step) } }
         override fun attach(index: Int, step: Runnable, vararg args: Any?) =
-            synchronized(sLock) {
+            synchronized<Unit>(sLock) {
                 queue.add(index, step)
                 markTagsForClkAttach(index, step) }
 
