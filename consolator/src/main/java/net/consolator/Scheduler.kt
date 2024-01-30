@@ -377,11 +377,12 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         private var seq: LiveSequence = mutableListOf()
         private var ln = -1
             get() = with(queue) {
-                if (size > 0) removeFirst() /* readjusted by latest attach remarks */
+                if (size > 0) removeFirst().also { latestIndex = it } /* readjusted by latest attach remarks */
                 else field }
         private val work
             get() = synchronize { seq[ln] }
         private val queue: MutableList<Int> = LinkedList()
+        private var latestIndex: Int = -1
         private var latestStep: LiveStep? = null
         private var latestCapture: Any? = null
 
@@ -512,6 +513,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             hasError = false
             ex = null }
         fun clearLatestObjects() {
+            latestIndex = -1
             latestStep = null
             latestCapture = null }
         fun clearObjects() {
@@ -545,10 +547,11 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
                 attach(work)
             else ATTACHED_ALREADY }
         override fun attach(index: Int, step: LiveWork, vararg args: Any?) = synchronize { with(seq) {
-            if (ln in index..size)
-                ln += 1 // also, remark previously tagged works
+            if (latestIndex in index..size)
+                latestIndex += 1
             attach(index, step)
             markTagsForSeqAttach(args.firstOrNull(), index, step)
+            // remark proceeding work (marked for observe) in queue
             index } }
         fun attachOnce(index: Int, work: LiveWork) = synchronize {
             if (work.isNotAttached(index)) {
@@ -761,19 +764,19 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             return true }
 
         val leading
-            get() = 0 until with(seq) { if (ln < size) ln else size }
+            get() = 0 until with(seq) { if (latestIndex < size) latestIndex else size }
         val trailing
-            get() = (if (ln < 0) 0 else ln + 1) until seq.size
+            get() = (if (latestIndex < 0) 0 else latestIndex + 1) until seq.size
 
         private val before
             get() = when {
-                ln <= 0 -> 0
-                ln < seq.size -> ln - 1
+                latestIndex <= 0 -> 0
+                latestIndex < seq.size -> latestIndex - 1
                 else -> seq.size }
         private val after
             get() = when {
-                ln < 0 -> 0
-                ln < seq.size -> ln + 1
+                latestIndex < 0 -> 0
+                latestIndex < seq.size -> latestIndex + 1
                 else -> seq.size }
     }
 
