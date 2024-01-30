@@ -262,9 +262,9 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
                     hLock = Lock.Open(lock, block, it) } }
 
         override fun adjust(index: Number) = when (index) {
-            is Long -> estimatedIndexOfDelay(index)
-            else -> index.toInt() }
-        private fun estimatedIndexOfDelay(delay: Long) = queue.size
+            is Int -> index
+            else -> estimatedIndexOf(index) }
+        private fun estimatedIndexOf(delay: Number) = queue.size
 
         private var sLock = Any()
         override fun attach(step: Runnable, vararg args: Any?) =
