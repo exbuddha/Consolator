@@ -45,7 +45,11 @@ private interface Synchronizer<T> {
 
 private interface AttachOperator<in S> {
     fun attach(step: S, vararg args: Any?): Any?
-    fun attach(index: Int, step: S, vararg args: Any?): Any?
+}
+
+private interface AdjustOperator<in S, I> : AttachOperator<S> {
+    fun attach(index: I, step: S, vararg args: Any?): Any?
+    fun adjust(index: I): I
 }
 
 fun commit(step: CoroutineStep) =
@@ -187,7 +191,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
     open class Clock(
         name: String,
         priority: Int = currentThread.priority
-    ) : HandlerThread(name, priority), Synchronizer<Any>, AttachOperator<Runnable> {
+    ) : HandlerThread(name, priority), Synchronizer<Any>, AdjustOperator<Runnable, Number> {
         var handler: Handler? = null
         private var queue: RunnableList = LinkedList()
 
@@ -212,8 +216,9 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         override fun run() {
             hLock = Lock.Open()
             handler = object : Handler(looper) {
-                override fun handleMessage(msg: Message) =
-                    DEFAULT_HANDLE(msg) }
+                override fun handleMessage(msg: Message) {
+                    super.handleMessage(msg)
+                    DEFAULT_HANDLE(msg) } }
             queue.run() }
         private fun turn(msg: Message) =
             if (isSynchronized(msg))
@@ -221,18 +226,22 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
                     if (queue.run(msg, false))
                         msg.callback.run() }
             else msg.callback.exec()
-        private fun RunnableList.run(msg: Message? = null, isNotLocked: Boolean = true): Boolean {
-            precursorOf(msg).onEach { callback ->
-                callback.exec(isNotLocked)
-                synchronized(sLock) {
-                    // readjust by attach remarks and use index instead
-                    remove(callback)
-                } }
-            return true
-        }
-        private fun precursorOf(msg: Message?) = queue
-        private fun Runnable.exec(isNotLocked: Boolean = true) {
-            if (isNotLocked && isSynchronized(this))
+        private fun RunnableList.run(msg: Message? = null, isIdle: Boolean = true) =
+            with(precursorOf(msg)) {
+                forEach {
+                    var ln = it
+                    synchronized(sLock) {
+                        ln = adjust(ln)
+                        queue[ln]
+                    }.exec(isIdle)
+                    synchronized(sLock) {
+                        removeAt(adjust(ln))
+                    } }
+                hasNotTraversed(msg) }
+        private fun precursorOf(msg: Message?) = queue.indices
+        private fun IntRange.hasNotTraversed(msg: Message?) = true
+        private fun Runnable.exec(isIdle: Boolean = true) {
+            if (isIdle && isSynchronized(this))
                 synchronize(block = ::run)
             else run() }
         private fun isSynchronized(msg: Message) =
@@ -252,14 +261,20 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
                 block().also {
                     hLock = Lock.Open(lock, block, it) } }
 
+        override fun adjust(index: Number) = when (index) {
+            is Long -> estimatedIndexOfDelay(index)
+            else -> index.toInt() }
+        private fun estimatedIndexOfDelay(delay: Long) = queue.size
+
         private var sLock = Any()
         override fun attach(step: Runnable, vararg args: Any?) =
             synchronized<Unit>(sLock) { with(queue) {
                 add(step)
                 markTagsForClkAttach(size, step) } }
-        override fun attach(index: Int, step: Runnable, vararg args: Any?) =
+        override fun attach(index: Number, step: Runnable, vararg args: Any?) =
             synchronized<Unit>(sLock) {
-                queue.add(index, step)
+                queue.add(index.toInt(), step)
+                // remark items in queue for adjustment
                 markTagsForClkAttach(index, step) }
 
         var post = fun(callback: Runnable) =
@@ -287,11 +302,11 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             fun delayOf(step: CoroutineStep): Long? = null
             fun timeOf(step: CoroutineStep): Long? = null
 
-            private val DEFAULT_HANDLE: HandlerFunction = { turn(it) }
+            private var DEFAULT_HANDLE: HandlerFunction = { turn(it) }
         }
     }
 
-    class Sequencer : Synchronizer<LiveWork>, AttachOperator<LiveWork> {
+    class Sequencer : Synchronizer<LiveWork>, AdjustOperator<LiveWork, Int> {
         /* when a step is identified by tag as thread-blocking, it may only run safely on the clock;
         // otherwise, it may be attached to the current synchronizer scope. */
         fun io(async: Boolean = false, step: SequencerStep) = attach(IO, async, step)
@@ -375,14 +390,11 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
 
         private val observer: StepObserver
         private var seq: LiveSequence = mutableListOf()
+        private var queue: IntMutableList = LinkedList()
         private var ln = -1
-            get() = with(queue) {
-                if (size > 0) removeFirst().also { latestIndex = it } /* readjusted by latest attach remarks */
-                else field }
+            get() = with(queue) { if (size > 0) first() else field }
         private val work
-            get() = synchronize { seq[ln] }
-        private val queue: MutableList<Int> = LinkedList()
-        private var latestIndex: Int = -1
+            get() = synchronize { seq[adjust(queue.removeFirst())] }
         private var latestStep: LiveStep? = null
         private var latestCapture: Any? = null
 
@@ -414,7 +426,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         fun jump(index: Int) =
             if (hasError) null
             else synchronize {
-                /* readjust index by attach remarks */
+                val index = adjust(index)
                 (index >= 0 && index < seq.size && (!isObserving || seq[index].isAsynchronous())).also { allowed ->
                     if (allowed) queue.add(index) } }
         var next = fun(index: Int) = jump(index)
@@ -513,7 +525,6 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             hasError = false
             ex = null }
         fun clearLatestObjects() {
-            latestIndex = -1
             latestStep = null
             latestCapture = null }
         fun clearObjects() {
@@ -525,6 +536,8 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             override fun invoke(work: SequencerWork) = sequencer?.work()
             const val ATTACHED_ALREADY = -1
         }
+
+        override fun adjust(index: Int) = index
 
         private fun LiveSequence.attach(element: LiveWork) =
             add(element)
@@ -547,11 +560,9 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
                 attach(work)
             else ATTACHED_ALREADY }
         override fun attach(index: Int, step: LiveWork, vararg args: Any?) = synchronize { with(seq) {
-            if (latestIndex in index..size)
-                latestIndex += 1
             attach(index, step)
             markTagsForSeqAttach(args.firstOrNull(), index, step)
-            // remark proceeding work (marked for observe) in queue
+            // remark proceeding work in sequence for adjustment
             index } }
         fun attachOnce(index: Int, work: LiveWork) = synchronize {
             if (work.isNotAttached(index)) {
@@ -577,7 +588,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
 
         private fun markTagsForLaunch(step: SequencerStep, index: IntFunction, context: CoroutineContext? = null) =
             step after { currentJob().let { job ->
-                synchronize { markTagsForSeqLaunch(step, index() /* readjusted by attach remarks */, context, job) } } }
+                synchronize { markTagsForSeqLaunch(step, adjust(index()), context, job) } } }
 
         fun attach(async: Boolean = false, step: SequencerStep): LiveWork {
             var index = -1
@@ -764,19 +775,19 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             return true }
 
         val leading
-            get() = 0 until with(seq) { if (latestIndex < size) latestIndex else size }
+            get() = 0 until with(seq) { if (ln < size) ln else size }
         val trailing
-            get() = (if (latestIndex < 0) 0 else latestIndex + 1) until seq.size
+            get() = (if (ln < 0) 0 else ln + 1) until seq.size
 
         private val before
             get() = when {
-                latestIndex <= 0 -> 0
-                latestIndex < seq.size -> latestIndex - 1
+                ln <= 0 -> 0
+                ln < seq.size -> ln - 1
                 else -> seq.size }
         private val after
             get() = when {
-                latestIndex < 0 -> 0
-                latestIndex < seq.size -> latestIndex + 1
+                ln < 0 -> 0
+                ln < seq.size -> ln + 1
                 else -> seq.size }
     }
 
@@ -843,8 +854,6 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             null, false -> transfer?.invoke(@Unlisted step)
             true, is Job -> result
             else -> transfer?.invoke(@Enlisted step) } }
-    override fun attach(index: Int, step: CoroutineStep, vararg args: Any?) =
-        attach(step, *args)
     private fun reattach(step: CoroutineStep, handler: CoroutineFunction = ::launch) =
         trySafelyForResult { detach(step) }?.run(handler)
     private fun detach(step: CoroutineStep) =
@@ -953,6 +962,9 @@ inline fun <R, S : R> commitAsyncForResult(lock: Any, predicate: Predicate, bloc
         synchronized(lock) {
             if (predicate()) return block() }
     return fallback() }
+
+inline fun <reified R> requireAsync(lock: KMutableProperty<out R?>, predicate: Predicate = lock::isNull, constructor: () -> R): R =
+    commitAsyncForResult(lock, predicate, constructor) { throw NullPointerException() }.asType()!!
 
 inline fun <R> blockAsync(lock: Any, crossinline predicate: Predicate, crossinline block: suspend () -> R) {
     if (predicate())

@@ -90,8 +90,10 @@ fun <D : RoomDatabase> Context.createDatabase(cls: KClass<D>) =
     with(cls) { createDatabase(java, lastAnnotatedFilename()) }
 inline fun <reified D : RoomDatabase> Context.buildDatabase() =
     with(D::class, ::createDatabase)
+inline fun <reified D : RoomDatabase> Context.commitBuildDatabase(instance: KMutableProperty<out D?>) =
+    requireAsync(instance, constructor = { buildDatabase<D>().also { instance.set(it) } })
 fun Context.buildAppDatabase() =
-    commitAsync(::db, { db === null }) { db = buildDatabase() }
+    commitBuildDatabase(::db)
 
 suspend fun buildSession() {
     if (session === null)
@@ -150,6 +152,7 @@ private typealias ExceptionHandler = Thread.UncaughtExceptionHandler
 typealias AnyArray = Array<*>
 typealias AnyFunction = () -> Any?
 typealias AnyToAnyFunction = (Any?) -> Any?
+typealias IntMutableList = MutableList<Int>
 typealias IntFunction = () -> Int
 typealias LongFunction = () -> Long
 typealias StringFunction = Any?.() -> String
