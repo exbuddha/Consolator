@@ -10,10 +10,10 @@ import kotlin.annotation.AnnotationRetention.*
 import kotlin.annotation.AnnotationTarget.*
 import kotlinx.coroutines.*
 import net.consolator.application.*
+import net.consolator.Event.Committing
 import net.consolator.Event.Listening
 import net.consolator.Event.Listening.OnEvent
 import net.consolator.Event.Retrying
-import net.consolator.Event.Signaling
 import net.consolator.Path.Parallel
 import net.consolator.State.Ambiguous
 import net.consolator.State.Failed
@@ -74,7 +74,7 @@ abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
             registerContext(context)
         } then @Parallel @Path(STAGE_BUILD_APP_DB) {
             tryCancelingSuspended(::currentContext, Context::buildAppDatabase)
-        } then @Signaling @Event(ACTION_MIGRATE_APP) {
+        } then @Committing @Event(ACTION_MIGRATE_APP) {
             change(Context::stageAppDbCreated)
         } given {
             db !== null
@@ -82,7 +82,7 @@ abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
             SchedulerScope::retry
         ) then @Path(STAGE_BUILD_SESSION) {
             tryCancelingSuspended(::buildSession)
-        } then @Signaling @Event(ACTION_MIGRATE_APP) {
+        } then @Committing @Event(ACTION_MIGRATE_APP) {
             change(Context::stageSessionCreated)
         } given {
             session !== null

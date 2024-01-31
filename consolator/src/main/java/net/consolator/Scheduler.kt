@@ -29,18 +29,8 @@ import kotlinx.coroutines.Dispatchers.Unconfined
 import net.consolator.Scheduler.clock
 import net.consolator.Scheduler.sequencer
 
-interface ResolverScope : CoroutineScope {
-    override val coroutineContext: CoroutineContext
-        get() = Scheduler
-    fun commit(step: CoroutineStep): Any?
-}
-
-sealed interface SchedulerScope : ResolverScope {
-    override fun commit(step: CoroutineStep) = net.consolator.commit(step)
-}
-
-private interface Synchronizer<T> {
-    fun <R> synchronize(lock: T? = null, block: () -> R): R
+private interface Synchronizer<L> {
+    fun <R> synchronize(lock: L? = null, block: () -> R): R
 }
 
 private interface AttachOperator<in S> {
@@ -50,6 +40,23 @@ private interface AttachOperator<in S> {
 private interface AdjustOperator<in S, I> : AttachOperator<S> {
     fun attach(index: I, step: S, vararg args: Any?): Any?
     fun adjust(index: I): I
+}
+
+interface Transactor<T, out R> {
+    fun commit(step: T): R
+}
+
+interface PriorityQueue<E> {
+    var queue: MutableList<E>
+}
+
+interface ResolverScope : CoroutineScope, Transactor<CoroutineStep, Any?> {
+    override val coroutineContext: CoroutineContext
+        get() = Scheduler
+}
+
+sealed interface SchedulerScope : ResolverScope {
+    override fun commit(step: CoroutineStep) = net.consolator.commit(step)
 }
 
 fun commit(step: CoroutineStep) =
@@ -191,9 +198,9 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
     open class Clock(
         name: String,
         priority: Int = currentThread.priority
-    ) : HandlerThread(name, priority), Synchronizer<Any>, AdjustOperator<Runnable, Number> {
+    ) : HandlerThread(name, priority), Synchronizer<Any>, Transactor<Message, Any?>, PriorityQueue<Runnable>, AdjustOperator<Runnable, Number> {
         var handler: Handler? = null
-        private var queue: RunnableList = LinkedList()
+        final override var queue: RunnableList = LinkedList()
 
         constructor() : this(CLK)
         constructor(callback: Runnable) : this() {
@@ -220,17 +227,23 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
                     super.handleMessage(msg)
                     DEFAULT_HANDLE(msg) } }
             queue.run() }
-        private fun turn(msg: Message) =
-            if (isSynchronized(msg))
-                synchronize(msg) {
-                    if (queue.run(msg, false))
-                        msg.callback.run() }
-            else msg.callback.exec()
+        override fun commit(step: Message) =
+            if (isSynchronized(step))
+                synchronize(step) {
+                    if (queue.run(step, false))
+                        step.callback.run() }
+            else step.callback.exec()
         private fun RunnableList.run(msg: Message? = null, isIdle: Boolean = true) =
             with(precursorOf(msg)) {
                 forEach {
                     var ln = it
                     synchronized(sLock) {
+                        /* on occasion, traversing the precursor of a message violates a rule whereby
+                        // continuing the transaction leads to over-exhausting the timeframe of that
+                        // message or a stronger factor during synchronization. in such a case, that
+                        // continuation is considered to be broken and has to be re-synchronized at a
+                        // later time within another appropriate timeframe. only adjust operators are
+                        // capable of performing such resolute tasks. */
                         ln = adjust(ln)
                         queue[ln]
                     }.exec(isIdle)
@@ -289,11 +302,6 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             queue.clear() }
 
         companion object : MutableList<RunnableList> by mutableListOf() {
-            inline fun <reified R> scheduled(noinline step: CoroutineStep): R? = when (R::class) {
-                Any::class -> (runnableOf(step) ?: msgOf(step)).asType()
-                Runnable::class -> runnableOf(step).asType()
-                Message::class -> msgOf(step).asType()
-                else -> estimatedDelayOf(step).asType() }
             fun msgOf(step: CoroutineStep): Message? = null
             fun runnableOf(step: CoroutineStep): Runnable? = null
             fun stepOf(callback: Runnable): CoroutineStep? = null
@@ -302,11 +310,11 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             fun delayOf(step: CoroutineStep): Long? = null
             fun timeOf(step: CoroutineStep): Long? = null
 
-            private var DEFAULT_HANDLE: HandlerFunction = { turn(it) }
+            private var DEFAULT_HANDLE: HandlerFunction = { commit(it) }
         }
     }
 
-    class Sequencer : Synchronizer<LiveWork>, AdjustOperator<LiveWork, Int> {
+    class Sequencer : Synchronizer<LiveWork>, Transactor<LiveWork, Boolean?>, PriorityQueue<Int>, AdjustOperator<LiveWork, Int> {
         /* when a step is identified by tag as thread-blocking, it may only run safely on the clock;
         // otherwise, it may be attached to the current synchronizer scope. */
         fun io(async: Boolean = false, step: SequencerStep) = attach(IO, async, step)
@@ -389,10 +397,10 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         constructor() : this(Scheduler)
 
         private val observer: StepObserver
-        private var seq: LiveSequence = mutableListOf()
-        private var queue: IntMutableList = LinkedList()
+        override var queue: IntMutableList = LinkedList()
         private var ln = -1
             get() = with(queue) { if (size > 0) first() else field }
+        private var seq: LiveSequence = mutableListOf()
         private val work
             get() = synchronize { seq[adjust(queue.removeFirst())] }
         private var latestStep: LiveStep? = null
@@ -431,26 +439,26 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
                     if (allowed) queue.add(index) } }
         var next = fun(index: Int) = jump(index)
         private fun advance() {
-            activate()
-            while (next(ln) ?: return)
+            activate() // periodic pre-configuration can be done here
+            while (next(ln) ?: return /* or issue task resolution */)
                 work.let { run(it) ?: bypass(it) } || return
             isCompleted = finish() }
-        fun observe(work: LiveWork): Boolean? {
-            val (step, _, async) = work
+        override fun commit(step: LiveWork): Boolean? {
+            val (liveStep, _, async) = step
             try {
-                val step = step() // process tags to reuse live step
-                latestStep = step // live step <-> work
-                if (step !== null)
-                    if (work.hasLifecycleOwner())
-                        step.observe(lifecycleOwnerOf(work), observer)
-                    else step.observeForever(observer)
+                val liveStep = liveStep() // process tags to reuse live step
+                latestStep = liveStep // live step <-> work
+                if (liveStep !== null)
+                    if (step.hasLifecycleOwner())
+                        liveStep.observe(lifecycleOwnerOf(step), observer)
+                    else liveStep.observeForever(observer)
                 else return null
             } catch (ex: Throwable) {
                 error(ex)
                 return false }
             isObserving = true
             return async }
-        var run = fun(work: LiveWork) = observe(work)
+        var run = fun(work: LiveWork) = commit(work)
         fun capture(work: LiveWork): Boolean {
             val capture = work.second
             latestCapture = capture
@@ -857,7 +865,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
     private fun reattach(step: CoroutineStep, handler: CoroutineFunction = ::launch) =
         trySafelyForResult { detach(step) }?.run(handler)
     private fun detach(step: CoroutineStep) =
-        Clock.scheduled<Any>(step)?.detach()?.asCoroutine() ?: step
+        with(Clock) { (runnableOf(step) ?: msgOf(step)) }?.detach()?.asCoroutine() ?: step
 
     override fun <R> fold(initial: R, operation: (R, CoroutineContext.Element) -> R): R {
         return operation(initial, SchedulerElement)
@@ -873,19 +881,23 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         value.markTagForSchExec()?.run { synchronize(this, ::block) } }
     override fun <R> synchronize(lock: Step?, block: () -> R) = block() // or apply (live step) capture function internally
 
-    object EventBus : Buffer() {
+    object EventBus : Buffer(), Transactor<ContextStep, Boolean>, PriorityQueue<Any?> {
         override suspend fun collectSafely(collector: FlowCollector<Any?>) {
             // emit signalled events to collector
         }
 
-        fun signal(step: ContextStep): Boolean {
+        override fun commit(step: ContextStep): Boolean {
             // record context event
             return true
         }
-        fun signal(event: Transit): Boolean {
+        fun commit(step: Transit): Boolean {
             // record signal event
             return true
         }
+
+        override var queue: MutableList<Any?>
+            get() = TODO()
+            set(value) {}
     }
 
     enum class Lock : State { Closed, Open }
@@ -1049,9 +1061,9 @@ private fun <T, R> LifecycleOwner.disposer(liveStep: Pair<LiveData<T>, (T) -> R>
         capture(value) }
 
 suspend fun SequencerScope.change(stage: ContextStep) = resetByTag(tagOf(stage)) {
-    EventBus.signal(stage) }
+    EventBus.commit(stage) }
 suspend fun SequencerScope.change(event: Transit) = reset {
-    EventBus.signal(event) }
+    EventBus.commit(event) }
 
 suspend fun SequencerScope.reset() = net.consolator.reset()
 suspend fun SequencerScope.resetByTag(tag: String) = net.consolator.resetByTag(tag)
@@ -1165,18 +1177,18 @@ val Job.node: SchedulerNode
     get() = TODO()
 
 fun SchedulerScope.change(stage: ContextStep) =
-    EventBus.signal(stage)
+    EventBus.commit(stage)
 fun SchedulerScope.change(event: Transit) =
-    EventBus.signal(event)
+    EventBus.commit(event)
 
 fun <R> SchedulerScope.change(member: KFunction<R>, stage: ContextStep) =
-    EventBus.signal(stage)
+    EventBus.commit(stage)
 fun <R> SchedulerScope.change(owner: LifecycleOwner, member: KFunction<R>, stage: ContextStep) =
-    EventBus.signal(stage)
+    EventBus.commit(stage)
 fun <R> SchedulerScope.change(ref: WeakContext, member: KFunction<R>, stage: ContextStep) =
-    EventBus.signal(stage)
+    EventBus.commit(stage)
 fun <R> SchedulerScope.change(ref: WeakContext, owner: LifecycleOwner, member: KFunction<R>, stage: ContextStep) =
-    EventBus.signal(stage)
+    EventBus.commit(stage)
 
 suspend fun CoroutineScope.repeatSuspended(predicate: PredicateFunction = @Tag(IS_ACTIVE) { isActive }, block: JobFunction, delayTime: DelayFunction = @Tag(YIELD) { 0L }, scope: CoroutineScope = this) {
     markTagsForJobRepeat(predicate, block, delayTime, currentJob())
@@ -1384,7 +1396,7 @@ annotation class Event(val transit: Short = 0) {
 
     @Retention(SOURCE)
     @Target(FUNCTION, EXPRESSION)
-    annotation class Signaling(val channel: Short = 0)
+    annotation class Committing(val channel: Short = 0)
 
     @Retention(SOURCE)
     @Target(FUNCTION, EXPRESSION)

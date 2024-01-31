@@ -18,7 +18,7 @@ import com.google.gson.Gson
 import net.consolator.Path.Diverging
 import net.consolator.State.Ambiguous
 import net.consolator.State.Resolved
-import net.consolator.Scheduler.EventBus.signal
+import net.consolator.Scheduler.EventBus.commit
 import android.Manifest.permission.ACCESS_NETWORK_STATE
 import android.Manifest.permission.INTERNET
 import androidx.core.content.ContextCompat.RECEIVER_EXPORTED
@@ -51,13 +51,13 @@ val foregroundLifecycleOwner: LifecycleOwner?
 const val VIEW_MIN_DELAY = 300L
 
 fun Context.change(stage: ContextStep) =
-    signal(stage)
+    commit(stage)
 fun Context.changeLocally(owner: LifecycleOwner, stage: ContextStep) =
-    signal(stage)
+    commit(stage)
 fun Context.changeBroadly(ref: WeakContext = weakRef(), stage: ContextStep) =
-    signal(stage)
+    commit(stage)
 fun Context.changeGlobally(ref: WeakContext = weakRef(), owner: LifecycleOwner, stage: ContextStep) =
-    signal(stage)
+    commit(stage)
 
 @Diverging([STAGE_BUILD_APP_DB])
 fun Context.stageAppDbCreated(scope: Any?) {
@@ -143,7 +143,7 @@ fun <T : Context> WeakReference<out T>?.unique(context: T) =
     this ?: WeakReference(context)
 
 interface UniqueContext { var startTime: Long }
-fun Context.startTime() = asUniqueContext()?.startTime ?: now()
+fun Context.startTime() = asUniqueContext()?.startTime ?: -1L
 
 typealias ContextStep = suspend Context.(Any?) -> Any?
 

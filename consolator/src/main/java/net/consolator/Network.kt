@@ -36,16 +36,17 @@ private var networkCallback: NetworkCallback? = null
             trySafely { reactToNetworkCapabilitiesChanged.invoke(network, networkCapabilities) } }
     }.also { field = it }
 var reactToNetworkCapabilitiesChanged: (Network, NetworkCapabilities) -> Unit = { network, networkCapabilities ->
-    commit @Tag(NET_CAP_UPDATE) { updateNetworkCapabilities(network, networkCapabilities) } }
+    commit @Tag(NET_CAP_UPDATE) { updateNetworkCapabilities(network, networkCapabilities) }
+}
 
 fun LifecycleOwner.registerInternetCallback() {
     relaunch(::networkCaller, IO, step = ::repeatNetworkCallFunction) }
 fun registerInternetCallback() {
     Scheduler.relaunch(::networkCaller, IO, step = ::repeatNetworkCallFunction) }
 fun pauseInternetCallback() {
-    repeatNetCallback = false }
+    isNetCallbackResumed = false }
 fun resumeInternetCallback() {
-    repeatNetCallback = true }
+    isNetCallbackResumed = true }
 fun unregisterInternetCallback() {
     networkCaller?.cancel()
     netCallDelayTime = -1L
@@ -71,7 +72,7 @@ private suspend fun repeatNetworkCallFunction(scope: CoroutineScope) {
         block = networkCallFunction,
         delayTime = @Tag(INET_DELAY) { netCallDelayTime }) }
 private var networkCallFunction: JobFunction = @Tag(INET_FUNCTION) { scope ->
-    if (repeatNetCallback && isNetCallTimeIntervalExceeded) {
+    if (isNetCallbackResumed && isNetCallTimeIntervalExceeded) {
         info(INET_TAG, "Trying to send out http request for network caller...")
         ::netCall.commit(scope) {
             ::netCall[INET_CALL] = ::buildNetCallRequest.with("https://httpbin.org/delay/1")()
@@ -110,7 +111,7 @@ private var lastNetCallResponseTime = 0L
             field = value }
 private val isNetCallTimeIntervalExceeded
     get() = isTimeIntervalExceeded(netCallTimeInterval, lastNetCallResponseTime)
-private var repeatNetCallback = true
+private var isNetCallbackResumed = true
 
 fun buildNetCallRequest(cmd: String) = buildHttpRequest(cmd)
 fun buildHttpRequest(
