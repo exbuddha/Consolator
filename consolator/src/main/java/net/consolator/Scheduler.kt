@@ -243,7 +243,14 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
                         // message or a stronger factor during synchronization. in such a case, that
                         // continuation is considered to be broken and has to be re-synchronized at a
                         // later time within another appropriate timeframe. only adjust operators are
-                        // capable of performing such resolute tasks. */
+                        // capable of performing such resolute tasks. this implies continuations must
+                        // be designed to record and to bring to the forefront the right data in order
+                        // to be impactful and efficient in reducing the overall workload following a
+                        // deterministic algorithm that handles execution of steps as they become
+                        // eligible for resolving user interface requirements by the way of fragment
+                        // transactions and custom view callbacks. ultimately, limitations of this
+                        // algorithm will either lead to redesigning the user interface or features
+                        // and routines that drive the application logic. */
                         ln = adjust(ln)
                         queue[ln]
                     }.exec(isIdle)
