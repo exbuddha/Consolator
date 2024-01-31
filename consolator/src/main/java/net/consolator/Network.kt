@@ -36,8 +36,7 @@ private var networkCallback: NetworkCallback? = null
             trySafely { reactToNetworkCapabilitiesChanged.invoke(network, networkCapabilities) } }
     }.also { field = it }
 var reactToNetworkCapabilitiesChanged: (Network, NetworkCapabilities) -> Unit = { network, networkCapabilities ->
-    commit @Tag(NET_CAP_UPDATE) { updateNetworkCapabilities(network, networkCapabilities) }
-}
+    commit @Tag(NET_CAP_UPDATE) { updateNetworkCapabilities(network, networkCapabilities) } }
 
 fun LifecycleOwner.registerInternetCallback() {
     relaunch(::networkCaller, IO, step = ::repeatNetworkCallFunction) }
