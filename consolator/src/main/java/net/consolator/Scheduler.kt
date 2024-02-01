@@ -400,8 +400,8 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         fun unconfinedBeforeResettingByTagFirstly(async: Boolean = false, step: SequencerStep) = unconfinedBefore(async, resettingByTagFirstly(step))
         fun unconfinedBeforeResettingByTagLastly(async: Boolean = false, step: SequencerStep) = unconfinedBefore(async, resettingByTagLastly(step))
 
-        private constructor(observer: StepObserver) { this.observer = observer }
         constructor() : this(Scheduler)
+        private constructor(observer: StepObserver) { this.observer = observer }
 
         private val observer: StepObserver
         override var queue: IntMutableList = LinkedList()
