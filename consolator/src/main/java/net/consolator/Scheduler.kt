@@ -259,7 +259,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
                     } }
                 hasNotTraversed(msg) }
         private fun precursorOf(msg: Message?) = queue.indices
-        private fun IntRange.hasNotTraversed(msg: Message?) = true
+        private fun IntProgression.hasNotTraversed(msg: Message?) = true
         private fun Runnable.exec(isIdle: Boolean = true) {
             if (isIdle && isSynchronized(this))
                 synchronize(block = ::run)
