@@ -75,13 +75,11 @@ fun Context.stageLogDbCreated(scope: Any?) {
     mainUncaughtExceptionHandler = @Tag(UNCAUGHT_DB) ExceptionHandler { th, ex ->
         // record in db safely
     }
-    State[2] += Ambiguous
 }
 
 @Diverging([STAGE_BUILD_NET_DB])
 fun Context.stageNetDbInitialized(scope: Any?) {
     // update net function pointers
-    State[2] += Ambiguous
 }
 
 fun <D : RoomDatabase> Context.createDatabase(cls: Class<D>, name: String?) =

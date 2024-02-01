@@ -1614,7 +1614,11 @@ sealed interface State {
     object Failed : Resolved
 
     interface Resolved : State {
-        companion object : Resolved }
+        companion object : Resolved {
+            inline infix fun unless(predicate: Predicate) =
+                if (predicate()) Unresolved
+                else this
+        } }
     interface Unresolved : State {
         companion object : Unresolved }
     interface Ambiguous : State {
@@ -1624,18 +1628,14 @@ sealed interface State {
         operator fun invoke(): State = Lock.Open
         fun of(vararg args: Any?): State = Ambiguous
         operator fun get(id: ID): State = when (id.toInt()) {
-            1 -> resolvedUnless { db === null || session === null }
-            2 -> resolvedUnless { logDb === null || netDb === null }
+            1 -> Resolved unless { db === null || session === null }
+            2 -> Resolved unless { logDb === null || netDb === null }
             else ->
                 Lock.Open
         }
         operator fun set(id: ID, lock: Any) { when (id.toInt()) {
             1 -> if (lock is Resolved) Scheduler.windDownClock()
         } }
-
-        private fun resolvedUnless(predicate: Predicate) =
-            if (predicate()) Unresolved
-            else Resolved
 
         operator fun plus(lock: Any): State = Ambiguous
         operator fun plusAssign(lock: Any) {}
@@ -1660,14 +1660,7 @@ sealed interface State {
     operator fun set(id: ID, state: Any) {}
     operator fun inc() = this
     operator fun dec() = this
-    operator fun plus(state: Any): State {
-        when {
-            this === State[2] && state is Ambiguous ->
-                if (State[2] !is Resolved)
-                    State[2] = Succeeded
-        }
-        return this
-    }
+    operator fun plus(state: Any) = this
     operator fun minus(state: Any) = this
     operator fun times(state: Any) = this
     operator fun div(state: Any) = this

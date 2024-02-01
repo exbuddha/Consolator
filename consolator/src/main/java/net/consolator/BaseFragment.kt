@@ -96,7 +96,7 @@ abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
             enact(it) { err ->
                 // catch cancellation and/or error
                 when (err) {
-                    is CancellationException -> State[1] += Ambiguous
+                    is CancellationException -> State[1] = Ambiguous
                 } } }
     }
 
