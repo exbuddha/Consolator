@@ -42,12 +42,12 @@ private interface AdjustOperator<in S, I> : AttachOperator<S> {
     fun adjust(index: I): I
 }
 
-interface Transactor<T, out R> {
-    fun commit(step: T): R
+private interface PriorityQueue<E> {
+    var queue: MutableList<E>
 }
 
-interface PriorityQueue<E> {
-    var queue: MutableList<E>
+interface Transactor<T, out R> {
+    fun commit(step: T): R
 }
 
 interface ResolverScope : CoroutineScope, Transactor<CoroutineStep, Any?> {
@@ -321,7 +321,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         }
     }
 
-    class Sequencer : Synchronizer<LiveWork>, Transactor<LiveWork, Boolean?>, PriorityQueue<Int>, AdjustOperator<LiveWork, Int> {
+    class Sequencer : Synchronizer<LiveWork>, Transactor<Int, Boolean?>, PriorityQueue<Int>, AdjustOperator<LiveWork, Int> {
         /* when a step is identified by tag as thread-blocking, it may only run safely on the clock;
         // otherwise, it may be attached to the current synchronizer scope. */
         fun io(async: Boolean = false, step: SequencerStep) = attach(IO, async, step)
@@ -405,18 +405,17 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
 
         private val observer: StepObserver
         override var queue: IntMutableList = LinkedList()
+        private var seq: LiveSequence = mutableListOf()
         private var ln = -1
             get() = with(queue) { if (size > 0) first() else field }
-        private var seq: LiveSequence = mutableListOf()
         private val work
-            get() = synchronize { seq[adjust(queue.removeFirst())] }
+            get() = synchronize { adjust(queue.removeFirst()) }
         private var latestStep: LiveStep? = null
         private var latestCapture: Any? = null
 
-        fun setLifecycleOwner(index: Int, owner: LifecycleOwner) {}
-        fun unsetLifecycleOwner(index: Int) {}
-        private fun LiveWork.hasLifecycleOwner() = false
-        private fun lifecycleOwnerOf(work: LiveWork): LifecycleOwner = TODO()
+        fun setLifecycleOwner(step: Int, owner: LifecycleOwner) {}
+        fun unsetLifecycleOwner(step: Int) {}
+        private fun lifecycleOwnerOf(step: Int): LifecycleOwner? = TODO()
 
         private val mLock: Any get() = seq
         override fun <R> synchronize(lock: LiveWork?, block: () -> R) = synchronized(mLock, block)
@@ -437,42 +436,47 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         fun resume() {
             isActive = true
             advance() }
-        var activate = fun() = Unit
-        fun jump(index: Int) =
+        fun prepare() { if (ln < 0) ln = 0 }
+        var activate = fun() = prepare()
+        fun jump(step: Int) =
             if (hasError) null
             else synchronize {
-                val index = adjust(index)
-                (index >= 0 && index < seq.size && (!isObserving || seq[index].isAsynchronous())).also { allowed ->
-                    if (allowed) queue.add(index) } }
+                val step = adjust(step)
+                (step >= 0 && step < seq.size && (!isObserving || seq[step].isAsynchronous())).also { allowed ->
+                    if (allowed) queue.add(step) } }
         var next = fun(index: Int) = jump(index)
         private fun advance() {
             activate() // periodic pre-configuration can be done here
             while (next(ln) ?: return /* or issue task resolution */)
                 work.let { run(it) ?: bypass(it) } || return
             isCompleted = finish() }
-        override fun commit(step: LiveWork): Boolean? {
-            val (liveStep, _, async) = step
+        override fun commit(step: Int): Boolean? {
+            var step = step
+            val (liveStep, _, async) = synchronize {
+                step = adjust(step)
+                seq[step] }
             try {
                 val liveStep = liveStep() // process tags to reuse live step
                 latestStep = liveStep // live step <-> work
                 if (liveStep !== null)
-                    if (step.hasLifecycleOwner())
-                        liveStep.observe(lifecycleOwnerOf(step), observer)
-                    else liveStep.observeForever(observer)
+                    synchronize { lifecycleOwnerOf(adjust(step)) }?.let { owner ->
+                        liveStep.observe(owner, observer) } ?:
+                    liveStep.observeForever(observer)
                 else return null
             } catch (ex: Throwable) {
                 error(ex)
                 return false }
             isObserving = true
             return async }
-        var run = fun(work: LiveWork) = commit(work)
-        fun capture(work: LiveWork): Boolean {
+        var run = fun(step: Int) = commit(step)
+        fun capture(step: Int): Boolean {
+            val work = synchronize { seq[adjust(step)] }
             val capture = work.second
             latestCapture = capture
             val async = capture?.invoke(work)
             return if (async is Boolean) async
             else false }
-        var bypass = fun(work: LiveWork) = capture(work)
+        var bypass = fun(step: Int) = capture(step)
         fun end() = queue.isEmpty() && !isObserving
         var finish = fun() = end()
 
@@ -897,7 +901,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             // record context event
             return true
         }
-        fun commit(step: Transit): Boolean {
+        fun commit(event: Transit): Boolean {
             // record signal event
             return true
         }
@@ -1164,10 +1168,10 @@ fun SchedulerScope.retry(job: Job, exit: ThrowableFunction? = null) {}
 fun SchedulerScope.close(job: Job, exit: ThrowableFunction? = null) {}
 
 fun SchedulerScope.keepAlive(job: Job) = keepAliveNode(job.node)
+fun SchedulerScope.keepAliveNode(node: SchedulerNode): Boolean = false
 fun SchedulerScope.keepAliveOrClose(job: Job) =
     job.node.let { node ->
         keepAliveNode(node) || job.close(node) }
-fun SchedulerScope.keepAliveNode(node: SchedulerNode): Boolean = false
 
 fun LifecycleOwner.detach(job: Job? = null) {}
 fun LifecycleOwner.reattach(job: Job? = null) {}
