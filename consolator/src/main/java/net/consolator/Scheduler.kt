@@ -134,7 +134,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         private suspend fun SequencerScope.blockAsyncOrResetByTag(lock: AnyKProperty, tag: String, block: AnyStep, post: AnyStep) =
             blockAsyncOrResetByTag(lock, tag, block, post, ::whenNotNullOrResetByTag)
         private suspend fun SequencerScope.blockAsyncOrResetByTag(lock: AnyKProperty, tag: String, block: AnyStep) =
-            blockAsyncForResult(lock, block) { resetByTag(tag) }
+            blockAsyncForResult(lock, lock::isNull, block) { resetByTag(tag) }
 
         private fun SequencerScope.synchronize(identifier: Any?, stage: ContextStep?) =
             if (stage !== null) form(stage)
