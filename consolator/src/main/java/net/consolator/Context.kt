@@ -186,13 +186,13 @@ suspend inline fun <T, R> tryCancelingSuspended(crossinline scope: suspend () ->
 
 inline fun <R> tryInterrupting(block: () -> R) =
     try { block() } catch (ex: Throwable) { throw InterruptedException() }
-inline fun <R> tryInterrupting(noinline step: suspend CoroutineScope.() -> R, blockOf: (suspend CoroutineScope.() -> R) -> () -> R = ::blockOf) =
+fun <R> tryInterrupting(step: suspend CoroutineScope.() -> R) =
     try { blockOf(step)() } catch (ex: Throwable) { throw InterruptedStepException(step, cause = ex) }
 inline fun <R> trySafelyInterrupting(block: () -> R) =
     try { block() } catch (ex: InterruptedException) { throw ex } catch (_: Throwable) {}
-inline fun <R> trySafelyInterrupting(noinline step: suspend CoroutineScope.() -> R, blockOf: (suspend CoroutineScope.() -> R) -> () -> R = ::blockOf) =
+fun <R> trySafelyInterrupting(step: suspend CoroutineScope.() -> R) =
     try { blockOf(step)() } catch (ex: InterruptedException) { throw InterruptedStepException(step, cause = ex) } catch (_: Throwable) {}
-inline fun <R> tryInterruptingForResult(noinline step: suspend CoroutineScope.() -> R, blockOf: (suspend CoroutineScope.() -> R) -> () -> R = ::blockOf, exit: (Throwable) -> R? = { null }) =
+inline fun <R> tryInterruptingForResult(noinline step: suspend CoroutineScope.() -> R, exit: (Throwable) -> R? = { null }) =
     try { blockOf(step)() } catch (ex: InterruptedException) { throw InterruptedStepException(step, cause = ex) } catch (ex: Throwable) { exit(ex) }
 
 fun <T> Array<out T>.secondOrNull(): T? =
