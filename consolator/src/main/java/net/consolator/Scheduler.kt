@@ -428,7 +428,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             init()
             resume() }
         fun resume(index: Int) {
-            ln = index
+            queue.add(index)
             resume() }
         fun resume(tag: String) {
             fun indexOf(tag: String): Int = TODO()
@@ -1150,6 +1150,7 @@ private fun CoroutineContext.isSchedulerContext() =
 infix fun Job.then(next: SchedulerStep): CoroutineStep = {}
 infix fun Job.after(prev: SchedulerStep): CoroutineStep = {}
 infix fun Job.given(predicate: JobPredicate): CoroutineStep = {}
+infix fun Job.unless(predicate: JobPredicate): CoroutineStep = {}
 infix fun Job.otherwise(next: SchedulerStep): CoroutineStep = {}
 infix fun Job.onCancel(action: SchedulerStep): CoroutineStep = {}
 infix fun Job.onError(action: SchedulerStep): CoroutineStep = {}
@@ -1157,6 +1158,7 @@ infix fun Job.onTimeout(action: SchedulerStep): CoroutineStep = {}
 infix fun CoroutineStep.then(next: SchedulerStep): CoroutineStep = {}
 infix fun CoroutineStep.after(prev: SchedulerStep): CoroutineStep = {}
 infix fun CoroutineStep.given(predicate: JobPredicate): CoroutineStep = {}
+infix fun CoroutineStep.unless(predicate: JobPredicate): CoroutineStep = {}
 infix fun CoroutineStep.otherwise(next: SchedulerStep): CoroutineStep = {}
 infix fun CoroutineStep.onCancel(action: SchedulerStep): CoroutineStep = {}
 infix fun CoroutineStep.onError(action: SchedulerStep): CoroutineStep = {}
