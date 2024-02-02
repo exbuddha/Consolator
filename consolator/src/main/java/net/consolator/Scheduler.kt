@@ -330,18 +330,6 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         fun ioResume(async: Boolean = false, step: SequencerStep) = io(async, step).also { resume() }
         fun ioAfter(async: Boolean = false, step: SequencerStep) = attachAfter(IO, async, step)
         fun ioBefore(async: Boolean = false, step: SequencerStep) = attachBefore(IO, async, step)
-        fun ioResettingByTagFirstly(async: Boolean = false, step: SequencerStep) = io(async, resettingByTagFirstly(step))
-        fun ioResettingByTagLastly(async: Boolean = false, step: SequencerStep) = io(async, resettingByTagLastly(step))
-        fun ioResettingByTagFirstly(index: Int, async: Boolean = false, step: SequencerStep) = io(index, async, resettingByTagFirstly(step))
-        fun ioResettingByTagLastly(index: Int, async: Boolean = false, step: SequencerStep) = io(index, async, resettingByTagLastly(step))
-        fun ioStartResettingByTagFirstly(step: SequencerStep) = ioResettingByTagFirstly(false, step).also { start() }
-        fun ioStartResettingByTagLastly(step: SequencerStep) = ioResettingByTagLastly(false, step).also { start() }
-        fun ioResumeResettingByTagFirstly(async: Boolean = false, step: SequencerStep) = ioResettingByTagFirstly(async, step).also { resume() }
-        fun ioResumeResettingByTagLastly(async: Boolean = false, step: SequencerStep) = ioResettingByTagLastly(async, step).also { resume() }
-        fun ioAfterResettingByTagFirstly(async: Boolean = false, step: SequencerStep) = ioAfter(async, resettingByTagFirstly(step))
-        fun ioAfterResettingByTagLastly(async: Boolean = false, step: SequencerStep) = ioAfter(async, resettingByTagLastly(step))
-        fun ioBeforeResettingByTagFirstly(async: Boolean = false, step: SequencerStep) = ioBefore(async, resettingByTagFirstly(step))
-        fun ioBeforeResettingByTagLastly(async: Boolean = false, step: SequencerStep) = ioBefore(async, resettingByTagLastly(step))
 
         fun main(async: Boolean = false, step: SequencerStep) = attach(Main, async, step)
         fun main(index: Int, async: Boolean = false, step: SequencerStep) = attach(index, Main, async, step)
@@ -349,18 +337,6 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         fun mainResume(async: Boolean = false, step: SequencerStep) = main(async, step).also { resume() }
         fun mainAfter(async: Boolean = false, step: SequencerStep) = attachAfter(Main, async, step)
         fun mainBefore(async: Boolean = false, step: SequencerStep) = attachBefore(Main, async, step)
-        fun mainResettingByTagFirstly(async: Boolean = false, step: SequencerStep) = main(async, resettingByTagFirstly(step))
-        fun mainResettingByTagLastly(async: Boolean = false, step: SequencerStep) = main(async, resettingByTagLastly(step))
-        fun mainResettingByTagFirstly(index: Int, async: Boolean = false, step: SequencerStep) = main(index, async, resettingByTagFirstly(step))
-        fun mainResettingByTagLastly(index: Int, async: Boolean = false, step: SequencerStep) = main(index, async, resettingByTagLastly(step))
-        fun mainStartResettingByTagFirstly(step: SequencerStep) = mainResettingByTagFirstly(false, step).also { start() }
-        fun mainStartResettingByTagLastly(step: SequencerStep) = mainResettingByTagLastly(false, step).also { start() }
-        fun mainResumeResettingByTagFirstly(async: Boolean = false, step: SequencerStep) = mainResettingByTagFirstly(async, step).also { resume() }
-        fun mainResumeResettingByTagLastly(async: Boolean = false, step: SequencerStep) = mainResettingByTagLastly(async, step).also { resume() }
-        fun mainAfterResettingByTagFirstly(async: Boolean = false, step: SequencerStep) = mainAfter(async, resettingByTagFirstly(step))
-        fun mainAfterResettingByTagLastly(async: Boolean = false, step: SequencerStep) = mainAfter(async, resettingByTagLastly(step))
-        fun mainBeforeResettingByTagFirstly(async: Boolean = false, step: SequencerStep) = mainBefore(async, resettingByTagFirstly(step))
-        fun mainBeforeResettingByTagLastly(async: Boolean = false, step: SequencerStep) = mainBefore(async, resettingByTagLastly(step))
 
         fun default(async: Boolean = false, step: SequencerStep) = attach(Default, async, step)
         fun default(index: Int, async: Boolean = false, step: SequencerStep) = attach(index, Default, async, step)
@@ -368,18 +344,6 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         fun defaultResume(async: Boolean = false, step: SequencerStep) = default(async, step).also { resume() }
         fun defaultAfter(async: Boolean = false, step: SequencerStep) = attachAfter(Default, async, step)
         fun defaultBefore(async: Boolean = false, step: SequencerStep) = attachBefore(Default, async, step)
-        fun defaultResettingByTagFirstly(async: Boolean = false, step: SequencerStep) = default(async, resettingByTagFirstly(step))
-        fun defaultResettingByTagLastly(async: Boolean = false, step: SequencerStep) = default(async, resettingByTagLastly(step))
-        fun defaultResettingByTagFirstly(index: Int, async: Boolean = false, step: SequencerStep) = default(index, async, resettingByTagFirstly(step))
-        fun defaultResettingByTagLastly(index: Int, async: Boolean = false, step: SequencerStep) = default(index, async, resettingByTagLastly(step))
-        fun defaultStartResettingByTagFirstly(step: SequencerStep) = defaultResettingByTagFirstly(false, step).also { start() }
-        fun defaultStartResettingByTagLastly(step: SequencerStep) = defaultResettingByTagLastly(false, step).also { start() }
-        fun defaultResumeResettingByTagFirstly(async: Boolean = false, step: SequencerStep) = defaultResettingByTagFirstly(async, step).also { resume() }
-        fun defaultResumeResettingByTagLastly(async: Boolean = false, step: SequencerStep) = defaultResettingByTagLastly(async, step).also { resume() }
-        fun defaultAfterResettingByTagFirstly(async: Boolean = false, step: SequencerStep) = defaultAfter(async, resettingByTagFirstly(step))
-        fun defaultAfterResettingByTagLastly(async: Boolean = false, step: SequencerStep) = defaultAfter(async, resettingByTagLastly(step))
-        fun defaultBeforeResettingByTagFirstly(async: Boolean = false, step: SequencerStep) = defaultBefore(async, resettingByTagFirstly(step))
-        fun defaultBeforeResettingByTagLastly(async: Boolean = false, step: SequencerStep) = defaultBefore(async, resettingByTagLastly(step))
 
         fun unconfined(async: Boolean = false, step: SequencerStep) = attach(Unconfined, async, step)
         fun unconfined(index: Int, async: Boolean = false, step: SequencerStep) = attach(index, Unconfined, async, step)
@@ -387,18 +351,6 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         fun unconfinedResume(async: Boolean = false, step: SequencerStep) = unconfined(async, step).also { resume() }
         fun unconfinedAfter(async: Boolean = false, step: SequencerStep) = attachAfter(Unconfined, async, step)
         fun unconfinedBefore(async: Boolean = false, step: SequencerStep) = attachBefore(Unconfined, async, step)
-        fun unconfinedResettingByTagFirstly(async: Boolean = false, step: SequencerStep) = unconfined(async, resettingByTagFirstly(step))
-        fun unconfinedResettingByTagLastly(async: Boolean = false, step: SequencerStep) = unconfined(async, resettingByTagLastly(step))
-        fun unconfinedResettingByTagFirstly(index: Int, async: Boolean = false, step: SequencerStep) = unconfined(index, async, resettingByTagFirstly(step))
-        fun unconfinedResettingByTagLastly(index: Int, async: Boolean = false, step: SequencerStep) = unconfined(index, async, resettingByTagLastly(step))
-        fun unconfinedStartResettingByTagFirstly(step: SequencerStep) = unconfinedResettingByTagFirstly(false, step).also { start() }
-        fun unconfinedStartResettingByTagLastly(step: SequencerStep) = unconfinedResettingByTagLastly(false, step).also { start() }
-        fun unconfinedResumeResettingByTagFirstly(async: Boolean = false, step: SequencerStep) = unconfinedResettingByTagFirstly(async, step).also { resume() }
-        fun unconfinedResumeResettingByTagLastly(async: Boolean = false, step: SequencerStep) = unconfinedResettingByTagLastly(async, step).also { resume() }
-        fun unconfinedAfterResettingByTagFirstly(async: Boolean = false, step: SequencerStep) = unconfinedAfter(async, resettingByTagFirstly(step))
-        fun unconfinedAfterResettingByTagLastly(async: Boolean = false, step: SequencerStep) = unconfinedAfter(async, resettingByTagLastly(step))
-        fun unconfinedBeforeResettingByTagFirstly(async: Boolean = false, step: SequencerStep) = unconfinedBefore(async, resettingByTagFirstly(step))
-        fun unconfinedBeforeResettingByTagLastly(async: Boolean = false, step: SequencerStep) = unconfinedBefore(async, resettingByTagLastly(step))
 
         constructor() : this(Scheduler)
         private constructor(observer: StepObserver) { this.observer = observer }
@@ -409,7 +361,8 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         private var ln = -1
             get() = with(queue) { if (size > 0) first() else field }
         private val work
-            get() = synchronize { adjust(queue.removeFirst()) }
+            get() = synchronize { adjust(queue.removeFirst()) }.also { latestLine = it }
+        private var latestLine = -1
         private var latestStep: LiveStep? = null
         private var latestCapture: Any? = null
 
@@ -795,19 +748,19 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             return true }
 
         val leading
-            get() = 0 until with(seq) { if (ln < size) ln else size }
+            get() = 0 until with(seq) { if (latestLine < size) latestLine else size }
         val trailing
-            get() = (if (ln < 0) 0 else ln + 1) until seq.size
+            get() = (if (latestLine < 0) 0 else latestLine + 1) until seq.size
 
         private val before
             get() = when {
-                ln <= 0 -> 0
-                ln < seq.size -> ln - 1
+                latestLine <= 0 -> 0
+                latestLine < seq.size -> latestLine - 1
                 else -> seq.size }
         private val after
             get() = when {
-                ln < 0 -> 0
-                ln < seq.size -> ln + 1
+                latestLine < 0 -> 0
+                latestLine < seq.size -> latestLine + 1
                 else -> seq.size }
     }
 
