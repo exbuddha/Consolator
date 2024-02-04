@@ -51,5 +51,3 @@ open class BaseApplication : Application(), ObjectProvider, UniqueContext {
         const val ABORT_NAV_MAIN_UI: Short = 3
     }
 }
-
-typealias Clock = Scheduler.Clock

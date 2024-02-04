@@ -18,7 +18,6 @@ import net.consolator.application.*
 import java.util.LinkedList
 import net.consolator.Scheduler.EventBus
 import net.consolator.Scheduler.Lock
-import net.consolator.Scheduler.Sequencer
 import net.consolator.State.Resolved
 import net.consolator.Scheduler.defer
 import android.app.Service.START_NOT_STICKY
@@ -69,6 +68,7 @@ fun commit(step: CoroutineStep) =
             it.parameters.size == 2 &&
             it.parameters[1].name == "step"
         } ?: Scheduler::commit).call(scope, step) } // message queue reconfiguration
+
 fun commit(vararg context: Any?): Any? =
     when (val task = context.firstOrNull()) {
         (task === START) -> {
@@ -108,7 +108,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
                                     updateNetworkCapabilities()
                                     updateNetworkState() }),
                                 stage = Context::stageNetDbInitialized) }
-                    synchronize { resume() }
+                    resumeSync()
                 } }
             return this }
 
@@ -117,11 +117,13 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
                 blockAsyncOrResetByTag(instance, tag, {
                     buildDatabaseOrResetByTag(instance, tag) },
                     post = markTagsForReform(tag, stage, synchronize(identifier, stage), currentJob())) }
+
         private suspend inline fun <reified D : RoomDatabase> SequencerScope.coordinateBuildDatabase(identifier: Any?, instance: KMutableProperty<out D?>, vararg step: AnyStep, noinline stage: ContextStep?) =
             returnItsTag(identifier)?.let { tag ->
                 blockAsyncOrResetByTag(instance, tag, {
                     buildDatabaseOrResetByTag(instance, tag) },
                     post = markTagsForReform(tag, stage, synchronize(identifier, *step, stage = stage), currentJob())) }
+
         private suspend inline fun <reified D : RoomDatabase> SequencerScope.buildDatabaseOrResetByTag(instance: KMutableProperty<out D?>, tag: String) {
             ref?.get()?.run<Context, D?> {
                 sequencer { resetByTagOnError(tag, ::buildDatabase) } }?.let { new ->
@@ -131,8 +133,10 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             blockAsyncOrResetByTag(lock, tag) {
                 block()
                 condition(lock, tag, post) }
+
         private suspend fun SequencerScope.blockAsyncOrResetByTag(lock: AnyKProperty, tag: String, block: AnyStep, post: AnyStep) =
             blockAsyncOrResetByTag(lock, tag, block, post, ::whenNotNullOrResetByTag)
+
         private suspend fun SequencerScope.blockAsyncOrResetByTag(lock: AnyKProperty, tag: String, block: AnyStep) =
             blockAsyncForResult(lock, lock::isNull, block) { resetByTag(tag) }
 
@@ -165,34 +169,28 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             mode = null }
 
         override fun getInterfaceDescriptor(): String? {
-            return null
-        }
+            return null }
 
         override fun pingBinder(): Boolean {
-            return true
-        }
+            return true }
 
         override fun isBinderAlive(): Boolean {
-            return false
-        }
+            return false }
 
         override fun queryLocalInterface(descriptor: String): IInterface? {
-            return null
-        }
+            return null }
 
         override fun dump(fd: FileDescriptor, args: Array<out String>?) {}
 
         override fun dumpAsync(fd: FileDescriptor, args: Array<out String>?) {}
 
         override fun transact(code: Int, data: Parcel, reply: Parcel?, flags: Int): Boolean {
-            return true
-        }
+            return true }
 
         override fun linkToDeath(recipient: IBinder.DeathRecipient, flags: Int) {}
 
         override fun unlinkToDeath(recipient: IBinder.DeathRecipient, flags: Int): Boolean {
-            return true
-        }
+            return true }
     }
 
     open class Clock(
@@ -203,8 +201,10 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         final override var queue: RunnableList = LinkedList()
 
         constructor() : this(CLK)
+
         constructor(callback: Runnable) : this() {
             queue.add(callback) }
+
         constructor(name: String, priority: Int = currentThread.priority, callback: Runnable) : this(name, priority) {
             queue.add(callback) }
 
@@ -215,7 +215,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
                     add(queue)
                     size }
                 super.start()
-            } }
+        } }
         fun alsoStart(): Clock {
             start()
             return this }
@@ -227,12 +227,14 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
                     super.handleMessage(msg)
                     DEFAULT_HANDLE(msg) } }
             queue.run() }
+
         override fun commit(step: Message) =
             if (isSynchronized(step))
                 synchronize(step) {
                     if (queue.run(step, false))
                         step.callback.run() }
             else step.callback.exec()
+
         private fun RunnableList.run(msg: Message? = null, isIdle: Boolean = true) =
             with(precursorOf(msg)) {
                 forEach {
@@ -258,23 +260,30 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
                         removeAt(adjust(ln))
                     } }
                 hasNotTraversed(msg) }
+
         private fun precursorOf(msg: Message?) = queue.indices
+
         private fun IntProgression.hasNotTraversed(msg: Message?) = true
+
         private fun Runnable.exec(isIdle: Boolean = true) {
             if (isIdle && isSynchronized(this))
                 synchronize(block = ::run)
             else run() }
+
         private fun isSynchronized(msg: Message) =
             isSynchronized(msg.callback) ||
             msg.asCallable().isSynchronized()
+
         private fun isSynchronized(callback: Runnable) =
             getStep(callback).asNullable().isSynchronized() ||
             callback.asCallable().isSynchronized() ||
             callback::run.isSynchronized()
+
         private fun AnyKCallable.isSynchronized() =
             annotations.any { it is Synchronous }
 
         private lateinit var hLock: Lock
+
         override fun <R> synchronize(lock: Any?, block: () -> R) =
             synchronized(hLock(lock, block)) {
                 hLock = Lock.Closed(lock, block)
@@ -284,13 +293,16 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         override fun adjust(index: Number) = when (index) {
             is Int -> index
             else -> getEstimatedIndex(index) }
+
         private fun getEstimatedIndex(delay: Number) = queue.size
 
         private var sLock = Any()
+
         override fun attach(step: Runnable, vararg args: Any?) =
             synchronized<Unit>(sLock) { with(queue) {
                 add(step)
                 markTagsForClkAttach(size, step) } }
+
         override fun attach(index: Number, step: Runnable, vararg args: Any?) =
             synchronized<Unit>(sLock) {
                 queue.add(index.toInt(), step)
@@ -300,6 +312,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         var post = fun(callback: Runnable) =
             handler?.post(callback) ?:
             attach(callback)
+
         var postAhead = fun(callback: Runnable) =
             handler?.postAtFrontOfQueue(callback) ?:
             attach(0, callback)
@@ -310,11 +323,15 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
 
         companion object : MutableList<RunnableList> by mutableListOf() {
             fun getMessage(step: CoroutineStep): Message? = null
+
             fun getRunnable(step: CoroutineStep): Runnable? = null
+
             fun getStep(callback: Runnable): CoroutineStep? = null
 
             fun getEstimatedDelay(step: CoroutineStep): Long? = null
+
             fun getDelay(step: CoroutineStep): Long? = null
+
             fun getTime(step: CoroutineStep): Long? = null
 
             private var DEFAULT_HANDLE: HandlerFunction = { commit(it) }
@@ -353,57 +370,82 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         fun unconfinedBefore(async: Boolean = false, step: SequencerStep) = attachBefore(Unconfined, async, step)
 
         constructor() : this(Scheduler)
-        private constructor(observer: StepObserver) { this.observer = observer }
+
+        private constructor(observer: StepObserver) {
+            this.observer = observer }
 
         private val observer: StepObserver
         override var queue: IntMutableList = LinkedList()
         private var seq: LiveSequence = mutableListOf()
+
         private var ln = -1
-            get() = with(queue) { if (size > 0) first() else field }
+            get() = queue.firstOrNull() ?: (field + 1)
+
         private val work
-            get() = synchronize { adjust(queue.removeFirst()) }.also { latestLine = it }
-        private var latestLine = -1
+            get() = synchronize { adjust(queue.removeFirst()) }.also {
+                ln = it }
+
         private var latestStep: LiveStep? = null
         private var latestCapture: Any? = null
 
         private fun getLifecycleOwner(step: Int): LifecycleOwner? = null
+
         fun setLifecycleOwner(step: Int, owner: LifecycleOwner) {}
+
         fun removeLifecycleOwner(step: Int) {}
+
         fun clearLifecycleOwner(owner: LifecycleOwner) {}
 
         private val mLock: Any get() = seq
-        override fun <R> synchronize(lock: LiveWork?, block: () -> R) = synchronized(mLock, block)
+
+        override fun <R> synchronize(lock: LiveWork?, block: () -> R) =
+            synchronized(mLock, block)
 
         private fun init() {
             ln = -1
             clearFlags()
             clearLatestObjects() }
+
         fun start() {
             init()
             resume() }
+
         fun resume(index: Int) {
             queue.add(index)
             resume() }
+
         fun resume(tag: String) {
             fun getIndex(tag: String): Int = TODO()
             resume(getIndex(tag)) }
+
         fun resume() {
             isActive = true
             advance() }
-        fun prepare() { if (ln < 0) ln = 0 }
+
+        fun resumeSync() =
+            synchronize { resume() }
+
         var activate = fun() = prepare()
+        var next = fun(index: Int) = jump(index)
+        var run = fun(step: Int) = commit(step)
+        var bypass = fun(step: Int) = capture(step)
+        var finish = fun() = end()
+
+        private fun advance() {
+            activate() // periodic pre-configuration can be done here
+            while (next(ln) ?: return /* or issue task resolution */)
+                work.let { run(it) ?: bypass(it) } || return
+            isCompleted = finish() }
+
+        fun prepare() { if (ln < 0) ln = 0 }
+
         fun jump(step: Int) =
             if (hasError) null
             else synchronize {
                 val step = adjust(step)
                 (step >= 0 && step < seq.size && (!isObserving || seq[step].isAsynchronous())).also { allowed ->
                     if (allowed) queue.add(step) } }
-        var next = fun(index: Int) = jump(index)
-        private fun advance() {
-            activate() // periodic pre-configuration can be done here
-            while (next(ln) ?: return /* or issue task resolution */)
-                work.let { run(it) ?: bypass(it) } || return
-            isCompleted = finish() }
+
         override fun commit(step: Int): Boolean? {
             var step = step
             val (liveStep, _, async) = synchronize {
@@ -422,7 +464,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
                 return false }
             isObserving = true
             return async }
-        var run = fun(step: Int) = commit(step)
+
         fun capture(step: Int): Boolean {
             val work = synchronize { seq[adjust(step)] }
             val capture = work.second
@@ -430,23 +472,27 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             val async = capture?.invoke(work)
             return if (async is Boolean) async
             else false }
-        var bypass = fun(step: Int) = capture(step)
+
         fun end() = queue.isEmpty() && !isObserving
-        var finish = fun() = end()
 
         fun reset(step: LiveStep? = latestStep) {
             step?.removeObserver(observer)
             isObserving = false }
+
         fun resetByTag(tag: String) {}
 
         fun cancel(ex: Throwable) {
             isCancelled = true
             this.ex = ex }
+
         fun cancelByTag(tag: String, ex: Throwable) = cancel(ex)
+
         fun error(ex: Throwable) {
             hasError = true
             this.ex = ex }
+
         fun errorByTag(tag: String, ex: Throwable) = error(ex)
+
         var interrupt = fun(ex: Throwable) = ex
         var interruptByTag = fun(tag: String, ex: Throwable) = ex
 
@@ -456,18 +502,21 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
                 reset()
                 cancel(ex)
                 throw interrupt(ex) }
+
         suspend inline fun <R> SequencerScope.resetOnError(block: () -> R) =
             try { block() }
             catch (ex: Throwable) {
                 reset()
                 error(ex)
                 throw interrupt(ex) }
+
         suspend inline fun <R> SequencerScope.resetByTagOnCancel(tag: String, block: () -> R) =
             try { block() }
             catch (ex: CancellationException) {
                 resetByTag(tag)
                 cancelByTag(tag, ex)
                 throw interruptByTag(tag, ex) }
+
         suspend inline fun <R> SequencerScope.resetByTagOnError(tag: String, block: () -> R) =
             try { block() }
             catch (ex: Throwable) {
@@ -480,6 +529,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         private fun resettingLastly(step: SequencerStep) = step then { reset() }
         private fun resettingByTagFirstly(step: SequencerStep) = step after { resetByTag(getTag(step)) }
         private fun resettingByTagLastly(step: SequencerStep) = step then { resetByTag(getTag(step)) }
+
         private fun getTag(step: SequencerStep) = returnItsTag(step)!!
 
         var isActive = false
@@ -488,6 +538,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         var isCancelled = false
         var hasError = false
         var ex: Throwable? = null
+
         fun clearFlags() {
             isActive = false
             isObserving = false
@@ -506,8 +557,9 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             clearLatestObjects() }
 
         companion object : (SequencerWork) -> Unit? {
-            override fun invoke(work: SequencerWork) = sequencer?.work()
             const val ATTACHED_ALREADY = -1
+
+            override fun invoke(work: SequencerWork) = sequencer?.work()
         }
 
         override fun adjust(index: Int) = index
@@ -516,46 +568,58 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             add(element)
         private fun LiveSequence.attach(index: Int, element: LiveWork) =
             add(index, element)
+
         override fun attach(step: LiveWork, vararg args: Any?) = synchronize { with(seq) {
             attach(step)
             size - 1 }.also { index ->
                 markTagsForSeqAttach(args.firstOrNull(), index, step) } }
+
         fun attachOnce(work: LiveWork) = synchronize {
             if (work.isNotAttached())
                 attach(work)
             else ATTACHED_ALREADY }
+
         fun attachOnce(range: IntRange, work: LiveWork) = synchronize {
             if (work.isNotAttached(range))
                 attach(work)
             else ATTACHED_ALREADY }
+
         fun attachOnce(first: Int, last: Int, work: LiveWork) = synchronize {
             if (work.isNotAttached(first, last))
                 attach(work)
             else ATTACHED_ALREADY }
+
         override fun attach(index: Int, step: LiveWork, vararg args: Any?) = synchronize { with(seq) {
             attach(index, step)
             markTagsForSeqAttach(args.firstOrNull(), index, step)
             // remark proceeding work in sequence for adjustment
             index } }
+
         fun attachOnce(index: Int, work: LiveWork) = synchronize {
             if (work.isNotAttached(index)) {
                 attach(index, work)
                 index }
             else ATTACHED_ALREADY }
+
         fun attachOnce(range: IntRange, index: Int, work: LiveWork) = synchronize {
             if (work.isNotAttached(range, index))
                 attach(index, work)
             else ATTACHED_ALREADY }
+
         fun attachOnce(first: Int, last: Int, index: Int, work: LiveWork) = synchronize {
             if (work.isNotAttached(first, last, index))
                 attach(index, work)
             else ATTACHED_ALREADY }
+
         fun attachAfter(work: LiveWork, tag: String? = null) =
             attach(after, work, tag)
+
         fun attachBefore(work: LiveWork, tag: String? = null) =
             attach(before, work, tag)
+
         fun attachOnceAfter(work: LiveWork) =
             attachOnce(after, work)
+
         fun attachOnceBefore(work: LiveWork) =
             attachOnce(before, work)
 
@@ -567,58 +631,73 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             var index = -1
             return stepToNull(async) { liveData(block = { markTagsForLaunch(step, { index })(step) }) }.also {
                 index = attach(it, returnItsTag(step)) } }
+
         fun attach(async: Boolean = false, step: SequencerStep, capture: CaptureFunction): LiveWork {
             var index = -1
             return Triple({ liveData(block = { markTagsForLaunch(step, { index })(step) }) }, capture, async).also {
                 index = attach(it, returnItsTag(step)) } }
+
         fun attach(context: CoroutineContext, async: Boolean = false, step: SequencerStep): LiveWork {
             var index = -1
             return stepToNull(async) { liveData(context, block = { markTagsForLaunch(step, { index }, context)(step) }) }.also {
                 index = attach(it, returnItsTag(step)) } }
+
         fun attach(context: CoroutineContext, async: Boolean = false, step: SequencerStep, capture: CaptureFunction): LiveWork {
             var index = -1
             return Triple({ liveData(context, block = { markTagsForLaunch(step, { index }, context)(step) }) }, capture, async).also {
                 index = attach(it, returnItsTag(step)) } }
+
         fun attach(index: Int, async: Boolean = false, step: SequencerStep) =
             stepToNull(async) { liveData(block = { markTagsForLaunch(step, { index })(step) }) }.also {
                 attach(index, it, returnItsTag(step)) }
+
         fun attach(index: Int, async: Boolean = false, step: SequencerStep, capture: CaptureFunction) =
             Triple({ liveData(block = { markTagsForLaunch(step, { index })(step) }) }, capture, async).also {
                 attach(index, it, returnItsTag(step)) }
+
         fun attach(index: Int, context: CoroutineContext, async: Boolean = false, step: SequencerStep) =
             stepToNull(async) { liveData(context, block = { markTagsForLaunch(step, { index }, context)(step) }) }.also {
                 attach(index, it, returnItsTag(step)) }
+
         fun attach(index: Int, context: CoroutineContext, async: Boolean = false, step: SequencerStep, capture: CaptureFunction) =
             Triple({ liveData(context, block = { markTagsForLaunch(step, { index }, context)(step) }) }, capture, async).also {
                 attach(index, it, returnItsTag(step)) }
+
         fun attachAfter(async: Boolean = false, step: SequencerStep): LiveWork {
             var index = -1
             return stepToNull(async) { liveData(block = { markTagsForLaunch(step, { index })(step) }) }.also {
                 index = attachAfter(it, returnItsTag(step)) } }
+
         fun attachAfter(async: Boolean = false, step: SequencerStep, capture: CaptureFunction): LiveWork {
             var index = -1
             return Triple({ liveData(block = { markTagsForLaunch(step, { index })(step) }) }, capture, async).also {
                 index = attachAfter(it, returnItsTag(step)) } }
+
         fun attachAfter(context: CoroutineContext, async: Boolean = false, step: SequencerStep): LiveWork {
             var index = -1
             return stepToNull(async) { liveData(context, block = { markTagsForLaunch(step, { index }, context)(step) }) }.also {
                 index = attachAfter(it, returnItsTag(step)) } }
+
         fun attachAfter(context: CoroutineContext, async: Boolean = false, step: SequencerStep, capture: CaptureFunction): LiveWork {
             var index = -1
             return Triple({ liveData(context, block = { markTagsForLaunch(step, { index }, context)(step) }) }, capture, async).also {
                 index = attachAfter(it, returnItsTag(step)) } }
+
         fun attachBefore(async: Boolean = false, step: SequencerStep): LiveWork {
             var index = -1
             return stepToNull(async) { liveData(block = { markTagsForLaunch(step, { index })(step) }) }.also {
                 index = attachBefore(it, returnItsTag(step)) } }
+
         fun attachBefore(async: Boolean = false, step: SequencerStep, capture: CaptureFunction): LiveWork {
             var index = -1
             return Triple({ liveData(block = { markTagsForLaunch(step, { index })(step) }) }, capture, async).also {
                 index = attachBefore(it, returnItsTag(step)) } }
+
         fun attachBefore(context: CoroutineContext, async: Boolean = false, step: SequencerStep): LiveWork {
             var index = -1
             return stepToNull(async) { liveData(context, block = { markTagsForLaunch(step, { index }, context)(step) }) }.also {
                 index = attachBefore(it, returnItsTag(step)) } }
+
         fun attachBefore(context: CoroutineContext, async: Boolean = false, step: SequencerStep, capture: CaptureFunction): LiveWork {
             var index = -1
             return Triple({ liveData(context, block = { markTagsForLaunch(step, { index }, context)(step) }) }, capture, async).also {
@@ -626,43 +705,55 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
 
         fun capture(block: CaptureFunction) =
             attach(nullStepTo(block))
+
         fun captureOnce(block: CaptureFunction) =
             if (block.isNotAttached())
                 capture(block)
             else ATTACHED_ALREADY
+
         fun captureOnce(range: IntRange, block: CaptureFunction) =
             if (block.isNotAttached(range))
                 capture(block)
             else ATTACHED_ALREADY
+
         fun captureOnce(first: Int, last: Int, block: CaptureFunction) =
             if (block.isNotAttached(first, last))
                 capture(block)
             else ATTACHED_ALREADY
+
         fun capture(index: Int, block: CaptureFunction) =
             attach(index, nullStepTo(block))
+
         fun captureAfter(block: CaptureFunction) =
             attachAfter(nullStepTo(block))
+
         fun captureBefore(block: CaptureFunction) =
             attachBefore(nullStepTo(block))
+
         fun captureOnce(index: Int, block: CaptureFunction) =
             if (block.isNotAttached(index))
                 capture(index, block)
             else ATTACHED_ALREADY
+
         fun captureOnce(range: IntRange, index: Int, block: CaptureFunction) =
             if (block.isNotAttached(range, index))
                 capture(block)
             else ATTACHED_ALREADY
+
         fun captureOnce(first: Int, last: Int, index: Int, block: CaptureFunction) =
             if (block.isNotAttached(first, last, index))
                 capture(block)
             else ATTACHED_ALREADY
+
         fun captureOnceAfter(block: CaptureFunction) =
             captureOnce(after, block)
+
         fun captureOnceBefore(block: CaptureFunction) =
             captureOnce(before, block)
 
         private fun stepToNull(async: Boolean = false, step: LiveStepFunction) = Triple(step, nullBlock, async)
         private fun nullStepTo(block: CaptureFunction) = Triple(nullStep, block, false)
+
         private val nullStep: LiveStepFunction = @Tag(NULL_STEP) { null }
         private val nullBlock: CaptureFunction? = null
 
@@ -670,77 +761,94 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
 
         private fun LiveWork.isSameWork(work: LiveWork) =
             this === work || (first === work.first && second === work.second)
+
         private fun LiveWork.isNotSameWork(work: LiveWork) =
             this !== work || first !== work.first || second !== work.second
+
         private fun LiveWork.isSameCapture(block: CaptureFunction) =
             second === block
+
         private fun LiveWork.isNotSameCapture(block: CaptureFunction) =
             second !== block
 
         private fun LiveWork.isNotAttached() =
             seq.noneReversed { it.isSameWork(this) }
+
         private fun LiveWork.isNotAttached(range: IntRange): Boolean {
             range.forEach {
                 if (seq[it].isSameWork(this))
                     return false }
             return true }
+
         private fun LiveWork.isNotAttached(first: Int, last: Int): Boolean {
             for (i in first..last)
                 if (seq[i].isSameWork(this))
                     return false
             return true }
+
         private fun LiveWork.isNotAttached(index: Int) =
             none(index) { it.isSameWork(this) }
+
         private fun LiveWork.isNotAttached(range: IntRange, index: Int) = when {
             range.isEmpty() -> true
             index - range.first <= range.last - index ->
                 range.none { seq[it].isSameWork(this) }
             else ->
                 range.noneReversed { seq[it].isSameWork(this) } }
+
         private fun LiveWork.isNotAttached(first: Int, last: Int, index: Int) = when {
             first < last -> true
             index - first <= last - index ->
                 seq.none { it.isSameWork(this) }
             else ->
                 seq.noneReversed { it.isSameWork(this) } }
+
         private fun CaptureFunction.isNotAttached() =
             seq.noneReversed { it.isSameCapture(this) }
+
         private fun CaptureFunction.isNotAttached(range: IntRange): Boolean {
             range.forEach {
                 if (seq[it].isSameCapture(this))
                     return false }
             return true }
+
         private fun CaptureFunction.isNotAttached(first: Int, last: Int): Boolean {
             for (i in first..last)
                 if (seq[i].isSameCapture(this))
                     return false
             return true }
+
         private fun CaptureFunction.isNotAttached(index: Int) =
             none(index) { it.isSameCapture(this) }
+
         private fun CaptureFunction.isNotAttached(range: IntRange, index: Int) = when {
             range.isEmpty() -> true
             index - range.first <= range.last - index ->
                 range.none { seq[it].isSameCapture(this) }
             else ->
                 range.noneReversed { seq[it].isSameCapture(this) } }
+
         private fun CaptureFunction.isNotAttached(first: Int, last: Int, index: Int) = when {
             first < last -> true
             index - first <= last - index ->
                 seq.none { it.isSameCapture(this) }
             else ->
                 seq.noneReversed { it.isSameCapture(this) } }
+
         private inline fun none(index: Int, predicate: LiveWorkPredicate) = with(seq) {
             when {
                 index < size / 2 ->
                     none(predicate)
                 else ->
                     noneReversed(predicate) } }
+
         private inline fun LiveSequence.noneReversed(predicate: LiveWorkPredicate): Boolean {
             if (size == 0) return true
             for (i in (size - 1) downTo 0)
                 if (predicate(this[i]))
                     return false
             return true }
+
         private inline fun IntRange.noneReversed(predicate: IntPredicate): Boolean {
             reversed().forEach {
                 if (predicate(it))
@@ -748,29 +856,35 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             return true }
 
         val leading
-            get() = 0 until with(seq) { if (latestLine < size) latestLine else size }
+            get() = 0 until with(seq) { if (ln < size) ln else size }
+
         val trailing
-            get() = (if (latestLine < 0) 0 else latestLine + 1) until seq.size
+            get() = (if (ln < 0) 0 else ln + 1) until seq.size
 
         private val before
             get() = when {
-                latestLine <= 0 -> 0
-                latestLine < seq.size -> latestLine - 1
+                ln <= 0 -> 0
+                ln < seq.size -> ln - 1
                 else -> seq.size }
+
         private val after
             get() = when {
-                latestLine < 0 -> 0
-                latestLine < seq.size -> latestLine + 1
+                ln < 0 -> 0
+                ln < seq.size -> ln + 1
                 else -> seq.size }
     }
 
     fun observe() = observeForever(this)
+
     fun observeAsync() = commitAsync(this, { !hasObservers() }, ::observe)
+
     fun observe(owner: LifecycleOwner) = observe(owner, this)
+
     fun ignore() = removeObserver(this)
 
     var clock: Clock? = null
         get() = field.singleton().also { field = it }
+
     var sequencer: Sequencer? = null
         get() = field.singleton().also { field = it }
 
@@ -789,7 +903,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             MemoryManager::class ->
                 ::applicationMemoryManager.setResolverThenCommit()
             else -> null
-        } }
+    } }
 
     private var activityConfigurationChangeManager: ConfigurationChangeManager? = null
     private var activityNightModeChangeManager: NightModeChangeManager? = null
@@ -800,7 +914,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
     fun windDownClock() {
         clock?.apply {
             Process.setThreadPriority(threadId, Process.THREAD_PRIORITY_DEFAULT)
-        } }
+    } }
     fun windDown() {
         windDownClock()
         sequencer = null }
@@ -820,6 +934,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
 
     override fun commit(step: CoroutineStep) =
         attach(step.markTagForSchCommit())
+
     override fun attach(step: CoroutineStep, vararg args: Any?): Any? {
         val enlist: CoroutineFunction? = (args.firstOrNull() ?: ::handle).asType()
         val transfer: CoroutineFunction? = (args.secondOrNull() ?: ::reattach).asType()
@@ -827,42 +942,40 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             null, false -> transfer?.invoke(@Unlisted step)
             true, is Job -> result
             else -> transfer?.invoke(@Enlisted step) } }
+
     private fun reattach(step: CoroutineStep, handler: CoroutineFunction = ::launch) =
         trySafelyForResult { detach(step) }?.run(handler)
+
     private fun detach(step: CoroutineStep) =
         with(Clock) { (getRunnable(step) ?: getMessage(step)) }?.detach()?.asCoroutine() ?: step
 
     override fun <R> fold(initial: R, operation: (R, CoroutineContext.Element) -> R): R {
-        return operation(initial, SchedulerElement)
-    }
+        return operation(initial, SchedulerElement) }
+
     override fun <E : CoroutineContext.Element> get(key: CoroutineContext.Key<E>): E? {
-        return null
-    }
+        return null }
+
     override fun minusKey(key: CoroutineContext.Key<*>): CoroutineContext {
-        return this
-    }
+        return this }
 
     override fun onChanged(value: Step?) {
         value.markTagForSchExec()?.run { synchronize(this, ::block) } }
+
     override fun <R> synchronize(lock: Step?, block: () -> R) = block() // or apply (live step) capture function internally
 
     object EventBus : Buffer(), Transactor<ContextStep, Boolean>, PriorityQueue<Any?> {
         override suspend fun collectSafely(collector: FlowCollector<Any?>) {
-            // emit signalled events to collector
-        }
+            queue.forEach { collector.emit(it) } }
 
-        override fun commit(step: ContextStep): Boolean {
-            // record context event
-            return true
-        }
-        fun commit(event: Transit): Boolean {
-            // record signal event
-            return true
-        }
+        override fun commit(step: ContextStep) =
+            queue.add(step)
+        fun commit(event: Transit) =
+            queue.add(event)
 
-        override var queue: MutableList<Any?>
-            get() = TODO()
-            set(value) {}
+        override var queue: MutableList<Any?> = mutableListOf()
+
+        fun clear() {
+            queue.clear() }
     }
 
     enum class Lock : State { Closed, Open }
@@ -881,25 +994,29 @@ val Any?.transit: Transit
         else -> asNullable().event?.transit }
 
 fun Step.relay(transit: Transit = this.transit) = Relay(transit)
+
 fun Step.reevaluate(transit: Transit = this.transit) = object : Relay(transit) {
     override suspend fun invoke() = this@reevaluate() }
 
 open class Relay(val transit: Transit = null) : Step {
-    override suspend fun invoke() {}
-}
+    override suspend fun invoke() {} }
 
 inline fun <reified T : Resolver> LifecycleOwner.defer(member: UnitKFunction, vararg context: Any?) =
     defer(T::class, this, member, *context)
+
 inline fun <reified T : Resolver> LifecycleOwner.defer(member: UnitKFunction, vararg context: Any?, noinline `super`: Work) =
     defer(T::class, this, member, *context, `super`)
+
 inline fun <reified T : Resolver> Context.defer(member: UnitKFunction, vararg context: Any?, noinline `super`: Work) =
     defer(T::class, this, member, *context, `super`)
+
 inline fun <reified T : Resolver> BaseActivity.defer(member: UnitKFunction, vararg context: Any?, noinline `super`: Work) =
     (this as Context).defer<T>(member, *context, `super` = `super`)
 
 interface Resolver : ResolverScope {
     override fun commit(step: CoroutineStep) =
         commit(blockOf(step))
+
     fun commit(vararg context: Any?) =
         context.lastOrNull().asWork()?.invoke()
 }
@@ -910,6 +1027,7 @@ fun scheduleAhead(step: Step) { Scheduler.value = step }
 // runnable <-> message
 fun post(callback: Runnable) = clock?.post?.invoke(callback)
 fun postAhead(callback: Runnable) = clock?.postAhead?.invoke(callback)
+
 private fun getTag(callback: Runnable): String? = TODO()
 private fun getTag(msg: Message): String? = TODO()
 private fun getTag(what: Int): String? = TODO()
@@ -934,6 +1052,7 @@ inline fun <R> commitAsync(lock: Any, predicate: Predicate, block: () -> R) {
     if (predicate())
         synchronized(lock) {
             if (predicate()) block() } }
+
 inline fun <R, S : R> commitAsyncForResult(lock: Any, predicate: Predicate, block: () -> R, fallback: () -> S? = { null }): R? {
     if (predicate())
         synchronized(lock) {
@@ -948,6 +1067,7 @@ inline fun <R> blockAsync(lock: Any, crossinline predicate: Predicate, crossinli
         synchronized(lock) {
             runBlocking {
                 if (predicate()) block() } } }
+
 inline fun <R, S : R> blockAsyncForResult(lock: Any, crossinline predicate: Predicate, crossinline block: suspend () -> R, noinline fallback: suspend () -> S? = { null }) =
     if (predicate())
         synchronized(lock) {
@@ -958,6 +1078,7 @@ inline fun <R, S : R> blockAsyncForResult(lock: Any, crossinline predicate: Pred
 
 inline fun <R> blockAsync(lock: AnyKProperty, crossinline block: suspend () -> R) =
     blockAsync(lock, lock::isNotNull, block)
+
 inline fun <R, S : R> blockAsyncForResult(lock: AnyKProperty, crossinline block: suspend () -> R, noinline fallback: suspend () -> S? = { null }) =
     blockAsyncForResult(lock, lock::isNotNull, block, fallback)
 
@@ -967,58 +1088,80 @@ private fun Any.detach() = when (this) {
     else -> null }
 
 private fun Runnable.asCoroutine(): CoroutineStep = TODO()
+
 private fun Runnable.asMessage() =
     with(Clock) { getStep(this@asMessage)?.let { getMessage(it) } }
+
 private fun Runnable.detach(): Runnable? = null
+
 private fun Runnable.reattach() {}
+
 private fun Runnable.close() {}
 
 private fun Message.asCoroutine(): CoroutineStep = TODO()
+
 private fun Message.asRunnable() = callback
+
 private fun Message.detach(): Message? = null
+
 private fun Message.reattach() {}
+
 private fun Message.close() {}
 
 private operator fun Message.get(tag: String): Any? = TODO()
+
 private operator fun Message.set(tag: String, value: Any?) {}
 
 inline fun <R> sequencer(block: Sequencer.() -> R) = sequencer?.block()
+
 fun <T, R> capture(context: CoroutineContext, step: suspend LiveDataScope<T>.() -> Unit, capture: (T) -> R) =
     liveData(context, block = step) to capture
+
 fun <T, R> ioCapture(step: suspend LiveDataScope<T>.() -> Unit, capture: (T) -> R) =
     capture(IO, step, capture)
+
 fun <T, R> mainCapture(step: suspend LiveDataScope<T>.() -> Unit, capture: (T) -> R) =
     capture(Main, step, capture)
+
 fun <T, R> defaultCapture(step: suspend LiveDataScope<T>.() -> Unit, capture: (T) -> R) =
     capture(Default, step, capture)
+
 fun <T, R> unconfinedCapture(step: suspend LiveDataScope<T>.() -> Unit, capture: (T) -> R) =
     capture(Unconfined, step, capture)
 
 fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(owner: LifecycleOwner, observer: Observer<T> = disposer(this)): Observer<T> {
     first.observe(owner, observer)
     return observer }
+
 fun <T, R> Pair<LiveData<T>, (T) -> R>.dispose(owner: LifecycleOwner, disposer: Observer<T> = owner.disposer(this)) =
     observe(owner, disposer)
+
 fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(observer: Observer<T> = disposer(this)): Observer<T> {
     first.observeForever(observer)
     return observer }
+
 fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(owner: LifecycleOwner, observer: (Pair<LiveData<T>, (T) -> R>) -> Observer<T> = ::disposer) =
     observe(owner, observer(this))
+
 fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(observer: (Pair<LiveData<T>, (T) -> R>) -> Observer<T> = ::disposer) =
     observe(observer(this))
+
 fun <T, R> Pair<LiveData<T>, (T) -> R>.removeObserver(observer: Observer<T>) =
     first.removeObserver(observer)
+
 fun <T, R> Pair<LiveData<T>, (T) -> R>.removeObservers(owner: LifecycleOwner) =
     first.removeObservers(owner)
 
 fun <T, R> captor(liveStep: Pair<LiveData<T>, (T) -> R>) =
     Observer<T> { liveStep.second(it) }
+
 private fun <T, R> disposer(liveStep: Pair<LiveData<T>, (T) -> R>) =
     object : Observer<T> {
         override fun onChanged(value: T) {
             val (step, capture) = liveStep
             step.removeObserver(this)
             capture(value) } }
+
 private fun <T, R> LifecycleOwner.disposer(liveStep: Pair<LiveData<T>, (T) -> R>) =
     Observer<T> { value ->
         val (step, capture) = liveStep
@@ -1027,6 +1170,7 @@ private fun <T, R> LifecycleOwner.disposer(liveStep: Pair<LiveData<T>, (T) -> R>
 
 suspend fun SequencerScope.change(stage: ContextStep) = resetByTag(getTag(stage)) {
     EventBus.commit(stage) }
+
 suspend fun SequencerScope.change(event: Transit) = reset {
     EventBus.commit(event) }
 
@@ -1049,37 +1193,41 @@ private suspend inline fun <R> SequencerScope.resetByTag(tag: String, block: () 
 
 private fun reset() { sequencer?.reset() }
 private fun resetByTag(tag: String) { sequencer?.resetByTag(tag) }
+
 private fun getTag(stage: ContextStep): String = TODO()
 
 private suspend inline fun whenNotNull(instance: AnyKProperty, stage: String, block: AnyStep) {
     if (instance.isNotNull())
         block() }
+
 private suspend inline fun whenNotNullOrResetByTag(instance: AnyKProperty, stage: String, block: AnyStep) =
     if (instance.isNotNull())
         block()
     else resetByTag(stage)
 
 private interface SchedulerKey : CoroutineContext.Key<SchedulerElement> {
-    companion object : SchedulerKey
-}
+    companion object : SchedulerKey }
+
 private interface SchedulerElement : CoroutineContext.Element {
     companion object : SchedulerElement {
         override val key
-            get() = SchedulerKey }
-}
+            get() = SchedulerKey } }
 
 fun CoroutineScope.relaunch(instance: JobKProperty, context: CoroutineContext = Scheduler, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep) =
     relaunch(::launch, instance, context, start, step)
 fun LifecycleOwner.relaunch(instance: JobKProperty, context: CoroutineContext = Scheduler, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep) =
     relaunch(::launch, instance, context, start, step)
+
 private fun relaunch(launcher: JobKFunction, instance: JobKProperty, context: CoroutineContext, start: CoroutineStart, step: CoroutineStep) =
     instance.require({ !it.isActive }) {
         launcher.call(context, start, step)
     }.also { instance.markTag() }
 
 fun launch(it: CoroutineStep) = launch(step = it)
+
 fun launch(context: CoroutineContext = Scheduler, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep) =
     ProcessLifecycleOwner.get().launch(context, start, step)
+
 fun LifecycleOwner.launch(context: CoroutineContext = Scheduler, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep): Job {
     val (scope, task) = determineScopeAndCoroutine(context, start, step)
     val (context, start, step) = task
@@ -1089,8 +1237,10 @@ fun LifecycleOwner.launch(context: CoroutineContext = Scheduler, start: Coroutin
 private fun LifecycleOwner.determineScopeAndCoroutine(context: CoroutineContext, start: CoroutineStart, step: CoroutineStep) =
     determineScope(step).let { scope ->
         scope to scope.determineCoroutine(context, start, step) }
+
 private fun LifecycleOwner.determineScope(step: CoroutineStep) =
     step.annotatedScope ?: lifecycleScope
+
 private fun CoroutineScope.determineCoroutine(context: CoroutineContext, start: CoroutineStart, step: CoroutineStep) =
     Triple(
         // context key <-> step
@@ -1098,46 +1248,72 @@ private fun CoroutineScope.determineCoroutine(context: CoroutineContext, start: 
         else Scheduler + context,
         start,
         step)
+
 private fun CoroutineContext.isSchedulerContext() =
     this is Scheduler || this[SchedulerKey] is SchedulerElement
 
 infix fun Job.then(next: SchedulerStep): CoroutineStep = {}
+
 infix fun Job.after(prev: SchedulerStep): CoroutineStep = {}
+
 infix fun Job.given(predicate: JobPredicate): CoroutineStep = {}
+
 infix fun Job.unless(predicate: JobPredicate): CoroutineStep = {}
+
 infix fun Job.otherwise(next: SchedulerStep): CoroutineStep = {}
+
 infix fun Job.onCancel(action: SchedulerStep): CoroutineStep = {}
+
 infix fun Job.onError(action: SchedulerStep): CoroutineStep = {}
+
 infix fun Job.onTimeout(action: SchedulerStep): CoroutineStep = {}
+
 infix fun CoroutineStep.then(next: SchedulerStep): CoroutineStep = {}
+
 infix fun CoroutineStep.after(prev: SchedulerStep): CoroutineStep = {}
+
 infix fun CoroutineStep.given(predicate: JobPredicate): CoroutineStep = {}
+
 infix fun CoroutineStep.unless(predicate: JobPredicate): CoroutineStep = {}
+
 infix fun CoroutineStep.otherwise(next: SchedulerStep): CoroutineStep = {}
+
 infix fun CoroutineStep.onCancel(action: SchedulerStep): CoroutineStep = {}
+
 infix fun CoroutineStep.onError(action: SchedulerStep): CoroutineStep = {}
+
 infix fun CoroutineStep.onTimeout(action: SchedulerStep): CoroutineStep = {}
 
 fun SchedulerScope.enact(job: Job, exit: ThrowableFunction? = null) {}
+
 fun SchedulerScope.error(job: Job, exit: ThrowableFunction? = null) {}
+
 fun SchedulerScope.retry(job: Job, exit: ThrowableFunction? = null) {}
+
 fun SchedulerScope.close(job: Job, exit: ThrowableFunction? = null) {}
 
 fun SchedulerScope.keepAlive(job: Job) = keepAliveNode(job.node)
+
 fun SchedulerScope.keepAliveNode(node: SchedulerNode): Boolean = false
+
 fun SchedulerScope.keepAliveOrClose(job: Job) =
     job.node.let { node ->
         keepAliveNode(node) || job.close(node) }
 
 fun LifecycleOwner.detach(job: Job? = null) {}
+
 fun LifecycleOwner.reattach(job: Job? = null) {}
+
 fun LifecycleOwner.close(job: Job? = null) {}
 
 fun LifecycleOwner.detach(node: SchedulerNode) {}
+
 fun LifecycleOwner.reattach(node: SchedulerNode) {}
+
 fun LifecycleOwner.close(node: SchedulerNode) {}
 
 fun Job.close(node: SchedulerNode): Boolean = true
+
 fun Job.close() {}
 
 val Job.node: SchedulerNode
@@ -1145,15 +1321,19 @@ val Job.node: SchedulerNode
 
 fun SchedulerScope.change(stage: ContextStep) =
     EventBus.commit(stage)
+
 fun SchedulerScope.change(event: Transit) =
     EventBus.commit(event)
 
 fun <R> SchedulerScope.change(member: KFunction<R>, stage: ContextStep) =
     EventBus.commit(stage)
+
 fun <R> SchedulerScope.change(owner: LifecycleOwner, member: KFunction<R>, stage: ContextStep) =
     EventBus.commit(stage)
+
 fun <R> SchedulerScope.change(ref: WeakContext, member: KFunction<R>, stage: ContextStep) =
     EventBus.commit(stage)
+
 fun <R> SchedulerScope.change(ref: WeakContext, owner: LifecycleOwner, member: KFunction<R>, stage: ContextStep) =
     EventBus.commit(stage)
 
@@ -1163,43 +1343,55 @@ suspend fun CoroutineScope.repeatSuspended(predicate: PredicateFunction = @Tag(I
         block(scope)
         if (isActive)
             delayOrYield(delayTime()) } }
+
 suspend fun delayOrYield(dt: Long = 0L) {
     if (dt > 0) delay(dt)
     else if (dt == 0L) yield() }
 
 suspend fun CoroutineScope.currentContext(scope: CoroutineScope = this) =
     currentJob()[CONTEXT].asContext()!!
+
 suspend fun CoroutineScope.registerContext(context: WeakContext, scope: CoroutineScope = this) {
     currentJob()[CONTEXT] = context }
 
 typealias JobFunction = suspend (Any?) -> Unit
 private typealias JobFunctionSet = MutableSet<Pair<String, Any>>
+
 private var jobs: JobFunctionSet? = null
 
 operator fun Job.get(tag: String) =
     jobs?.find { tag == it.first }?.second.asAnyArray()?.get(1)
+
 operator fun Job.set(tag: String, value: Any?) {
     // addressable layer work
     value.markTag(tag) }
 
 private fun JobFunctionSet.save(tag: String, function: AnyKCallable) = function.tag.apply {
     save(combineTags(tag, this?.string), this?.keep ?: true, function) }
+
 private fun JobFunctionSet.save(tag: String, unit: String, function: AnyKCallable) {}
+
 private fun JobFunctionSet.save(tag: Tag?, self: AnyKCallable) =
     if (tag !== null) with(tag) { save(string, keep, self) }
     else save(null, false, self)
+
 private fun JobFunctionSet.save(tag: String?, keep: Boolean, function: AnyKCallable) =
     add((tag ?: currentThreadJob().hashCode().toString()) to arrayOf(keep, function)) // rewire related parts
+
 private fun combineTags(tag: String, self: String?) =
     if (self === null) tag
     else "$tag.$self"
 
 fun AnyKCallable.markTag() = tag.also { jobs?.save(it, this) }
+
 fun Any.markTag() = asCallable().markTag()
+
 private fun returnItsTag(it: Any?) = it.asNullable().tag?.string
 
 fun Any?.markTag(tag: String) = jobs?.save(tag, asNullable())
+
 fun Any?.markSequentialTag(vararg tag: String?): String? = TODO()
+
 private fun <T> T.applyMarkTag(tag: String) = apply { markTag(tag) }
 
 private fun Step?.markTagForSchExec() = applyMarkTag(SCH_EXEC)
@@ -1223,6 +1415,7 @@ fun markTags(vararg function: Any?) {
         else ->
             function.forEach {
                 it.asNullable().markTag() } } }
+
 private fun markTagsForJobLaunch(vararg function: Any?, i: Int = 0) =
     function[i + 2]?.markTag()?.also { step ->
         val stepTag = step.string
@@ -1233,6 +1426,7 @@ private fun markTagsForJobLaunch(vararg function: Any?, i: Int = 0) =
             jobs?.save("$stepTag@$jobId.$CONTEXT", false, context.asCallable()) } /* context */
         function[i + 1]?.let { start ->
             jobs?.save("$stepTag@$jobId.$START", false, start.asCallable()) } /* start */ }
+
 private fun markTagsForJobRepeat(vararg function: Any?, i: Int = 0) =
     function[i + 1]?.markTag()?.also { blockTag ->
         val blockTag = blockTag.string
@@ -1241,6 +1435,7 @@ private fun markTagsForJobRepeat(vararg function: Any?, i: Int = 0) =
             jobs?.save("$blockTag@$jobId.$DELAY", delay.asCallable()) } /* delay */
         function[i]?.let { predicate ->
             jobs?.save("$blockTag@$jobId.$PREDICATE", predicate.asCallable()) } /* predicate */ }
+
 private fun markTagsForClkAttach(vararg function: Any?, i: Int = 0) =
     function[i + 1]?.let { step -> when (step) {
         is Runnable -> {
@@ -1255,6 +1450,7 @@ private fun markTagsForClkAttach(vararg function: Any?, i: Int = 0) =
         else -> {
             val step = step.asInt()!!
             jobs?.save("${getTag(step)}.$WHAT", step.asCallable()) /* what */ } } }
+
 private fun markTagsForSeqAttach(vararg function: Any?, i: Int = 0) =
     function[i]?.asString().let { stepTag ->
         val stepTag = stepTag ?: NULL_STEP
@@ -1262,6 +1458,7 @@ private fun markTagsForSeqAttach(vararg function: Any?, i: Int = 0) =
             jobs?.save("$stepTag.$INDEX", index.asCallable())
             function[i + 2]?.asLiveWork()?.let { work ->
                 jobs?.save("$stepTag#$index.$WORK", work.asCallable()) } } /* index & work */ }
+
 private fun markTagsForSeqLaunch(vararg function: Any?, i: Int = 0) =
     function[i]?.markTag()?.also { stepTag ->
         val stepTag = stepTag.string
@@ -1269,6 +1466,7 @@ private fun markTagsForSeqLaunch(vararg function: Any?, i: Int = 0) =
         val jobId = function[i + 3].asJob().hashCode()
         function[i + 2]?.let { context ->
             jobs?.save("$stepTag#$index@$jobId.$CONTEXT", false, context.asNullable()) } /* context */ }
+
 private fun markTagsForCtxReform(vararg function: Any?, i: Int = 0) =
     function[i + 1].markSequentialTag(function[i].asString())?.also { stageTag ->
         val jobId = function[i + 3]?.let { job ->
@@ -1280,47 +1478,61 @@ private fun markTagsForCtxReform(vararg function: Any?, i: Int = 0) =
 infix fun <R, S> (suspend () -> R).then(next: suspend () -> S): suspend () -> S = {
     this@then()
     next() }
+
 infix fun <R, S> (suspend () -> R).after(prev: suspend () -> S): suspend () -> R = {
     prev()
     this@after() }
+
 infix fun <R, S> (suspend () -> R).thru(next: suspend (R) -> S): suspend () -> S = {
     next(this@thru()) }
+
 fun <R> (suspend () -> R).given(predicate: Predicate, fallback: suspend () -> R): suspend () -> R = {
     if (predicate()) this@given() else fallback() }
+
 infix fun Step.given(predicate: Predicate) = given(predicate, emptyStep)
 
 infix fun <T, R, S> (suspend T.() -> R).then(next: suspend T.() -> S): suspend T.() -> S = {
     this@then()
     next() }
+
 infix fun <T, R, S> (suspend T.() -> R).after(prev: suspend T.() -> S): suspend T.() -> R = {
     prev()
     this@after() }
+
 infix fun <T, R, S> (suspend T.() -> R).thru(next: suspend (R) -> S): suspend T.() -> S = {
     next(this@thru()) }
+
 fun <T, R> (suspend T.() -> R).given(predicate: Predicate, fallback: suspend T.() -> R): suspend T.() -> R = {
     if (predicate()) this@given() else fallback() }
 
 infix fun <T, U, R, S> (suspend T.(U) -> R).then(next: suspend T.(U) -> S): suspend T.(U) -> S = {
     this@then(it)
     next(it) }
+
 infix fun <T, U, R, S> (suspend T.(U) -> R).after(prev: suspend T.(U) -> S): suspend T.(U) -> R = {
     prev(it)
     this@after(it) }
+
 infix fun <T, U, R, S> (suspend T.(U) -> R).thru(next: suspend (R) -> S): suspend T.(U) -> S = {
     next(this@thru(it)) }
+
 fun <T, U, R> (suspend T.(U) -> R).given(predicate: Predicate, fallback: suspend T.(U) -> R): suspend T.(U) -> R = {
     if (predicate()) this@given(it) else fallback(it) }
 
 infix fun <R, S> (() -> R).then(next: () -> S): () -> S = {
     this@then()
     next() }
+
 infix fun <R, S> (() -> R).after(prev: () -> S): () -> R = {
     prev()
     this@after() }
+
 infix fun <R, S> (() -> R).thru(next: (R) -> S): () -> S = {
     next(this@thru()) }
+
 fun <R> (() -> R).given(predicate: Predicate, fallback: () -> R): () -> R = {
     if (predicate()) this@given() else fallback() }
+
 infix fun AnyFunction.given(predicate: Predicate) = given(predicate, emptyWork)
 
 infix fun <T, R, S> ((T) -> R).thru(next: (R) -> S): (T) -> S = {
@@ -1332,6 +1544,7 @@ fun <T, U, R> (suspend T.(U) -> R).block(scope: T, value: U) = runBlocking { inv
 
 fun <R> KCallable<R>.with(vararg args: Any?): () -> R = {
     this@with.call(*args) }
+
 fun <R> call(vararg args: Any?): (KCallable<R>) -> R = {
     it.call(*args) }
 
@@ -1340,6 +1553,7 @@ fun currentThreadJob() = ::currentJob.block()
 
 val currentThread
     get() = Thread.currentThread()
+
 val mainThread = currentThread
 fun Thread.isMainThread() = this === mainThread
 fun onMainThread() = currentThread.isMainThread()
@@ -1458,12 +1672,16 @@ private annotation class Unlisted
 
 private val AnyKCallable.tag
     get() = annotations.find { it is Tag } as? Tag
+
 private val AnyKCallable.event
     get() = annotations.find { it is Event } as? Event
+
 private val AnyKCallable.schedulerScope
     get() = annotations.find { it is Scope } as? Scope
+
 private val CoroutineStep.annotatedScope
     get() = trySafelyForResult { asCallable().schedulerScope!!.type.reconstruct(this) }
+
 private val AnyKCallable.launchScope
     get() = annotations.find { it is LaunchScope } as? LaunchScope
 
@@ -1473,6 +1691,7 @@ private typealias SchedulerNode = KClass<out Annotation>
 private typealias SchedulerPath = Array<KClass<out Throwable>>
 private typealias SchedulerWork = Scheduler.() -> Unit
 
+typealias Sequencer = Scheduler.Sequencer
 private typealias SequencerScope = LiveDataScope<Step?>
 private typealias SequencerStep = suspend SequencerScope.(Any?) -> Unit
 private typealias StepObserver = Observer<Step?>
@@ -1490,6 +1709,7 @@ private typealias PropertyCondition = suspend (AnyKProperty, String, AnyStep) ->
 private typealias PredicateFunction = suspend () -> Boolean
 private typealias DelayFunction = suspend () -> Long
 
+typealias Clock = Scheduler.Clock
 private typealias MessageFunction = (Message) -> Any?
 private typealias HandlerFunction = Clock.(Message) -> Unit
 private typealias RunnableList = MutableList<Runnable>
@@ -1510,8 +1730,7 @@ interface Expiry : MutableSet<Lifetime> {
         forEach { alive ->
             if (alive(property) == false)
                 property.expire()
-        }
-    }
+        } }
     companion object : Expiry {
         override fun add(element: Lifetime) = false
         override fun addAll(elements: Collection<Lifetime>) = false
@@ -1520,24 +1739,29 @@ interface Expiry : MutableSet<Lifetime> {
         override fun remove(element: Lifetime): Boolean = false
         override fun removeAll(elements: Collection<Lifetime>) = false
         override fun retainAll(elements: Collection<Lifetime>) = false
-        override val size: Int
-            get() = 0
         override fun contains(element: Lifetime) = false
         override fun containsAll(elements: Collection<Lifetime>) = false
         override fun isEmpty() = true
+        override val size: Int
+            get() = 0
     }
 }
+
 typealias Lifetime = (AnyKMutableProperty) -> Boolean?
+
 fun AnyKMutableProperty.expire() = set(null)
 
 private interface ObjectReference<T> { val obj: T }
 private interface NullReference<T> : ObjectReference<T?>
+
 private fun <T> T.asObjRef() =
     object : ObjectReference<T> {
         override val obj get() = this@asObjRef }
+
 private fun <T> T?.asNullRef() =
     object : NullReference<T> {
         override val obj get() = this@asNullRef }
+
 fun <T> T.asCallable(): KCallable<T> = asObjRef()::obj
 fun <T> T?.asNullable(): KCallable<T?> = asNullRef()::obj
 
@@ -1562,6 +1786,7 @@ typealias AnyKProperty = KProperty<*>
 typealias AnyKMutableProperty = KMutableProperty<*>
 
 private operator fun AnyKCallable.plus(lock: AnyKCallable) = this
+
 private fun <R> AnyKCallable.synchronize(block: () -> R) = synchronized(this, block)
 
 private typealias ID = Short
@@ -1582,7 +1807,9 @@ sealed interface State {
 
     companion object {
         operator fun invoke(): State = Lock.Open
+
         fun of(vararg args: Any?): State = Ambiguous
+
         operator fun get(id: ID): State = when (id.toInt()) {
             1 -> Resolved unless { db === null || session === null }
             2 -> Resolved unless { logDb === null || netDb === null }

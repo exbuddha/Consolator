@@ -28,6 +28,7 @@ class MainFragment : BaseFragment() {
                 null to null /* continue animation or alternatives */
             else ->
                 throw BaseImplementationRestriction }
+
     private inline fun <reified R> screenEventInterceptor(listener: Any, callback: KFunction<R>, vararg args: Any?, noinline postback: PostbackFunction?): Interception = null
 }
 

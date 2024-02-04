@@ -18,8 +18,7 @@ class MigrationManager : Resolver {
                 // repeat until stable
                 EventBus.commit(@JobTreeRoot COMMIT_NAV_MAIN_UI)
                 ::applicationMigrationManager.expire()
-            }
-        }
+        } }
     }
 
     var progress: Byte = 0

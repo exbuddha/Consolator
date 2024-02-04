@@ -28,5 +28,3 @@ open class BaseService : Service(), Scheduler.BaseServiceScope {
     override var ref: WeakContext? = null
         get() = field.unique(this).also { field = it }
 }
-
-typealias Sequencer = Scheduler.Sequencer

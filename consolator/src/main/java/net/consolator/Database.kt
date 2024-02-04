@@ -25,20 +25,26 @@ abstract class BaseEntity(
 
 @Entity(tableName = RuntimeSessionEntity.TABLE)
 data class RuntimeSessionEntity(
-    override val id: Long,
     @ColumnInfo(name = CTX_TIME)
     override var startTime: Long,
+
     @ColumnInfo(name = INIT_TIME)
     var initTime: Long = now(),
+
     @ColumnInfo(name = DB_TIME, defaultValue = CURRENT_TIMESTAMP)
     var dbTime: String,
+
     @ColumnInfo(name = APP_ID, defaultValue = BuildConfig.APPLICATION_ID)
     val appId: String?,
+
     @ColumnInfo(name = BUILD_TYPE, defaultValue = BuildConfig.BUILD_TYPE)
     val buildType: String?,
+
     @ColumnInfo(name = BUILD_VERSION, defaultValue = BuildConfig.VERSION_NAME)
     val buildVersion: String?,
-) : BaseEntity(id), UniqueContext {
+
+    override val id: Long,
+    ) : BaseEntity(id), UniqueContext {
     companion object {
         const val CTX_TIME = "ctx_time"
         const val INIT_TIME = "init_time"
@@ -56,6 +62,7 @@ abstract class BaseSessionEntity(
 open class TimeSensitiveSessionEntity(
     @ColumnInfo(name = RuntimeSessionEntity.DB_TIME, defaultValue = CURRENT_TIMESTAMP)
     open var dbTime: String,
+
     override val id: Long,
     override var sid: Long? = session?.startTime,
 ) : BaseSessionEntity(id, sid)
@@ -90,14 +97,16 @@ abstract class LogDatabase : RoomDatabase() {
 
 @Entity(tableName = ThreadEntity.TABLE)
 data class ThreadEntity(
-    override val id: Long,
-    override var sid: Long? = session?.startTime,
-    override var dbTime: String,
     @ColumnInfo(name = RUNTIME_ID)
     val rid: Long,
+
     @ColumnInfo(name = MAIN)
     val main: Boolean,
-) : TimeSensitiveSessionEntity(dbTime, id, sid) {
+
+    override var dbTime: String,
+    override val id: Long,
+    override var sid: Long? = session?.startTime,
+    ) : TimeSensitiveSessionEntity(dbTime, id, sid) {
     companion object {
         const val RUNTIME_ID = "rid"
         const val MAIN = "main"
@@ -120,14 +129,19 @@ data class ThreadEntity(
 data class ExceptionEntity(
     @ColumnInfo(name = TYPE)
     val type: Long,
-    @ColumnInfo(name = UNHANDLED)
-    val unhandled: Boolean = false,
+
     @ColumnInfo(name = THREAD)
     val thread: Long,
-    @ColumnInfo(name = MESSAGE)
-    val message: String? = null,
+
     @ColumnInfo(name = CAUSE)
     val cause: Long? = null,
+
+    @ColumnInfo(name = MESSAGE)
+    val message: String? = null,
+
+    @ColumnInfo(name = UNHANDLED)
+    val unhandled: Boolean = false,
+
     override var dbTime: String,
     override val id: Long,
     override var sid: Long? = session?.startTime,
@@ -149,8 +163,10 @@ data class ExceptionEntity(
 data class StackTraceElementEntity(
     @ColumnInfo(name = EXCEPTION_ID)
     val exception: Long,
+
     @ColumnInfo(name = ELEMENT)
     val element: StackTraceElement,
+
     override val id: Long,
 ) : BaseEntity(id) {
     companion object {
@@ -162,6 +178,7 @@ data class StackTraceElementEntity(
 data class ExceptionTypeEntity(
     @ColumnInfo(name = TYPE)
     val type: String,
+
     override val id: Long,
 ) : BaseEntity(id) {
     companion object {
@@ -180,7 +197,9 @@ abstract class NetworkDatabase : RoomDatabase() {
     abstract fun networkDao(): NetworkDao }
 
 open class NetworkEntity(
+    @ColumnInfo(name = NETWORK_ID)
     open val nid: Int,
+
     override var dbTime: String,
     override val id: Long,
     override var sid: Long? = session?.startTime,
@@ -192,12 +211,16 @@ open class NetworkEntity(
 data class NetworkStateEntity(
     @ColumnInfo(name = IS_CONNECTED)
     var isConnected: Boolean,
+
     @ColumnInfo(name = HAS_INTERNET)
     var hasInternet: Boolean,
+
     @ColumnInfo(name = HAS_WIFI)
     var hasWifi: Boolean,
+
     @ColumnInfo(name = HAS_MOBILE)
     var hasMobile: Boolean,
+
     override var dbTime: String,
     override val id: Long,
     override var sid: Long? = session?.startTime,
@@ -211,16 +234,20 @@ data class NetworkStateEntity(
 
 @Entity(tableName = NetworkCapabilitiesEntity.TABLE)
 data class NetworkCapabilitiesEntity(
-    @ColumnInfo(name = NETWORK_ID)
     override val nid: Int,
+
     @ColumnInfo(name = CAPABILITIES)
     var capabilities: String,
+
     @ColumnInfo(name = DOWNSTREAM)
     var downstream: Int,
+
     @ColumnInfo(name = UPSTREAM)
     var upstream: Int,
+
     @ColumnInfo(name = STRENGTH)
     var strength: Int,
+
     override var dbTime: String,
     override val id: Long,
     override var sid: Long? = session?.startTime,
@@ -295,11 +322,16 @@ suspend fun <R> networkDao(block: suspend NetworkDao.() -> R) = netDb!!.networkD
 
 private var dateTimeFormat: DateFormat? = null
     get() = field ?: SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
+
 private fun String.toLocalTime() = dateTimeFormat!!.parse(this)!!.time
+
 private fun Long.toLocalTimestamp() = dateTimeFormat!!.format(Date(this))
+
 private var dbTimeDiff: Long? = null
-    get() = field ?: session?.run { dbTime.toLocalTime() - initTime }
+    get() = field ?: session?.run { dbTime.toLocalTime() - initTime }.also { field = it }
+
 private fun String.toAppTime() = toLocalTime() - dbTimeDiff!!
+
 private fun Long.toDbTime() = plus(dbTimeDiff!!)
 
 private fun clearObjects() {

@@ -16,8 +16,6 @@ import kotlin.reflect.*
 import kotlinx.coroutines.*
 import com.google.gson.Gson
 import net.consolator.Path.Diverging
-import net.consolator.State.Ambiguous
-import net.consolator.State.Resolved
 import net.consolator.Scheduler.EventBus.commit
 import android.Manifest.permission.ACCESS_NETWORK_STATE
 import android.Manifest.permission.INTERNET
@@ -38,24 +36,30 @@ lateinit var mainUncaughtExceptionHandler: ExceptionHandler
 
 @LayoutRes
 var layoutId = R.layout.background
+
 @IdRes
 var containerViewId = R.id.layout_background
+
 @LayoutRes
 var contentLayoutId = R.layout.background
 
 val foregroundContext: Context
     get() = service ?: instance!!
+
 val foregroundLifecycleOwner: LifecycleOwner?
-    get() = TODO()
+    get() = null
 
 const val VIEW_MIN_DELAY = 300L
 
 fun Context.change(stage: ContextStep) =
     commit(stage)
+
 fun Context.changeLocally(owner: LifecycleOwner, stage: ContextStep) =
     commit(stage)
+
 fun Context.changeBroadly(ref: WeakContext = weakRef(), stage: ContextStep) =
     commit(stage)
+
 fun Context.changeGlobally(ref: WeakContext = weakRef(), owner: LifecycleOwner, stage: ContextStep) =
     commit(stage)
 
@@ -67,7 +71,6 @@ fun Context.stageAppDbCreated(scope: Any?) {
 @Diverging([STAGE_BUILD_SESSION])
 fun Context.stageSessionCreated(scope: Any?) {
     // update db records
-    State[1] += Resolved
 }
 
 @Diverging([STAGE_BUILD_LOG_DB])
@@ -82,24 +85,15 @@ fun Context.stageNetDbInitialized(scope: Any?) {
     // update net function pointers
 }
 
-fun <D : RoomDatabase> Context.createDatabase(cls: Class<D>, name: String?) =
-    Room.databaseBuilder(this, cls, name).build()
-fun <D : RoomDatabase> Context.createDatabase(cls: KClass<D>) =
-    with(cls) { createDatabase(java, lastAnnotatedFilename()) }
-inline fun <reified D : RoomDatabase> Context.buildDatabase() =
-    with(D::class, ::createDatabase)
-inline fun <reified D : RoomDatabase> Context.commitBuildDatabase(instance: KMutableProperty<out D?>) =
-    requireAsync(instance, constructor = { buildDatabase<D>().also { instance.set(it) } })
-fun Context.buildAppDatabase() =
-    commitBuildDatabase(::db)
-
 suspend fun buildSession() {
     if (session === null)
         buildNewSession() }
+
 suspend fun buildNewSession() {
     runtimeDao {
         session = getSession(
             newSession(foregroundContext.startTime())) } }
+
 suspend fun updateNetworkState() {
     networkDao {
         updateNetworkState(
@@ -107,6 +101,7 @@ suspend fun updateNetworkState() {
             hasInternet,
             hasMobile,
             hasWifi) } }
+
 suspend fun updateNetworkCapabilities(network: Network? = net.consolator.network, networkCapabilities: NetworkCapabilities? = net.consolator.networkCapabilities) {
     networkCapabilities?.run {
         networkDao {
@@ -117,6 +112,21 @@ suspend fun updateNetworkCapabilities(network: Network? = net.consolator.network
                 signalStrength,
                 network.hashCode()) } } }
 
+fun <D : RoomDatabase> Context.createDatabase(cls: Class<D>, name: String?) =
+    Room.databaseBuilder(this, cls, name).build()
+
+fun <D : RoomDatabase> Context.createDatabase(cls: KClass<D>) =
+    with(cls) { createDatabase(java, lastAnnotatedFilename()) }
+
+inline fun <reified D : RoomDatabase> Context.buildDatabase() =
+    with(D::class, ::createDatabase)
+
+inline fun <reified D : RoomDatabase> Context.commitBuildDatabase(instance: KMutableProperty<out D?>) =
+    requireAsync(instance, constructor = { buildDatabase<D>().also { instance.set(it) } })
+
+fun Context.buildAppDatabase() =
+    commitBuildDatabase(::db)
+
 fun Context.registerReceiver(filter: IntentFilter) =
     ContextCompat.registerReceiver(this, receiver, filter, null,
         clock?.alsoStart()?.handler,
@@ -124,8 +134,10 @@ fun Context.registerReceiver(filter: IntentFilter) =
 
 val Context.isNetworkStateAccessPermitted
     get() = isPermissionGranted(ACCESS_NETWORK_STATE)
+
 val Context.isInternetAccessPermitted
     get() = isPermissionGranted(INTERNET)
+
 fun Context.isPermissionGranted(permission: String) =
     ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
 
@@ -133,18 +145,156 @@ fun Context.intendFor(cls: Class<*>) = Intent(this, cls)
 fun Context.intendFor(cls: AnyKClass) = intendFor(cls.java)
 
 interface VolatileContext { var ref: WeakContext? }
+
 typealias WeakContext = WeakReference<out Context>
+
 fun Context.weakRef() =
     if (this is VolatileContext) ref!!
     else WeakReference(this)
+
 fun <T : Context> WeakReference<out T>?.unique(context: T) =
     this ?: WeakReference(context)
 
 interface UniqueContext { var startTime: Long }
+
 fun Context.startTime() = asUniqueContext()?.startTime ?: -1L
 
 typealias ContextStep = suspend Context.(Any?) -> Any?
 
+fun now() = java.util.Calendar.getInstance().timeInMillis
+
+fun getDelayTime(interval: Long, last: Long) =
+    last + interval - now()
+
+fun isTimeIntervalExceeded(interval: Long, last: Long) =
+    (now() - last) >= interval || last == 0L
+
+inline fun <R> trySafely(block: () -> R) =
+    try { block() } catch (_: Throwable) {}
+
+inline fun <R> trySafelyForResult(block: () -> R) =
+    try { block() } catch (_: Throwable) { null }
+
+inline fun <R> tryCanceling(block: () -> R) =
+    try { block() } catch (ex: Throwable) { throw CancellationException(null, ex) }
+
+inline fun <R> trySafelyCanceling(block: () -> R) =
+    try { block() } catch (ex: CancellationException) { throw ex } catch (_: Throwable) {}
+
+inline fun <R> tryCancelingForResult(block: () -> R, exit: (Throwable) -> R? = { null }) =
+    try { block() } catch (ex: CancellationException) { throw ex } catch (ex: Throwable) { exit(ex) }
+
+suspend inline fun <R> tryCancelingSuspended(crossinline block: suspend () -> R) = tryCanceling { block() }
+suspend inline fun <T, R> tryCancelingSuspended(scope: T, crossinline block: suspend T.() -> R) = tryCanceling { scope.block() }
+suspend inline fun <T, R> tryCancelingSuspended(crossinline scope: suspend () -> T, crossinline block: suspend T.() -> R) = tryCanceling { scope().block() }
+
+inline fun <R> tryInterrupting(block: () -> R) =
+    try { block() } catch (ex: Throwable) { throw InterruptedException() }
+
+fun <R> tryInterrupting(step: suspend CoroutineScope.() -> R) =
+    try { blockOf(step)() } catch (ex: Throwable) { throw InterruptedStepException(step, cause = ex) }
+
+inline fun <R> trySafelyInterrupting(block: () -> R) =
+    try { block() } catch (ex: InterruptedException) { throw ex } catch (_: Throwable) {}
+
+fun <R> trySafelyInterrupting(step: suspend CoroutineScope.() -> R) =
+    try { blockOf(step)() } catch (ex: InterruptedException) { throw InterruptedStepException(step, cause = ex) } catch (_: Throwable) {}
+
+inline fun <R> tryInterruptingForResult(noinline step: suspend CoroutineScope.() -> R, exit: (Throwable) -> R? = { null }) =
+    try { blockOf(step)() } catch (ex: InterruptedException) { throw InterruptedStepException(step, cause = ex) } catch (ex: Throwable) { exit(ex) }
+
+fun <T> Array<out T>.secondOrNull(): T? =
+    if (size > 1) get(1)
+    else null
+
+inline fun <reified T : Any> Any?.asType(): T? =
+    T::class.safeCast(this)
+
+inline fun <reified T : Any> T?.singleton(lock: Any = T::class.lock(), vararg args: Any?) =
+    commitAsyncForResult(lock, { this === null }, { T::class.new(*args) }, { this }) as T
+
+inline fun <reified T : Any> T?.reconstruct(vararg args: Any?): T =
+    this ?: T::class.new(*args)
+
+fun <T : Any> KClass<out T>.lock() =
+    objectInstance ?: this
+
+fun <T : Any> KClass<out T>.reconstruct(vararg args: Any?) =
+    if (isCompanion) objectInstance!!
+    else new(*args)
+
+fun <T : Any> KClass<out T>.new(vararg args: Any?) =
+    if (args.isEmpty()) emptyConstructor().call()
+    else firstConstructor().call(*args)
+
+fun <T : Any> KClass<out T>.emptyConstructor() =
+    constructors.first { it.parameters.isEmpty() }
+
+fun <T : Any> KClass<out T>.firstConstructor() =
+    constructors.first()
+
+inline fun <reified T> KMutableProperty<out T?>.reconstruct(provider: Any = T::class) =
+    apply { renew {
+        if (provider is AnyKClass)
+            provider.emptyConstructor().call()
+        else
+            provider.asObjectProvider()?.invoke(T::class) } }
+
+inline fun <T> KMutableProperty<out T?>.renew(constructor: () -> T? = ::get) {
+    if (isNull())
+        set(constructor()) }
+
+inline fun <T> KMutableProperty<out T?>.require(predicate: (T) -> Boolean = ::trueWhenNull, constructor: () -> T? = ::get) =
+    get().let { old ->
+        if (old === null || predicate(old))
+            constructor().also { new -> set(new) }
+        else old }
+
+inline fun <T> KMutableProperty<out T?>.requireAsync(predicate: (T) -> Boolean = ::trueWhenNull, constructor: () -> T? = ::get) =
+    require(predicate) {
+        synchronized(this) {
+            require(predicate, constructor) } }
+
+fun <T> KMutableProperty<out T?>.set(vararg args: Any?) = setter.call(*args)
+
+fun <T> KProperty<T?>.get() = getter.call()
+
+fun <T> KProperty<T?>.isNull() = get() === null
+
+fun <T> KProperty<T?>.isNotNull() = get() !== null
+
+@Retention(SOURCE)
+@Target(CLASS)
+@Repeatable
+annotation class File(val name: String)
+
+fun <T : Any> KClass<out T>.lastAnnotatedFile() =
+    annotations.last { it is File } as File
+
+fun <T : Any> KClass<out T>.lastAnnotatedFilename() =
+    lastAnnotatedFile().name
+
+fun Byte.toPercentage() =
+    (this * 100 / Byte.MAX_VALUE).toByte()
+
+fun IntArray.toJson() =
+    jsonConverter!!.toJson(this, IntArray::class.java)
+
+fun String.toIntArray() =
+    jsonConverter!!.fromJson(this, IntArray::class.java)
+
+var jsonConverter: Gson? = null
+    get() = field ?: Gson()
+
+fun Any?.asContext() = asType<Context>()
+fun Any?.asUniqueContext() = asType<UniqueContext>()
+fun Any?.asObjectProvider() = asType<ObjectProvider>()
+fun Any?.asString() = asType<String>()
+fun Any?.asAnyArray() = asType<AnyArray>()
+fun Any?.asInt() = asType<Int>()
+fun Any?.asLong() = asType<Long>()
+
+typealias ObjectProvider = (AnyKClass) -> Any
 private typealias ExceptionHandler = Thread.UncaughtExceptionHandler
 
 typealias AnyArray = Array<*>
@@ -159,117 +309,12 @@ typealias Predicate = () -> Boolean
 typealias AnyPredicate = (Any?) -> Boolean
 typealias IntPredicate = (Int) -> Boolean
 
-fun now() = java.util.Calendar.getInstance().timeInMillis
-fun getDelayTime(interval: Long, last: Long) =
-    last + interval - now()
-fun isTimeIntervalExceeded(interval: Long, last: Long) =
-    (now() - last) >= interval || last == 0L
-
-inline fun <R> trySafely(block: () -> R) =
-    try { block() } catch (_: Throwable) {}
-inline fun <R> trySafelyForResult(block: () -> R) =
-    try { block() } catch (_: Throwable) { null }
-
-inline fun <R> tryCanceling(block: () -> R) =
-    try { block() } catch (ex: Throwable) { throw CancellationException(null, ex) }
-inline fun <R> trySafelyCanceling(block: () -> R) =
-    try { block() } catch (ex: CancellationException) { throw ex } catch (_: Throwable) {}
-inline fun <R> tryCancelingForResult(block: () -> R, exit: (Throwable) -> R? = { null }) =
-    try { block() } catch (ex: CancellationException) { throw ex } catch (ex: Throwable) { exit(ex) }
-
-suspend inline fun <R> tryCancelingSuspended(crossinline block: suspend () -> R) =
-    tryCanceling { block() }
-suspend inline fun <T, R> tryCancelingSuspended(scope: T, crossinline block: suspend T.() -> R) =
-    tryCanceling { scope.block() }
-suspend inline fun <T, R> tryCancelingSuspended(crossinline scope: suspend () -> T, crossinline block: suspend T.() -> R) =
-    tryCanceling { scope().block() }
-
-inline fun <R> tryInterrupting(block: () -> R) =
-    try { block() } catch (ex: Throwable) { throw InterruptedException() }
-fun <R> tryInterrupting(step: suspend CoroutineScope.() -> R) =
-    try { blockOf(step)() } catch (ex: Throwable) { throw InterruptedStepException(step, cause = ex) }
-inline fun <R> trySafelyInterrupting(block: () -> R) =
-    try { block() } catch (ex: InterruptedException) { throw ex } catch (_: Throwable) {}
-fun <R> trySafelyInterrupting(step: suspend CoroutineScope.() -> R) =
-    try { blockOf(step)() } catch (ex: InterruptedException) { throw InterruptedStepException(step, cause = ex) } catch (_: Throwable) {}
-inline fun <R> tryInterruptingForResult(noinline step: suspend CoroutineScope.() -> R, exit: (Throwable) -> R? = { null }) =
-    try { blockOf(step)() } catch (ex: InterruptedException) { throw InterruptedStepException(step, cause = ex) } catch (ex: Throwable) { exit(ex) }
-
-fun <T> Array<out T>.secondOrNull(): T? =
-    if (size > 1) get(1)
-    else null
-
-inline fun <reified T : Any> Any?.asType(): T? =
-    T::class.safeCast(this)
-inline fun <reified T : Any> T?.singleton(lock: Any = T::class.lock(), vararg args: Any?) =
-    commitAsyncForResult(lock, { this === null }, { T::class.new(*args) }, { this }) as T
-inline fun <reified T : Any> T?.reconstruct(vararg args: Any?): T =
-    this ?: T::class.new(*args)
-
-fun <T : Any> KClass<out T>.lock() = objectInstance ?: this
-fun <T : Any> KClass<out T>.reconstruct(vararg args: Any?) =
-    if (isCompanion) objectInstance!!
-    else new(*args)
-fun <T : Any> KClass<out T>.new(vararg args: Any?) =
-    if (args.isEmpty()) emptyConstructor().call()
-    else firstConstructor().call(*args)
-fun <T : Any> KClass<out T>.emptyConstructor() = constructors.first { it.parameters.isEmpty() }
-fun <T : Any> KClass<out T>.firstConstructor() = constructors.first()
-
-typealias ObjectProvider = (AnyKClass) -> Any
-inline fun <reified T> KMutableProperty<out T?>.reconstruct(provider: Any = T::class) =
-    apply { renew {
-        if (provider is AnyKClass)
-            provider.emptyConstructor().call()
-        else
-            provider.asObjectProvider()?.invoke(T::class) } }
-inline fun <T> KMutableProperty<out T?>.renew(constructor: () -> T? = ::get) {
-    if (isNull())
-        set(constructor()) }
-inline fun <T> KMutableProperty<out T?>.require(predicate: (T) -> Boolean = ::trueWhenNull, constructor: () -> T? = ::get) =
-    get().let { old ->
-        if (old === null || predicate(old))
-            constructor().also { new -> set(new) }
-        else old }
-inline fun <T> KMutableProperty<out T?>.requireAsync(predicate: (T) -> Boolean = ::trueWhenNull, constructor: () -> T? = ::get) =
-    require(predicate) {
-        synchronized(this) {
-            require(predicate, constructor) } }
-fun <T> KMutableProperty<out T?>.set(vararg args: Any?) = setter.call(*args)
-
-fun <T> KProperty<T?>.get() = getter.call()
-fun <T> KProperty<T?>.isNull() = get() === null
-fun <T> KProperty<T?>.isNotNull() = get() !== null
-
-@Retention(SOURCE)
-@Target(CLASS)
-@Repeatable
-annotation class File(val name: String)
-fun <T : Any> KClass<out T>.lastAnnotatedFile() = annotations.last { it is File } as File
-fun <T : Any> KClass<out T>.lastAnnotatedFilename() = lastAnnotatedFile().name
-
-fun Any?.asContext() = asType<Context>()
-fun Any?.asUniqueContext() = asType<UniqueContext>()
-fun Any?.asObjectProvider() = asType<ObjectProvider>()
-fun Any?.asString() = asType<String>()
-fun Any?.asAnyArray() = asType<AnyArray>()
-fun Any?.asInt() = asType<Int>()
-fun Any?.asLong() = asType<Long>()
-
-fun Byte.toPercentage() =
-    (this * 100 / Byte.MAX_VALUE).toByte()
-
-fun IntArray.toJson() = jsonConverter!!.toJson(this, IntArray::class.java)
-fun String.toIntArray() = jsonConverter!!.fromJson(this, IntArray::class.java)
-
-var jsonConverter: Gson? = null
-    get() = field ?: Gson()
-
 open class BaseImplementationRestriction(
     override val message: String? = "Base implementation restricted",
     override val cause: Throwable? = null
 ) : UnsupportedOperationException(message, cause) {
     companion object : BaseImplementationRestriction() }
+
 open class InterruptedStepException(
     val step: Any,
     override val message: String? = null,
@@ -281,11 +326,11 @@ var debug: LogFunction = fun(tag: String, msg: String) = Log.d(tag, msg)
 var warning: LogFunction = fun(tag: String, msg: String) = Log.w(tag, msg)
 private val bypass: LogFunction = { _, _ -> }
 
-private typealias LogFunction = (String, String) -> Any?
 val LogFunction.isOn
     get() = this !== bypass
 val LogFunction.isOff
     get() = this === bypass
+
 fun bypassInfoLog() { info = bypass }
 fun bypassDebugLog() { debug = bypass }
 fun bypassWarningLog() { info = bypass }
@@ -293,6 +338,8 @@ fun bypassAllLogs() {
     bypassInfoLog()
     bypassDebugLog()
     bypassWarningLog() }
+
+private typealias LogFunction = (String, String) -> Any?
 
 const val IS = "is"
 const val MIN = "min"
@@ -311,6 +358,8 @@ const val STEP = "step"
 const val FORM = "form"
 const val REFORM = "reform"
 const val INDEX = "index"
+const val REGISTER = "register"
+const val UNREGISTER = "unregister"
 const val REPEAT = "repeat"
 const val DELAY = "delay"
 const val YIELD = "yield"
