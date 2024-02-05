@@ -44,7 +44,7 @@ data class RuntimeSessionEntity(
     val buildVersion: String?,
 
     override val id: Long,
-    ) : BaseEntity(id), UniqueContext {
+) : BaseEntity(id), UniqueContext {
     companion object {
         const val CTX_TIME = "ctx_time"
         const val INIT_TIME = "init_time"
@@ -106,7 +106,7 @@ data class ThreadEntity(
     override var dbTime: String,
     override val id: Long,
     override var sid: Long? = session?.startTime,
-    ) : TimeSensitiveSessionEntity(dbTime, id, sid) {
+) : TimeSensitiveSessionEntity(dbTime, id, sid) {
     companion object {
         const val RUNTIME_ID = "rid"
         const val MAIN = "main"
