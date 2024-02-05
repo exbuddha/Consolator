@@ -835,12 +835,11 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             else ->
                 seq.noneReversed { it.isSameCapture(this) } }
 
-        private inline fun none(index: Int, predicate: LiveWorkPredicate) = with(seq) {
-            when {
-                index < size / 2 ->
-                    none(predicate)
-                else ->
-                    noneReversed(predicate) } }
+        private inline fun none(index: Int, predicate: LiveWorkPredicate) = with(seq) { when {
+            index < size / 2 ->
+                none(predicate)
+            else ->
+                noneReversed(predicate) } }
 
         private inline fun LiveSequence.noneReversed(predicate: LiveWorkPredicate): Boolean {
             if (size == 0) return true
