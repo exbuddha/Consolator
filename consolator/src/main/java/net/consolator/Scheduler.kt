@@ -968,6 +968,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
 
         override fun commit(step: ContextStep) =
             queue.add(step)
+
         fun commit(event: Transit) =
             queue.add(event)
 
