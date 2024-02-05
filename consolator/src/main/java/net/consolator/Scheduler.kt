@@ -1318,11 +1318,11 @@ fun Job.close() {}
 val Job.node: SchedulerNode
     get() = TODO()
 
-fun SchedulerScope.change(stage: ContextStep) =
-    EventBus.commit(stage)
-
 fun SchedulerScope.change(event: Transit) =
     EventBus.commit(event)
+
+fun SchedulerScope.change(stage: ContextStep) =
+    EventBus.commit(stage)
 
 fun <R> SchedulerScope.change(member: KFunction<R>, stage: ContextStep) =
     EventBus.commit(stage)
