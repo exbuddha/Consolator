@@ -426,7 +426,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             synchronize { resume() }
 
         var activate = fun() = prepare()
-        var next = fun(index: Int) = jump(index)
+        var next = fun(step: Int) = jump(step)
         var run = fun(step: Int) = commit(step)
         var bypass = fun(step: Int) = capture(step)
         var finish = fun() = end()
