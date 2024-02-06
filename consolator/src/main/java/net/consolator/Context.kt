@@ -167,7 +167,7 @@ fun getDelayTime(interval: Long, last: Long) =
     interval + last - now()
 
 fun isTimeIntervalExceeded(interval: Long, last: Long) =
-    interval + last <= now() || last == 0L
+    getDelayTime(interval, last) <= 0 || last == 0L
 
 inline fun <R> trySafely(block: () -> R) =
     try { block() } catch (_: Throwable) {}
