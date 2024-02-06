@@ -164,10 +164,10 @@ typealias ContextStep = suspend Context.(Any?) -> Any?
 fun now() = java.util.Calendar.getInstance().timeInMillis
 
 fun getDelayTime(interval: Long, last: Long) =
-    last + interval - now()
+    interval + last - now()
 
 fun isTimeIntervalExceeded(interval: Long, last: Long) =
-    (now() - last) >= interval || last == 0L
+    interval + last <= now() || last == 0L
 
 inline fun <R> trySafely(block: () -> R) =
     try { block() } catch (_: Throwable) {}
