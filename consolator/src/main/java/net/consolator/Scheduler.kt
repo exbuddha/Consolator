@@ -1354,9 +1354,6 @@ suspend fun CoroutineScope.currentContext(scope: CoroutineScope = this) =
 suspend fun CoroutineScope.registerContext(context: WeakContext, scope: CoroutineScope = this) {
     currentJob()[CONTEXT] = context }
 
-typealias JobFunction = suspend (Any?) -> Unit
-private typealias JobFunctionSet = MutableSet<Pair<String, Any>>
-
 private var jobs: JobFunctionSet? = null
 
 operator fun Job.get(tag: String) =
@@ -1686,6 +1683,8 @@ private val AnyKCallable.launchScope
     get() = annotations.find { it is LaunchScope } as? LaunchScope
 
 private typealias SchedulerStep = suspend SchedulerScope.(Job) -> Unit
+typealias JobFunction = suspend (Any?) -> Unit
+private typealias JobFunctionSet = MutableSet<Pair<String, Any>>
 private typealias JobPredicate = (Job) -> Boolean
 private typealias SchedulerNode = KClass<out Annotation>
 private typealias SchedulerPath = Array<KClass<out Throwable>>
