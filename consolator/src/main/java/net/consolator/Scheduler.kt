@@ -946,7 +946,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         trySafelyForResult { detach(step) }?.run(handler)
 
     private fun detach(step: CoroutineStep) =
-        with(Clock) { (getRunnable(step) ?: getMessage(step)) }?.detach()?.asCoroutine() ?: step
+        with(Clock) { getRunnable(step) ?: getMessage(step) }?.detach()?.asCoroutine() ?: step
 
     override fun <R> fold(initial: R, operation: (R, CoroutineContext.Element) -> R): R {
         return operation(initial, SchedulerElement) }
