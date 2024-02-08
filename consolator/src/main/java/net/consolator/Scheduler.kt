@@ -108,7 +108,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
                                     updateNetworkCapabilities()
                                     updateNetworkState() }),
                                 stage = Context::stageNetDbInitialized) }
-                    resumeSync()
+                    resumeAsync()
                 } }
             return this }
 
@@ -422,7 +422,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             isActive = true
             advance() }
 
-        fun resumeSync() =
+        fun resumeAsync() =
             synchronize { resume() }
 
         var activate = fun() = prepare()
