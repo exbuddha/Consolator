@@ -345,6 +345,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         fun io(index: Int, async: Boolean = false, step: SequencerStep) = attach(index, IO, async, step)
         fun ioStart(step: SequencerStep) = io(false, step).also { start() }
         fun ioResume(async: Boolean = false, step: SequencerStep) = io(async, step).also { resume() }
+        fun ioResumeAsync(async: Boolean = false, step: SequencerStep) = io(async, step).also { resumeAsync() }
         fun ioAfter(async: Boolean = false, step: SequencerStep) = attachAfter(IO, async, step)
         fun ioBefore(async: Boolean = false, step: SequencerStep) = attachBefore(IO, async, step)
 
@@ -352,6 +353,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         fun main(index: Int, async: Boolean = false, step: SequencerStep) = attach(index, Main, async, step)
         fun mainStart(step: SequencerStep) = main(false, step).also { start() }
         fun mainResume(async: Boolean = false, step: SequencerStep) = main(async, step).also { resume() }
+        fun mainResumeAsync(async: Boolean = false, step: SequencerStep) = main(async, step).also { resumeAsync() }
         fun mainAfter(async: Boolean = false, step: SequencerStep) = attachAfter(Main, async, step)
         fun mainBefore(async: Boolean = false, step: SequencerStep) = attachBefore(Main, async, step)
 
@@ -359,6 +361,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         fun default(index: Int, async: Boolean = false, step: SequencerStep) = attach(index, Default, async, step)
         fun defaultStart(step: SequencerStep) = default(false, step).also { start() }
         fun defaultResume(async: Boolean = false, step: SequencerStep) = default(async, step).also { resume() }
+        fun defaultResumeAsync(async: Boolean = false, step: SequencerStep) = default(async, step).also { resumeAsync() }
         fun defaultAfter(async: Boolean = false, step: SequencerStep) = attachAfter(Default, async, step)
         fun defaultBefore(async: Boolean = false, step: SequencerStep) = attachBefore(Default, async, step)
 
@@ -366,6 +369,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         fun unconfined(index: Int, async: Boolean = false, step: SequencerStep) = attach(index, Unconfined, async, step)
         fun unconfinedStart(step: SequencerStep) = unconfined(false, step).also { start() }
         fun unconfinedResume(async: Boolean = false, step: SequencerStep) = unconfined(async, step).also { resume() }
+        fun unconfinedResumeAsync(async: Boolean = false, step: SequencerStep) = unconfined(async, step).also { resumeAsync() }
         fun unconfinedAfter(async: Boolean = false, step: SequencerStep) = attachAfter(Unconfined, async, step)
         fun unconfinedBefore(async: Boolean = false, step: SequencerStep) = attachBefore(Unconfined, async, step)
 
