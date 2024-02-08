@@ -341,6 +341,14 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
     class Sequencer : Synchronizer<LiveWork>, Transactor<Int, Boolean?>, PriorityQueue<Int>, AdjustOperator<LiveWork, Int> {
         /* when a step is identified by tag as thread-blocking, it may only run safely on the clock;
         // otherwise, it may be attached to the current synchronizer scope. */
+        fun default(async: Boolean = false, step: SequencerStep) = attach(Default, async, step)
+        fun default(index: Int, async: Boolean = false, step: SequencerStep) = attach(index, Default, async, step)
+        fun defaultStart(step: SequencerStep) = default(false, step).also { start() }
+        fun defaultResume(async: Boolean = false, step: SequencerStep) = default(async, step).also { resume() }
+        fun defaultResumeAsync(async: Boolean = false, step: SequencerStep) = default(async, step).also { resumeAsync() }
+        fun defaultAfter(async: Boolean = false, step: SequencerStep) = attachAfter(Default, async, step)
+        fun defaultBefore(async: Boolean = false, step: SequencerStep) = attachBefore(Default, async, step)
+
         fun io(async: Boolean = false, step: SequencerStep) = attach(IO, async, step)
         fun io(index: Int, async: Boolean = false, step: SequencerStep) = attach(index, IO, async, step)
         fun ioStart(step: SequencerStep) = io(false, step).also { start() }
@@ -356,14 +364,6 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         fun mainResumeAsync(async: Boolean = false, step: SequencerStep) = main(async, step).also { resumeAsync() }
         fun mainAfter(async: Boolean = false, step: SequencerStep) = attachAfter(Main, async, step)
         fun mainBefore(async: Boolean = false, step: SequencerStep) = attachBefore(Main, async, step)
-
-        fun default(async: Boolean = false, step: SequencerStep) = attach(Default, async, step)
-        fun default(index: Int, async: Boolean = false, step: SequencerStep) = attach(index, Default, async, step)
-        fun defaultStart(step: SequencerStep) = default(false, step).also { start() }
-        fun defaultResume(async: Boolean = false, step: SequencerStep) = default(async, step).also { resume() }
-        fun defaultResumeAsync(async: Boolean = false, step: SequencerStep) = default(async, step).also { resumeAsync() }
-        fun defaultAfter(async: Boolean = false, step: SequencerStep) = attachAfter(Default, async, step)
-        fun defaultBefore(async: Boolean = false, step: SequencerStep) = attachBefore(Default, async, step)
 
         fun unconfined(async: Boolean = false, step: SequencerStep) = attach(Unconfined, async, step)
         fun unconfined(index: Int, async: Boolean = false, step: SequencerStep) = attach(index, Unconfined, async, step)
