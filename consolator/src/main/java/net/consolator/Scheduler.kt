@@ -949,12 +949,15 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         with(Clock) { getRunnable(step) ?: getMessage(step) }?.detach()?.asCoroutine() ?: step
 
     override fun <R> fold(initial: R, operation: (R, CoroutineContext.Element) -> R): R {
+        // update continuation state
         return operation(initial, SchedulerElement) }
 
     override fun <E : CoroutineContext.Element> get(key: CoroutineContext.Key<E>): E? {
+        // notify element continuation
         return null }
 
     override fun minusKey(key: CoroutineContext.Key<*>): CoroutineContext {
+        // reimpose continuation rules
         return this }
 
     override fun onChanged(value: Step?) {
