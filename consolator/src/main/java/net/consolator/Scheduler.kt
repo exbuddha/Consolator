@@ -1097,7 +1097,7 @@ private fun Any.detach() = when (this) {
 private fun Runnable.asCoroutine(): CoroutineStep = TODO()
 
 private fun Runnable.asMessage() =
-    with(Clock) { getStep(this@asMessage)?.let { getMessage(it) } }
+    with(Clock) { getStep(this@asMessage)?.apply(::getMessage) }
 
 private fun Runnable.detach(): Runnable? = null
 
