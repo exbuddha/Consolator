@@ -122,7 +122,7 @@ inline fun <reified D : RoomDatabase> Context.buildDatabase() =
     with(D::class, ::createDatabase)
 
 inline fun <reified D : RoomDatabase> Context.commitBuildDatabase(instance: KMutableProperty<out D?>) =
-    requireAsync(instance, constructor = { buildDatabase<D>().also { instance.set(it) } })
+    requireAsync(instance, constructor = { buildDatabase<D>().also(instance::set) })
 
 fun Context.buildAppDatabase() =
     commitBuildDatabase(::db)
@@ -261,7 +261,7 @@ inline fun <T> KMutableProperty<out T?>.requireAsync(predicate: (T) -> Boolean =
         synchronized(this) {
             require(predicate, constructor) } }
 
-fun <T> KMutableProperty<out T?>.set(vararg args: Any?) = setter.call(*args)
+fun <T> KMutableProperty<out T?>.set(value: T?) = setter.call(value)
 
 fun <T> KProperty<T?>.get() = getter.call()
 

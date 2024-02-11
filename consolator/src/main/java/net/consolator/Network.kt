@@ -34,11 +34,11 @@ private val connectivityManager
 
 @Tag(NET_CAP_REGISTER)
 fun registerNetworkCallback() {
-    networkCallback?.let { connectivityManager.registerDefaultNetworkCallback(it) } }
+    networkCallback?.apply(connectivityManager::registerDefaultNetworkCallback) }
 
 @Tag(NET_CAP_UNREGISTER)
 fun unregisterNetworkCallback() {
-    networkCallback?.let { connectivityManager.unregisterNetworkCallback(it) }
+    networkCallback?.apply(connectivityManager::unregisterNetworkCallback)
     clearNetworkCallbackObjects() }
 
 private var networkCallback: NetworkCallback? = null
