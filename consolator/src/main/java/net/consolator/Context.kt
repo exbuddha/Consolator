@@ -213,7 +213,13 @@ inline fun <reified T : Any> Any?.asType(): T? =
 inline fun <reified T : Any> T?.singleton(lock: Any = T::class.lock(), vararg args: Any?) =
     commitAsyncForResult(lock, { this === null }, { T::class.new(*args) }, { this }) as T
 
-inline fun <reified T : Any> T?.reconstruct(vararg args: Any?): T =
+inline fun <T> T?.require(constructor: () -> T) =
+    this ?: constructor()
+
+inline fun <reified T : Any> T?.reconstruct(constructor: KCallable<T?>, vararg args: Any?) =
+    this ?: constructor.call(*args)
+
+inline fun <reified T : Any> T?.reconstruct(vararg args: Any?) =
     this ?: T::class.new(*args)
 
 fun <T : Any> KClass<out T>.lock() =
@@ -290,9 +296,9 @@ fun Any?.asContext() = asType<Context>()
 fun Any?.asUniqueContext() = asType<UniqueContext>()
 fun Any?.asObjectProvider() = asType<ObjectProvider>()
 fun Any?.asString() = asType<String>()
-fun Any?.asAnyArray() = asType<AnyArray>()
 fun Any?.asInt() = asType<Int>()
 fun Any?.asLong() = asType<Long>()
+fun Any?.asAnyArray() = asType<AnyArray>()
 
 typealias ObjectProvider = (AnyKClass) -> Any
 private typealias ExceptionHandler = Thread.UncaughtExceptionHandler

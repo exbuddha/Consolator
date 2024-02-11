@@ -3,9 +3,10 @@ package net.consolator
 import androidx.room.*
 import java.text.*
 import java.util.*
+import net.consolator.AppDatabase.Companion.dateTimeFormat
+import net.consolator.AppDatabase.Companion.dbTimeDiff
 import net.consolator.AppDatabase.Companion.CURRENT_TIMESTAMP
-
-private const val DB_VERSION = 1
+import net.consolator.AppDatabase.Companion.DB_VERSION
 
 @Database(version = DB_VERSION, exportSchema = false, entities = [
     RuntimeSessionEntity::class,
@@ -14,6 +15,13 @@ private const val DB_VERSION = 1
 abstract class AppDatabase : RoomDatabase() {
     abstract fun runtimeDao(): RuntimeDao
     companion object {
+        var dateTimeFormat: DateFormat? = null
+            get() = field.require { SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US) }.also { field = it }
+
+        var dbTimeDiff: Long? = null
+            get() = field.require { session?.run { dbTime.toLocalTime() - initTime } }.also { field = it }
+
+        const val DB_VERSION = 1
         const val CURRENT_TIMESTAMP = "CURRENT_TIMESTAMP"
         const val ID = "_id"
         const val DB_TAG = "DATABASE" } }
@@ -320,15 +328,9 @@ suspend fun <R> runtimeDao(block: suspend RuntimeDao.() -> R) = db!!.runtimeDao(
 suspend fun <R> logDao(block: suspend LogDao.() -> R) = logDb!!.logDao().block()
 suspend fun <R> networkDao(block: suspend NetworkDao.() -> R) = netDb!!.networkDao().block()
 
-private var dateTimeFormat: DateFormat? = null
-    get() = field ?: SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
-
 private fun String.toLocalTime() = dateTimeFormat!!.parse(this)!!.time
 
 private fun Long.toLocalTimestamp() = dateTimeFormat!!.format(Date(this))
-
-private var dbTimeDiff: Long? = null
-    get() = field ?: session?.run { dbTime.toLocalTime() - initTime }.also { field = it }
 
 private fun String.toAppTime() = toLocalTime() - dbTimeDiff!!
 

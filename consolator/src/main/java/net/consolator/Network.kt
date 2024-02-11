@@ -61,6 +61,7 @@ fun registerInternetCallback() {
 
 fun pauseInternetCallback() {
     isNetCallbackResumed = false }
+
 fun resumeInternetCallback() {
     isNetCallbackResumed = true }
 
