@@ -971,7 +971,11 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
 
     object EventBus : Buffer(), Transactor<ContextStep, Boolean>, PriorityQueue<Any?> {
         override suspend fun collectSafely(collector: FlowCollector<Any?>) {
-            queue.forEach { collector.emit(it) } }
+            queue.forEach { event ->
+                if (event.canBeCollectedBy(collector))
+                    collector.emit(event) } }
+
+        private fun Any?.canBeCollectedBy(collector: FlowCollector<Any?>) = true
 
         override fun commit(step: ContextStep) =
             queue.add(step)
