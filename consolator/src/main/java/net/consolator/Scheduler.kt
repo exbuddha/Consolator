@@ -970,12 +970,12 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
     override fun <R> synchronize(lock: Step?, block: () -> R) = block() // or apply (live step) capture function internally
 
     object EventBus : Buffer(), Transactor<ContextStep, Boolean>, PriorityQueue<Any?> {
-        override suspend fun collectSafely(collector: FlowCollector<Any?>) {
+        override suspend fun collectSafely(collector: AnyFlowCollector) {
             queue.forEach { event ->
                 if (event.canBeCollectedBy(collector))
                     collector.emit(event) } }
 
-        private fun Any?.canBeCollectedBy(collector: FlowCollector<Any?>) = true
+        private fun Any?.canBeCollectedBy(collector: AnyFlowCollector) = true
 
         override fun commit(step: ContextStep) =
             queue.add(step)
@@ -1729,6 +1729,7 @@ typealias Work = () -> Unit
 typealias Step = suspend () -> Unit
 typealias AnyStep = suspend () -> Any?
 typealias CoroutineStep = suspend CoroutineScope.() -> Unit
+private typealias AnyFlowCollector = FlowCollector<Any?>
 typealias Process = android.os.Process
 
 val emptyWork = {}
