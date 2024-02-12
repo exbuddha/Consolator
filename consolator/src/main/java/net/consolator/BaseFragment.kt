@@ -44,7 +44,7 @@ abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
                         replace(
                             this@BaseFragment.id,
                             overlay)
-                    } } }
+        } } }
         launch(start = LAZY) @MainViewGroup @Listening
         @OnEvent(COMMIT_NAV_MAIN_UI) {
             transit(COMMIT_NAV_MAIN_UI)
@@ -97,7 +97,7 @@ abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
                 // catch cancellation and/or error
                 when (err) {
                     is CancellationException -> State[1] = Ambiguous
-                } } }
+        } } }
     }
 
     override fun onResume() {

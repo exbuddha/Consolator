@@ -80,7 +80,7 @@ fun commit(vararg context: Any?): Any? =
             with(foregroundContext) {
                 startService(intendFor(BaseService::class)
                     .putExtra(START_TIME_KEY, startTime()))
-            } }
+        } }
         else -> Unit }
 
 object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), StepObserver, Synchronizer<Step>, AttachOperator<CoroutineStep>, (SchedulerWork) -> Unit {
@@ -109,7 +109,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
                                     updateNetworkState() }),
                                 stage = Context::stageNetDbInitialized) }
                     resumeAsync()
-                } }
+            } }
             return this }
 
         private suspend inline fun <reified D : RoomDatabase> SequencerScope.coordinateBuildDatabase(identifier: Any?, instance: KMutableProperty<out D?>, noinline stage: ContextStep?) =
@@ -258,7 +258,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
                     }.exec(isIdle)
                     synchronized(sLock) {
                         removeAt(adjust(ln))
-                    } }
+                } }
                 hasNotTraversed(msg) }
 
         private fun precursorOf(msg: Message?) = queue.indices
@@ -1740,7 +1740,7 @@ interface Expiry : MutableSet<Lifetime> {
         forEach { alive ->
             if (alive(property) == false)
                 property.expire()
-        } }
+    } }
     companion object : Expiry {
         override fun add(element: Lifetime) = false
         override fun addAll(elements: Collection<Lifetime>) = false
@@ -1809,7 +1809,7 @@ sealed interface State {
             inline infix fun unless(predicate: Predicate) =
                 if (predicate()) Unresolved
                 else this
-        } }
+    } }
     interface Unresolved : State {
         companion object : Unresolved }
     interface Ambiguous : State {
