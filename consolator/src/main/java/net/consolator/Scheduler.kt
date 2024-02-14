@@ -28,6 +28,21 @@ import kotlinx.coroutines.Dispatchers.Unconfined
 import net.consolator.Scheduler.clock
 import net.consolator.Scheduler.sequencer
 
+/* there are two major areas for design and development:
+//   1. being able to represent work as form ahead of time with variable degrees of probable resolution
+//        what types of checks need to be done for cooperativeness and in what order?
+//        what scheduler commands need to be issued going forward as continuation (code path) progresses?
+//        how are these forms constructed and what are the elements inside them? how do they refer to timeframes?
+//            they are constructed by chaining calls for cooperativeness checks (continuation flexibility)
+//            implies that configuration must at the minimum support wrapping around steps and controlling the wrapper behavior
+//        how does this form later on get evaluated by scheduler?
+//        how far in the future should or can forms be created?
+//   2. having a structure for memorizing previous work execution as form traversals progress
+//        how far back in execution and with what level of details this data need to be recorded?
+//        how to assess steps already performed vs. where/what was the purpose for each one's execution?
+//        how can forms be compared for equality? can marking help in remembering past execution checkpoints?
+//   both require rule set management, timeframe structure, time-related factoring (precedence) logic, and code path resolution */
+
 private interface Synchronizer<L> {
     fun <R> synchronize(lock: L? = null, block: () -> R): R
 }
@@ -285,6 +300,12 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         private lateinit var hLock: Lock
 
         override fun <R> synchronize(lock: Any?, block: () -> R) =
+            /* the main setback in synchronization everywhere is that once a lock is released by a
+            // synchronized block its timeframe is also unbound from that continuation. this means
+            // that wherever locks are employed to guarantee timeframe uniqueness some forms of
+            // synchronization (such as retries) will need to take into account that their timeframes
+            // may be shared with other async steps. timeframes must hold records of their current
+            // related steps that are in-flight or are being actively resolved by a synchronizer. */
             synchronized(hLock(lock, block)) {
                 hLock = Lock.Closed(lock, block)
                 block().also {
@@ -1743,6 +1764,11 @@ interface Expiry : MutableSet<Lifetime> {
                 property.expire()
     } }
     companion object : Expiry {
+        /* application routines must be designed to reduce the amount of work required from expiry
+        // interface and that implies having objects that leave minimum footprints as the logic
+        // continues in time. in other words, wherever there is a case that application logic does
+        // not suffer in performance while expiry does less work then that design choice is in
+        // compliance with this requirement. */
         override fun add(element: Lifetime) = false
         override fun addAll(elements: Collection<Lifetime>) = false
         override fun clear() {}
