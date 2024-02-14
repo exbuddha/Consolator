@@ -259,7 +259,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
                         // continuing the transaction leads to over-exhausting the timeframe of that
                         // message or a stronger factor during synchronization. in such a case, that
                         // continuation is considered to be broken and has to be re-synchronized at a
-                        // later time within another appropriate timeframe. only adjust operators are
+                        // later time within another designated timeframe. only adjust operators are
                         // capable of performing such resolute tasks. this implies continuations must
                         // be designed to record and to bring to the forefront the right data in order
                         // to be impactful and efficient in reducing the overall workload following a
