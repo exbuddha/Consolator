@@ -46,13 +46,13 @@ abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
                             overlay)
         } } }
         launch(start = LAZY) @MainViewGroup @Listening
-        @OnEvent(COMMIT_NAV_MAIN_UI) {
-            transit(COMMIT_NAV_MAIN_UI)
-            State[1] = Succeeded
-            close(MainViewGroup::class)
-        } otherwise @OnEvent(ACTION_MIGRATE_APP) {
+        @OnEvent(ACTION_MIGRATE_APP) {
             defer<MigrationManager>(::onViewCreated)
-        } onError { job ->
+        } otherwise @OnEvent(COMMIT_NAV_MAIN_UI) {
+             transit(COMMIT_NAV_MAIN_UI)
+             State[1] = Succeeded
+             close(MainViewGroup::class)
+         } onError { job ->
             transit(ABORT_NAV_MAIN_UI)
             State[1] = Failed
             keepAliveOrClose(job)
