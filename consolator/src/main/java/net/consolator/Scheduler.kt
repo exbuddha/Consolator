@@ -1149,33 +1149,33 @@ inline fun <R> sequencer(block: Sequencer.() -> R) = sequencer?.block()
 fun <T, R> capture(context: CoroutineContext, step: suspend LiveDataScope<T>.() -> Unit, capture: (T) -> R) =
     liveData(context, block = step) to capture
 
+fun <T, R> defaultCapture(step: suspend LiveDataScope<T>.() -> Unit, capture: (T) -> R) =
+    capture(Default, step, capture)
+
 fun <T, R> ioCapture(step: suspend LiveDataScope<T>.() -> Unit, capture: (T) -> R) =
     capture(IO, step, capture)
 
 fun <T, R> mainCapture(step: suspend LiveDataScope<T>.() -> Unit, capture: (T) -> R) =
     capture(Main, step, capture)
 
-fun <T, R> defaultCapture(step: suspend LiveDataScope<T>.() -> Unit, capture: (T) -> R) =
-    capture(Default, step, capture)
-
 fun <T, R> unconfinedCapture(step: suspend LiveDataScope<T>.() -> Unit, capture: (T) -> R) =
     capture(Unconfined, step, capture)
 
-fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(owner: LifecycleOwner, observer: Observer<T> = disposer(this)): Observer<T> {
+fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(owner: LifecycleOwner, observer: Observer<T> = disposerOf(this)): Observer<T> {
     first.observe(owner, observer)
     return observer }
 
-fun <T, R> Pair<LiveData<T>, (T) -> R>.dispose(owner: LifecycleOwner, disposer: Observer<T> = owner.disposer(this)) =
+fun <T, R> Pair<LiveData<T>, (T) -> R>.dispose(owner: LifecycleOwner, disposer: Observer<T> = owner.disposerOf(this)) =
     observe(owner, disposer)
 
-fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(observer: Observer<T> = disposer(this)): Observer<T> {
+fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(observer: Observer<T> = disposerOf(this)): Observer<T> {
     first.observeForever(observer)
     return observer }
 
-fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(owner: LifecycleOwner, observer: (Pair<LiveData<T>, (T) -> R>) -> Observer<T> = ::disposer) =
+fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(owner: LifecycleOwner, observer: (Pair<LiveData<T>, (T) -> R>) -> Observer<T> = ::disposerOf) =
     observe(owner, observer(this))
 
-fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(observer: (Pair<LiveData<T>, (T) -> R>) -> Observer<T> = ::disposer) =
+fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(observer: (Pair<LiveData<T>, (T) -> R>) -> Observer<T> = ::disposerOf) =
     observe(observer(this))
 
 fun <T, R> Pair<LiveData<T>, (T) -> R>.removeObserver(observer: Observer<T>) =
@@ -1184,17 +1184,17 @@ fun <T, R> Pair<LiveData<T>, (T) -> R>.removeObserver(observer: Observer<T>) =
 fun <T, R> Pair<LiveData<T>, (T) -> R>.removeObservers(owner: LifecycleOwner) =
     first.removeObservers(owner)
 
-fun <T, R> captor(liveStep: Pair<LiveData<T>, (T) -> R>) =
+fun <T, R> observerOf(liveStep: Pair<LiveData<T>, (T) -> R>) =
     Observer<T> { liveStep.second(it) }
 
-private fun <T, R> disposer(liveStep: Pair<LiveData<T>, (T) -> R>) =
+private fun <T, R> disposerOf(liveStep: Pair<LiveData<T>, (T) -> R>) =
     object : Observer<T> {
         override fun onChanged(value: T) {
             val (step, capture) = liveStep
             step.removeObserver(this)
             capture(value) } }
 
-private fun <T, R> LifecycleOwner.disposer(liveStep: Pair<LiveData<T>, (T) -> R>) =
+private fun <T, R> LifecycleOwner.disposerOf(liveStep: Pair<LiveData<T>, (T) -> R>) =
     Observer<T> { value ->
         val (step, capture) = liveStep
         step.removeObservers(this)
