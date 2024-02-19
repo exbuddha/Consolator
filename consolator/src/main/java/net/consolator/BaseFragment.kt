@@ -49,10 +49,10 @@ abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
         @OnEvent(ACTION_MIGRATE_APP) {
             defer<MigrationManager>(::onViewCreated)
         } otherwise @OnEvent(COMMIT_NAV_MAIN_UI) {
-             transit(COMMIT_NAV_MAIN_UI)
-             State[1] = Succeeded
-             close(MainViewGroup::class)
-         } onError { job ->
+            transit(COMMIT_NAV_MAIN_UI)
+            State[1] = Succeeded
+            close(MainViewGroup::class)
+        } onError { job ->
             transit(ABORT_NAV_MAIN_UI)
             State[1] = Failed
             keepAliveOrClose(job)
