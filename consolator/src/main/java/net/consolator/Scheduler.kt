@@ -462,7 +462,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
                 work.let { run(it) ?: bypass(it) } || return
             isCompleted = finish() }
 
-        fun prepare() { if (ln < 0) ln = 0 }
+        fun prepare() { if (ln < 0) ln = -1 }
 
         fun jump(step: Int) =
             if (hasError) null
