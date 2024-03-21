@@ -34,6 +34,7 @@ open class BaseApplication : Application(), ObjectProvider, UniqueContext {
     }
 
     private fun SharedPreferences.Editor.putException(ex: Throwable) {
+        putString(EXCEPTION, ex::class.qualifiedName)
         putString(EXCEPTION_MESSAGE, ex.message)
         ex.cause?.let { cause ->
             putString(EXCEPTION_CAUSE, cause::class.qualifiedName)
@@ -41,7 +42,7 @@ open class BaseApplication : Application(), ObjectProvider, UniqueContext {
 
     override fun invoke(type: AnyKClass) = when (type) {
         MemoryManager::class ->
-            ::applicationMemoryManager.require(constructor = ::MemoryManager)!!
+            ::applicationMemoryManager.require(constructor = ::MemoryManager)
         else ->
             throw BaseImplementationRestriction }
 

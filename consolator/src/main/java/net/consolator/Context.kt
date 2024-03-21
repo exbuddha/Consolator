@@ -122,7 +122,7 @@ inline fun <reified D : RoomDatabase> Context.buildDatabase() =
     with(D::class, ::createDatabase)
 
 inline fun <reified D : RoomDatabase> Context.commitBuildDatabase(instance: KMutableProperty<out D?>) =
-    requireAsync(instance, constructor = { buildDatabase<D>().also(instance::set) })
+    instance.requireAsync(constructor = { buildDatabase<D>().also(instance::set) })
 
 fun Context.buildAppDatabase() =
     commitBuildDatabase(::db)
@@ -253,7 +253,7 @@ inline fun <T> KMutableProperty<out T?>.renew(constructor: () -> T? = ::get) {
 inline fun <T> KMutableProperty<out T?>.require(predicate: (T) -> Boolean = ::trueWhenNull, constructor: () -> T? = ::get) =
     get().let { old ->
         if (old === null || predicate(old))
-            constructor().also { new -> set(new) }
+            constructor()!!.also(::set)
         else old }
 
 inline fun <T> KMutableProperty<out T?>.requireAsync(predicate: (T) -> Boolean = ::trueWhenNull, constructor: () -> T? = ::get) =

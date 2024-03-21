@@ -1091,9 +1091,6 @@ inline fun <R, S : R> commitAsyncForResult(lock: Any, predicate: Predicate, bloc
             if (predicate()) return block() }
     return fallback() }
 
-inline fun <reified R> requireAsync(lock: KMutableProperty<out R?>, predicate: Predicate = lock::isNull, constructor: () -> R): R =
-    commitAsyncForResult(lock, predicate, constructor) { throw NullPointerException() }.asType()!!
-
 inline fun <R> blockAsync(lock: Any, crossinline predicate: Predicate, crossinline block: suspend () -> R) {
     if (predicate())
         synchronized(lock) {

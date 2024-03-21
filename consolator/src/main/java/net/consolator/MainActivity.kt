@@ -45,7 +45,7 @@ open class MainActivity : BaseActivity(), ObjectProvider {
         LocalesChangeManager::class ->
             LocalesChangeManager()
         MemoryManager::class ->
-            ::applicationMemoryManager.require(constructor = ::MemoryManager)!!
+            ::applicationMemoryManager.require(constructor = ::MemoryManager)
         else ->
             throw BaseImplementationRestriction }
 }
