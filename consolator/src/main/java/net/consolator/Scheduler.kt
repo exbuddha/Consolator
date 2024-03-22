@@ -1663,8 +1663,10 @@ annotation class Path(
     annotation class Proceeding(val paths: Array<String> = [])
 }
 
-object FromLastCancellation : Throwable()
-object Propagate : Throwable()
+object FromLastCancellation : Throwable() {
+    private fun readResolve(): Any = this }
+
+open class Propagate : Throwable()
 
 @Retention(SOURCE)
 @Target(CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
