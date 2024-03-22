@@ -14,7 +14,8 @@ import kotlin.annotation.AnnotationRetention.*
 import kotlin.annotation.AnnotationTarget.*
 import kotlin.reflect.*
 import kotlinx.coroutines.*
-import com.google.gson.Gson
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.encodeToString
 import net.consolator.Path.Diverging
 import net.consolator.Scheduler.EventBus.commit
 import android.Manifest.permission.ACCESS_NETWORK_STATE
@@ -106,7 +107,7 @@ suspend fun updateNetworkCapabilities(network: Network? = net.consolator.network
     networkCapabilities?.run {
         networkDao {
             updateNetworkCapabilities(
-                capabilities.toJson(),
+                Json.encodeToString(capabilities),
                 linkDownstreamBandwidthKbps,
                 linkUpstreamBandwidthKbps,
                 signalStrength,
@@ -282,15 +283,6 @@ fun <T : Any> KClass<out T>.lastAnnotatedFilename() =
 
 fun Byte.toPercentage() =
     (this * 100 / Byte.MAX_VALUE).toByte()
-
-fun IntArray.toJson() =
-    jsonConverter!!.toJson(this, IntArray::class.java)
-
-fun String.toIntArray() =
-    jsonConverter!!.fromJson(this, IntArray::class.java)
-
-var jsonConverter: Gson? = null
-    get() = field ?: Gson()
 
 fun Any?.asContext() = asType<Context>()
 fun Any?.asUniqueContext() = asType<UniqueContext>()
