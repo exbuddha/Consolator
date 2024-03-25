@@ -141,8 +141,8 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
 
         private suspend inline fun <reified D : RoomDatabase> SequencerScope.buildDatabaseOrResetByTag(instance: KMutableProperty<out D?>, tag: String) {
             ref?.get()?.run<Context, D?> {
-                sequencer { resetByTagOnError(tag, ::buildDatabase) } }?.let { new ->
-                    instance.set(new) } }
+                sequencer { resetByTagOnError(tag, ::buildDatabase) }
+            }?.apply(instance::set) }
 
         private suspend fun SequencerScope.blockAsyncOrResetByTag(lock: AnyKProperty, tag: String, block: AnyStep, post: AnyStep, condition: PropertyCondition) =
             blockAsyncOrResetByTag(lock, tag) {
