@@ -33,8 +33,6 @@ var logDb: LogDatabase? = null
 var netDb: NetworkDatabase? = null
 var session: RuntimeSessionEntity? = null
 
-lateinit var mainUncaughtExceptionHandler: ExceptionHandler
-
 @LayoutRes
 var layoutId = R.layout.background
 
@@ -130,7 +128,7 @@ fun Context.buildAppDatabase() =
 
 fun Context.registerReceiver(filter: IntentFilter) =
     ContextCompat.registerReceiver(this, receiver, filter, null,
-        clock?.alsoStart()?.handler,
+        clock?.alsoStartAsync()?.handler,
         RECEIVER_EXPORTED)
 
 val Context.isNetworkStateAccessPermitted
@@ -145,12 +143,12 @@ fun Context.isPermissionGranted(permission: String) =
 fun Context.intendFor(cls: Class<*>) = Intent(this, cls)
 fun Context.intendFor(cls: AnyKClass) = intendFor(cls.java)
 
-interface VolatileContext { var ref: WeakContext? }
+interface ReferredContext { var ref: WeakContext? }
 
 typealias WeakContext = WeakReference<out Context>
 
 fun Context.weakRef() =
-    if (this is VolatileContext) ref!!
+    if (this is ReferredContext) ref!!
     else WeakReference(this)
 
 fun <T : Context> WeakReference<out T>?.unique(context: T) =
@@ -275,6 +273,9 @@ fun <T> KProperty<T?>.isNotNull() = get() !== null
 @Repeatable
 annotation class File(val name: String)
 
+fun <T : Any> KClass<out T>.annotatedFiles() =
+    annotations.filterIsInstance<File>()
+
 fun <T : Any> KClass<out T>.lastAnnotatedFile() =
     annotations.last { it is File } as File
 
@@ -293,9 +294,9 @@ fun Any?.asLong() = asType<Long>()
 fun Any?.asAnyArray() = asType<AnyArray>()
 
 typealias ObjectProvider = (AnyKClass) -> Any
-private typealias ExceptionHandler = Thread.UncaughtExceptionHandler
 
 typealias AnyArray = Array<*>
+typealias StringArray = Array<String>
 typealias AnyFunction = () -> Any?
 typealias AnyToAnyFunction = (Any?) -> Any?
 typealias IntMutableList = MutableList<Int>

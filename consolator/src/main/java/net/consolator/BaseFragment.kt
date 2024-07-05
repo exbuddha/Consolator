@@ -48,17 +48,17 @@ abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
         launch(start = LAZY) @MainViewGroup @Listening
         @OnEvent(ACTION_MIGRATE_APP) {
             defer<MigrationManager>(::onViewCreated)
-        } otherwise @OnEvent(COMMIT_NAV_MAIN_UI) {
+        } otherwise @OnEvent(COMMIT_NAV_MAIN_UI) { _, _ ->
             transit(COMMIT_NAV_MAIN_UI)
             State[1] = Succeeded
             close(MainViewGroup::class)
-        } onError { job ->
+        } onError { job, _ ->
             transit(ABORT_NAV_MAIN_UI)
             State[1] = Failed
             keepAliveOrClose(job)
-        } onTimeout {
+        } onTimeout { job, _ ->
             State[1] = Unresolved
-            error(it)
+            error(job)
         } then
             Job::join
     }
@@ -72,28 +72,28 @@ abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
             pathwise = [FromLastCancellation::class]
         ) @Tag(VIEW_ATTACH) {
             registerContext(context)
-        } then @Parallel @Path(STAGE_BUILD_APP_DB) {
+        } then @Parallel @Path(STAGE_BUILD_APP_DB) { _, _ ->
             tryCancelingSuspended(::currentContext, Context::buildAppDatabase)
-        } then @Committing @Event(ACTION_MIGRATE_APP) {
+        } then @Committing @Event(ACTION_MIGRATE_APP) { _, _ ->
             change(Context::stageAppDbCreated)
-        } given {
+        } given { _ ->
             db !== null
-        } otherwise(
-            SchedulerScope::retry
-        ) then @Path(STAGE_BUILD_SESSION) {
+        } otherwise { job, _ ->
+            Scheduler.retry(job)
+        } then @Path(STAGE_BUILD_SESSION) { _, _ ->
             tryCancelingSuspended(::buildSession)
-        } then @Committing @Event(ACTION_MIGRATE_APP) {
+        } then @Committing @Event(ACTION_MIGRATE_APP) { _, _ ->
             change(Context::stageSessionCreated)
-        } given {
+        } given { _ ->
             session !== null
-        } otherwise(
-            SchedulerScope::retry
-        ) onError {
+        } otherwise{ job, _ ->
+            Scheduler.retry(job)
+        } onError { _, _ ->
             State[1] = Ambiguous
-        } onCancel(
-            SchedulerScope::retry
-        ) then {
-            enact(it) { err ->
+        } onCancel{ job, _ ->
+            Scheduler.retry(job)
+        } then { job, _ ->
+            enact(job) { err ->
                 // catch cancellation and/or error
                 when (err) {
                     is CancellationException -> State[1] = Ambiguous

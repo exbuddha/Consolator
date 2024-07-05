@@ -5,7 +5,7 @@ import androidx.appcompat.app.*
 import net.consolator.activity.*
 import net.consolator.application.*
 
-abstract class BaseActivity : AppCompatActivity(), VolatileContext {
+abstract class BaseActivity : AppCompatActivity(), ReferredContext {
     var enableNetworkCallbacks: Work? = null
     var disableNetworkCallbacks: Work? = null
 

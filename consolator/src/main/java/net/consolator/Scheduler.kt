@@ -1,3 +1,5 @@
+@file:Suppress("OPT_IN_USAGE")
+
 package net.consolator
 
 import android.content.*
@@ -27,21 +29,6 @@ import kotlinx.coroutines.Dispatchers.Main
 import kotlinx.coroutines.Dispatchers.Unconfined
 import net.consolator.Scheduler.clock
 import net.consolator.Scheduler.sequencer
-
-/* there are two major areas for design and development:
-//   1. being able to represent work as form ahead of time with variable degrees of probable resolution
-//        what types of checks need to be done for cooperativeness and in what order?
-//        what scheduler commands need to be issued going forward as continuation (code path) progresses?
-//        how are these forms constructed and what are the elements inside them? how do they refer to timeframes?
-//            they are constructed by chaining calls for cooperativeness checks (continuation flexibility)
-//            implies that configuration must at the minimum support wrapping around steps and controlling the wrapper behavior
-//        how does this form later on get evaluated by scheduler?
-//        how far in the future should or can forms be created?
-//   2. having a structure for memorizing previous work execution as form traversals progress
-//        how far back in execution and with what level of details this data need to be recorded?
-//        how to assess steps already performed vs. where/what was the purpose for each one's execution?
-//        how can forms be compared for equality? can marking help in remembering past execution checkpoints?
-//   both require rule set management, timeframe structure, time-related factoring (precedence) logic, and code path resolution */
 
 private interface Synchronizer<L> {
     fun <R> synchronize(lock: L? = null, block: () -> R): R
@@ -99,7 +86,7 @@ fun commit(vararg context: Any?): Any? =
         else -> Unit }
 
 object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), StepObserver, Synchronizer<Step>, AttachOperator<CoroutineStep>, (SchedulerWork) -> Unit {
-    sealed interface BaseServiceScope : ResolverScope, IBinder, (Intent?) -> IBinder, VolatileContext, UniqueContext {
+    sealed interface BaseServiceScope : ResolverScope, IBinder, (Intent?) -> IBinder, ReferredContext, UniqueContext {
         override fun invoke(intent: Intent?): IBinder {
             mode = getModeExtra(intent)
             if (intent !== null && intent.hasCategory(START_TIME_KEY))
@@ -213,26 +200,33 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         priority: Int = currentThread.priority
     ) : HandlerThread(name, priority), Synchronizer<Any>, Transactor<Message, Any?>, PriorityQueue<Runnable>, AdjustOperator<Runnable, Number> {
         var handler: Handler? = null
-        final override var queue: RunnableList = LinkedList()
+        final override lateinit var queue: RunnableList
+
+        init {
+            this.priority = priority
+            register() }
 
         constructor() : this(CLK)
 
         constructor(callback: Runnable) : this() {
-            queue.add(callback) }
+            register(callback) }
 
         constructor(name: String, priority: Int = currentThread.priority, callback: Runnable) : this(name, priority) {
             queue.add(callback) }
 
         var id = -1
         override fun start() {
-            commitAsync(this, { !isAlive }) {
-                id = synchronized(Companion) {
-                    add(queue)
-                    size }
-                super.start()
-        } }
+            id = indexOf(queue)
+            super.start() }
         fun alsoStart(): Clock {
             start()
+            return this }
+
+        fun startAsync() {
+            commitAsync(this, { !isAlive }) {
+                super.start() } }
+        fun alsoStartAsync(): Clock {
+            startAsync()
             return this }
 
         override fun run() {
@@ -342,7 +336,14 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             handler = null
             queue.clear() }
 
-        companion object : MutableList<RunnableList> by mutableListOf() {
+        companion object : RunnableGrid by mutableListOf() {
+            private fun Clock.register() {
+                queue = mutableListOf()
+                add(queue) }
+
+            private fun Clock.register(callback: Runnable) {
+                queue.add(callback) }
+
             fun getMessage(step: CoroutineStep): Message? = null
 
             fun getRunnable(step: CoroutineStep): Runnable? = null
@@ -1015,22 +1016,23 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
     override fun invoke(work: SchedulerWork) = this.work()
 }
 
-@OptIn(ExperimentalCoroutinesApi::class)
 abstract class Buffer : AbstractFlow<Any?>()
 
 private typealias TransitType = Short
 private typealias Transit = TransitType?
 
+fun Number?.toTransit() = this?.toShort()
+
 val Any?.transit: Transit
     get() = when (this) {
         is Relay -> transit
-        is Number -> toShort()
+        is Number -> toTransit()
         else -> asNullable().event?.transit }
 
 fun Step.relay(transit: Transit = this.transit) = Relay(transit)
 
-fun Step.reevaluate(transit: Transit = this.transit) = object : Relay(transit) {
-    override suspend fun invoke() = this@reevaluate() }
+fun Step.reinvoke(transit: Transit = this.transit) = object : Relay(transit) {
+    override suspend fun invoke() = this@reinvoke() }
 
 open class Relay(val transit: Transit = null) : Step {
     override suspend fun invoke() {} }
@@ -1236,13 +1238,13 @@ private suspend inline fun whenNotNullOrResetByTag(instance: AnyKProperty, stage
         block()
     else resetByTag(stage)
 
-private interface SchedulerKey : CoroutineContext.Key<SchedulerElement> {
-    companion object : SchedulerKey }
-
 private interface SchedulerElement : CoroutineContext.Element {
     companion object : SchedulerElement {
         override val key
             get() = SchedulerKey } }
+
+private interface SchedulerKey : CoroutineContext.Key<SchedulerElement> {
+    companion object : SchedulerKey }
 
 fun CoroutineScope.relaunch(instance: JobKProperty, context: CoroutineContext = Scheduler, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep) =
     relaunch(::launch, instance, context, start, step)
@@ -1262,7 +1264,7 @@ fun launch(context: CoroutineContext = Scheduler, start: CoroutineStart = Corout
 fun LifecycleOwner.launch(context: CoroutineContext = Scheduler, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep): Job {
     val (scope, task) = determineScopeAndCoroutine(context, start, step)
     val (context, start, step) = task
-    return scope.launch(context, start, step after { job ->
+    return scope.launch(context, start, step after { job, _ ->
         markTagsForJobLaunch(context, start, step, job) }) }
 
 private fun LifecycleOwner.determineScopeAndCoroutine(context: CoroutineContext, start: CoroutineStart, step: CoroutineStep) =
@@ -1368,8 +1370,8 @@ fun <R> SchedulerScope.change(ref: WeakContext, member: KFunction<R>, stage: Con
 fun <R> SchedulerScope.change(ref: WeakContext, owner: LifecycleOwner, member: KFunction<R>, stage: ContextStep) =
     EventBus.commit(stage)
 
-suspend fun CoroutineScope.repeatSuspended(predicate: PredicateFunction = @Tag(IS_ACTIVE) { isActive }, block: JobFunction, delayTime: DelayFunction = @Tag(YIELD) { 0L }, scope: CoroutineScope = this) {
-    markTagsForJobRepeat(predicate, block, delayTime, currentJob())
+suspend fun CoroutineScope.repeatSuspended(scope: CoroutineScope = this, predicate: PredicateFunction = @Tag(IS_ACTIVE) { isActive }, delayTime: DelayFunction = @Tag(YIELD) { 0L }, block: JobFunction) {
+    markTagsForJobRepeat(predicate, delayTime, block, currentJob())
     while (predicate()) {
         block(scope)
         if (isActive)
@@ -1456,10 +1458,10 @@ private fun markTagsForJobLaunch(vararg function: Any?, i: Int = 0) =
             jobs?.save("$stepTag@$jobId.$START", false, start.asCallable()) } /* start */ }
 
 private fun markTagsForJobRepeat(vararg function: Any?, i: Int = 0) =
-    function[i + 1]?.markTag()?.also { blockTag ->
+    function[i + 2]?.markTag()?.also { blockTag ->
         val blockTag = blockTag.string
         val jobId = function[i + 3].asInt()
-        function[i + 2]?.let { delay ->
+        function[i + 1]?.let { delay ->
             jobs?.save("$blockTag@$jobId.$DELAY", delay.asCallable()) } /* delay */
         function[i]?.let { predicate ->
             jobs?.save("$blockTag@$jobId.$PREDICATE", predicate.asCallable()) } /* predicate */ }
@@ -1503,72 +1505,74 @@ private fun markTagsForCtxReform(vararg function: Any?, i: Int = 0) =
         function[i + 2]?.let { form ->
             jobs?.save("$stageTag@$jobId.$FORM", false, form.asCallable()) } /* form */ }
 
-infix fun <R, S> (suspend () -> R).then(next: suspend () -> S): suspend () -> S = {
+inline infix fun <R, S> (suspend () -> R).then(crossinline next: suspend () -> S): suspend () -> S = {
     this@then()
     next() }
 
-infix fun <R, S> (suspend () -> R).after(prev: suspend () -> S): suspend () -> R = {
+inline infix fun <R, S> (suspend () -> R).after(crossinline prev: suspend () -> S): suspend () -> R = {
     prev()
     this@after() }
 
-infix fun <R, S> (suspend () -> R).thru(next: suspend (R) -> S): suspend () -> S = {
+inline infix fun <R, S> (suspend () -> R).thru(crossinline next: suspend (R) -> S): suspend () -> S = {
     next(this@thru()) }
 
-fun <R> (suspend () -> R).given(predicate: Predicate, fallback: suspend () -> R): suspend () -> R = {
+inline fun <R> (suspend () -> R).given(crossinline predicate: Predicate, crossinline fallback: suspend () -> R): suspend () -> R = {
     if (predicate()) this@given() else fallback() }
 
-infix fun Step.given(predicate: Predicate) = given(predicate, emptyStep)
+inline infix fun Step.given(crossinline predicate: Predicate) = given(predicate, emptyStep)
 
-infix fun <T, R, S> (suspend T.() -> R).then(next: suspend T.() -> S): suspend T.() -> S = {
+inline infix fun <T, R, S> (suspend T.() -> R).then(crossinline next: suspend T.() -> S): suspend T.() -> S = {
     this@then()
     next() }
 
-infix fun <T, R, S> (suspend T.() -> R).after(prev: suspend T.() -> S): suspend T.() -> R = {
+inline infix fun <T, R, S> (suspend T.() -> R).after(crossinline prev: suspend T.() -> S): suspend T.() -> R = {
     prev()
     this@after() }
 
-infix fun <T, R, S> (suspend T.() -> R).thru(next: suspend (R) -> S): suspend T.() -> S = {
+inline infix fun <T, R, S> (suspend T.() -> R).thru(crossinline next: suspend (R) -> S): suspend T.() -> S = {
     next(this@thru()) }
 
-fun <T, R> (suspend T.() -> R).given(predicate: Predicate, fallback: suspend T.() -> R): suspend T.() -> R = {
+inline fun <T, R> (suspend T.() -> R).given(crossinline predicate: Predicate, crossinline fallback: suspend T.() -> R): suspend T.() -> R = {
     if (predicate()) this@given() else fallback() }
 
-infix fun <T, U, R, S> (suspend T.(U) -> R).then(next: suspend T.(U) -> S): suspend T.(U) -> S = {
+inline infix fun <T, U, R, S> (suspend T.(U) -> R).then(crossinline next: suspend T.(U) -> S): suspend T.(U) -> S = {
     this@then(it)
     next(it) }
 
-infix fun <T, U, R, S> (suspend T.(U) -> R).after(prev: suspend T.(U) -> S): suspend T.(U) -> R = {
+inline infix fun <T, U, R, S> (suspend T.(U) -> R).after(crossinline prev: suspend T.(U) -> S): suspend T.(U) -> R = {
     prev(it)
     this@after(it) }
 
-infix fun <T, U, R, S> (suspend T.(U) -> R).thru(next: suspend (R) -> S): suspend T.(U) -> S = {
+inline infix fun <T, U, R, S> (suspend T.(U) -> R).thru(crossinline next: suspend (R) -> S): suspend T.(U) -> S = {
     next(this@thru(it)) }
 
-fun <T, U, R> (suspend T.(U) -> R).given(predicate: Predicate, fallback: suspend T.(U) -> R): suspend T.(U) -> R = {
+inline fun <T, U, R> (suspend T.(U) -> R).given(crossinline predicate: Predicate, crossinline fallback: suspend T.(U) -> R): suspend T.(U) -> R = {
     if (predicate()) this@given(it) else fallback(it) }
 
-infix fun <R, S> (() -> R).then(next: () -> S): () -> S = {
+inline infix fun <R, S> (() -> R).then(crossinline next: () -> S): () -> S = {
     this@then()
     next() }
 
-infix fun <R, S> (() -> R).after(prev: () -> S): () -> R = {
+inline infix fun <R, S> (() -> R).after(crossinline prev: () -> S): () -> R = {
     prev()
     this@after() }
 
-infix fun <R, S> (() -> R).thru(next: (R) -> S): () -> S = {
+inline infix fun <R, S> (() -> R).thru(crossinline next: (R) -> S): () -> S = {
     next(this@thru()) }
 
-fun <R> (() -> R).given(predicate: Predicate, fallback: () -> R): () -> R = {
+inline fun <R> (() -> R).given(crossinline predicate: Predicate, crossinline fallback: () -> R): () -> R = {
     if (predicate()) this@given() else fallback() }
 
-infix fun AnyFunction.given(predicate: Predicate) = given(predicate, emptyWork)
+inline infix fun AnyFunction.given(crossinline predicate: Predicate) = given(predicate, emptyWork)
 
-infix fun <T, R, S> ((T) -> R).thru(next: (R) -> S): (T) -> S = {
+inline infix fun <T, R, S> ((T) -> R).thru(crossinline next: (R) -> S): (T) -> S = {
     next(this@thru(it)) }
 
 fun <R> (suspend () -> R).block() = runBlocking { invoke() }
 fun <T, R> (suspend T.() -> R).block(scope: T) = runBlocking { invoke(scope) }
 fun <T, U, R> (suspend T.(U) -> R).block(scope: T, value: U) = runBlocking { invoke(scope, value) }
+fun <T, U, R> (suspend T.(U) -> R).block(scope: () -> T, value: U) = runBlocking { invoke(scope(), value) }
+fun <T, U, R> (suspend T.(U) -> R).block(scope: KCallable<T>, value: U) = runBlocking { invoke(scope.call(), value) }
 
 fun <R> KCallable<R>.with(vararg args: Any?): () -> R = {
     this@with.call(*args) }
@@ -1579,12 +1583,12 @@ fun <R> call(vararg args: Any?): (KCallable<R>) -> R = {
 suspend fun currentJob() = currentCoroutineContext().job
 fun currentThreadJob() = ::currentJob.block()
 
-val currentThread
-    get() = Thread.currentThread()
-
+val currentThread get() = Thread.currentThread()
 val mainThread = currentThread
 fun Thread.isMainThread() = this === mainThread
 fun onMainThread() = currentThread.isMainThread()
+
+lateinit var mainUncaughtExceptionHandler: ExceptionHandler
 
 private fun newThread(group: ThreadGroup, name: String, priority: Int, target: Runnable) = Thread(group, target, name).also { it.priority = priority }
 private fun newThread(name: String, priority: Int, target: Runnable) = Thread(target, name).also { it.priority = priority }
@@ -1592,38 +1596,46 @@ private fun newThread(priority: Int, target: Runnable) = Thread(target).also { i
 
 @Retention(SOURCE)
 @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+@Repeatable
 annotation class Event(val transit: TransitType = 0) {
+
     @Retention(SOURCE)
     @Target(FUNCTION, EXPRESSION)
+    @Repeatable
     annotation class Listening(
-        val timeout: Long = 0L,
-        val channel: Short = 0) {
+        val channel: ChannelType = 0,
+        val timeout: Long = 0L) {
+
         @Retention(SOURCE)
         @Target(EXPRESSION)
+        @Repeatable
         annotation class OnEvent(val transit: TransitType)
     }
 
     @Retention(SOURCE)
     @Target(FUNCTION, EXPRESSION)
-    annotation class Committing(val channel: Short = 0)
+    @Repeatable
+    annotation class Committing(val channel: ChannelType = 0)
 
     @Retention(SOURCE)
     @Target(FUNCTION, EXPRESSION)
     annotation class Retrying(
+        val channel: ChannelType = 0,
         val delay: Long = 0L,
         val timeout: Long = -1L,
-        val channel: Short = 0,
         val pathwise: SchedulerPath = [])
 
     @Retention(SOURCE)
     @Target(FUNCTION, EXPRESSION)
     annotation class Repeating(
+        val channel: ChannelType = 0,
         val count: Int = 0,
         val delay: Long = 0L,
         val timeout: Long = -1L,
-        val channel: Short = 0,
         val pathwise: SchedulerPath = [])
 }
+
+typealias ChannelType = Short
 
 @Retention(SOURCE)
 @Target(CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
@@ -1637,32 +1649,40 @@ annotation class Keep
 
 @Retention(SOURCE)
 @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+@Repeatable
 annotation class Path(
     val name: String = "",
     val route: SchedulerPath = []) {
-    @Retention(SOURCE)
-    @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
-    annotation class Adjacent(val paths: Array<String> = [])
 
     @Retention(SOURCE)
     @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
-    annotation class Converging(val paths: Array<String> = [])
+    @Repeatable
+    annotation class Adjacent(val paths: StringArray = [])
 
     @Retention(SOURCE)
     @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
-    annotation class Diverging(val paths: Array<String> = [])
+    @Repeatable
+    annotation class Preceding(val paths: StringArray = [])
 
     @Retention(SOURCE)
     @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
-    annotation class Parallel(val paths: Array<String> = [])
+    @Repeatable
+    annotation class Proceeding(val paths: StringArray = [])
 
     @Retention(SOURCE)
     @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
-    annotation class Preceding(val paths: Array<String> = [])
+    @Repeatable
+    annotation class Parallel(val paths: StringArray = [])
 
     @Retention(SOURCE)
     @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
-    annotation class Proceeding(val paths: Array<String> = [])
+    @Repeatable
+    annotation class Diverging(val paths: StringArray = [])
+
+    @Retention(SOURCE)
+    @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+    @Repeatable
+    annotation class Converging(val paths: StringArray = [])
 }
 
 open class SchedulerIntent : Throwable()
@@ -1708,6 +1728,9 @@ private val AnyKCallable.tag
 private val AnyKCallable.event
     get() = annotations.find { it is Event } as? Event
 
+private val AnyKCallable.events
+    get() = annotations.filterIsInstance<Event>()
+
 private val AnyKCallable.schedulerScope
     get() = annotations.find { it is Scope } as? Scope
 
@@ -1717,12 +1740,14 @@ private val CoroutineStep.annotatedScope
 private val AnyKCallable.launchScope
     get() = annotations.find { it is LaunchScope } as? LaunchScope
 
-private typealias SchedulerStep = suspend SchedulerScope.(Job) -> Unit
-typealias JobFunction = suspend (Any?) -> Unit
-private typealias JobFunctionSet = MutableSet<Pair<String, Any>>
-private typealias JobPredicate = (Job) -> Boolean
 private typealias SchedulerNode = KClass<out Annotation>
 private typealias SchedulerPath = Array<KClass<out Throwable>>
+private typealias SchedulerStep = suspend SchedulerScope.(Job, Any?) -> Unit
+typealias JobFunction = suspend (Any?) -> Unit
+private typealias JobFunctionSet = MutableSet<JobFunctionItem>
+private typealias JobFunctionItem = StringToAnyPair
+private typealias JobPredicate = (Job) -> Boolean
+private typealias StringToAnyPair = Pair<String, Any>
 private typealias SchedulerWork = Scheduler.() -> Unit
 
 typealias Sequencer = Scheduler.Sequencer
@@ -1747,13 +1772,17 @@ typealias Clock = Scheduler.Clock
 private typealias MessageFunction = (Message) -> Any?
 private typealias HandlerFunction = Clock.(Message) -> Unit
 private typealias RunnableList = MutableList<Runnable>
+private typealias RunnableGrid = MutableList<RunnableList>
 private typealias CoroutineFunction = (CoroutineStep) -> Any?
 
 typealias Work = () -> Unit
 typealias Step = suspend () -> Unit
 typealias AnyStep = suspend () -> Any?
+typealias AnyToAnyStep = suspend (Any?) -> Any?
 typealias CoroutineStep = suspend CoroutineScope.() -> Unit
 private typealias AnyFlowCollector = FlowCollector<Any?>
+
+typealias ExceptionHandler = Thread.UncaughtExceptionHandler
 typealias Process = android.os.Process
 
 val emptyWork = {}
