@@ -89,7 +89,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
     sealed interface BaseServiceScope : ResolverScope, IBinder, (Intent?) -> IBinder, ReferredContext, UniqueContext {
         override fun invoke(intent: Intent?): IBinder {
             mode = getModeExtra(intent)
-            if (intent !== null && intent.hasCategory(START_TIME_KEY))
+            if (intent !== null && intent.hasCategory(START_TIME_KEY) && clock?.isNotStarted() == true)
                 clock?.start()
             if (State[2] !is Resolved) commit @Tag(INIT) @Synchronous {
                 trySafelyForResult { getStartTimeExtra(intent) }?.apply(
@@ -215,6 +215,8 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             queue.add(callback) }
 
         var id = -1
+            private set
+
         override fun start() {
             id = indexOf(queue)
             super.start() }
@@ -228,6 +230,9 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         fun alsoStartAsync(): Clock {
             startAsync()
             return this }
+
+        fun isStarted() = id != -1
+        fun isNotStarted() = id == -1
 
         override fun run() {
             hLock = Lock.Open()
