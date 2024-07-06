@@ -1073,6 +1073,9 @@ private fun getTag(callback: Runnable): String? = TODO()
 private fun getTag(msg: Message): String? = TODO()
 private fun getTag(what: Int): String? = TODO()
 
+fun reattach(step: CoroutineStep) = Scheduler.postValue(step.asStep())
+fun reattachAhead(step: CoroutineStep) { Scheduler.value = step.asStep() }
+
 // step <-> runnable
 fun handle(step: CoroutineStep) = post(runnableOf(step))
 fun handleAhead(step: CoroutineStep) = postAhead(runnableOf(step))
@@ -1125,6 +1128,10 @@ private fun Any.detach() = when (this) {
     is Message -> detach()?.asRunnable()
     else -> null }
 
+private fun CoroutineStep.asStep(): Step = { block(annotatedScopeOrScheduler()) }
+
+private fun Runnable.asStep() = suspend { run() }
+
 private fun Runnable.asCoroutine(): CoroutineStep = TODO()
 
 private fun Runnable.asMessage() =
@@ -1135,6 +1142,8 @@ private fun Runnable.detach(): Runnable? = null
 private fun Runnable.reattach() {}
 
 private fun Runnable.close() {}
+
+private fun Message.asStep() = callback.asStep()
 
 private fun Message.asCoroutine(): CoroutineStep = TODO()
 
@@ -1739,11 +1748,13 @@ private val AnyKCallable.events
 private val AnyKCallable.schedulerScope
     get() = annotations.find { it is Scope } as? Scope
 
+private val AnyKCallable.launchScope
+    get() = annotations.find { it is LaunchScope } as? LaunchScope
+
 private val CoroutineStep.annotatedScope
     get() = trySafelyForResult { asCallable().schedulerScope!!.type.reconstruct(this) }
 
-private val AnyKCallable.launchScope
-    get() = annotations.find { it is LaunchScope } as? LaunchScope
+private fun CoroutineStep.annotatedScopeOrScheduler() = annotatedScope ?: Scheduler
 
 private typealias SchedulerNode = KClass<out Annotation>
 private typealias SchedulerPath = Array<KClass<out Throwable>>
