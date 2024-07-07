@@ -209,7 +209,7 @@ fun <T> Array<out T>.secondOrNull(): T? =
 inline fun <reified T : Any> Any?.asType(): T? =
     T::class.safeCast(this)
 
-inline fun <reified T : Any> T?.singleton(lock: Any = T::class.lock(), vararg args: Any?) =
+inline fun <reified T : Any> T?.singleton(vararg args: Any?, lock: Any = T::class.lock()) =
     commitAsyncForResult(lock, { this === null }, { T::class.new(*args) }, { this }) as T
 
 inline fun <T> T?.require(constructor: () -> T) =

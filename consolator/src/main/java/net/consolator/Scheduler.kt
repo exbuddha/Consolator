@@ -289,7 +289,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             msg.asCallable().isSynchronized()
 
         private fun isSynchronized(callback: Runnable) =
-            getStep(callback).asNullable().isSynchronized() ||
+            getCoroutine(callback).asNullable().isSynchronized() ||
             callback.asCallable().isSynchronized() ||
             callback::run.isSynchronized()
 
@@ -353,7 +353,9 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
 
             fun getRunnable(step: CoroutineStep): Runnable? = null
 
-            fun getStep(callback: Runnable): CoroutineStep? = null
+            fun getCoroutine(callback: Runnable): CoroutineStep? = null
+
+            fun getStep(callback: Runnable): Step? = null
 
             fun getEstimatedDelay(step: CoroutineStep): Long? = null
 
@@ -1135,7 +1137,7 @@ private fun Runnable.asStep() = suspend { run() }
 private fun Runnable.asCoroutine(): CoroutineStep = TODO()
 
 private fun Runnable.asMessage() =
-    with(Clock) { getStep(this@asMessage)?.run(::getMessage) }
+    with(Clock) { getCoroutine(this@asMessage)?.run(::getMessage) }
 
 private fun Runnable.detach(): Runnable? = null
 
@@ -1347,6 +1349,13 @@ fun SchedulerScope.keepAliveOrClose(job: Job) =
     job.node.let { node ->
         keepAliveNode(node) || job.close(node) }
 
+fun Job.close(node: SchedulerNode): Boolean = true
+
+fun Job.close() {}
+
+val Job.node: SchedulerNode
+    get() = TODO()
+
 fun LifecycleOwner.detach(job: Job? = null) {}
 
 fun LifecycleOwner.reattach(job: Job? = null) {}
@@ -1358,13 +1367,6 @@ fun LifecycleOwner.detach(node: SchedulerNode) {}
 fun LifecycleOwner.reattach(node: SchedulerNode) {}
 
 fun LifecycleOwner.close(node: SchedulerNode) {}
-
-fun Job.close(node: SchedulerNode): Boolean = true
-
-fun Job.close() {}
-
-val Job.node: SchedulerNode
-    get() = TODO()
 
 fun SchedulerScope.change(event: Transit) =
     EventBus.commit(event)
@@ -1875,6 +1877,7 @@ private operator fun AnyKCallable.plus(lock: AnyKCallable) = this
 private fun <R> AnyKCallable.synchronize(block: () -> R) = synchronized(this, block)
 
 private typealias ID = Short
+
 sealed interface State {
     object Succeeded : Resolved
     object Failed : Resolved

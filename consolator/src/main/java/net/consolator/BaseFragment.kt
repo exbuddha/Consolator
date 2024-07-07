@@ -86,11 +86,11 @@ abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
             change(Context::stageSessionCreated)
         } given { _ ->
             session !== null
-        } otherwise{ job, _ ->
+        } otherwise { job, _ ->
             Scheduler.retry(job)
         } onError { _, _ ->
             State[1] = Ambiguous
-        } onCancel{ job, _ ->
+        } onCancel { job, _ ->
             Scheduler.retry(job)
         } then { job, _ ->
             enact(job) { err ->
