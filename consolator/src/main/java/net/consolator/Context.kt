@@ -50,6 +50,8 @@ val foregroundLifecycleOwner: LifecycleOwner?
 
 const val VIEW_MIN_DELAY = 300L
 
+typealias ContextStep = suspend Context.(Any?) -> Any?
+
 fun Context.change(stage: ContextStep) =
     commit(stage)
 
@@ -157,8 +159,6 @@ fun <T : Context> WeakReference<out T>?.unique(context: T) =
 interface UniqueContext { var startTime: Long }
 
 fun Context.startTime() = asUniqueContext()?.startTime ?: -1L
-
-typealias ContextStep = suspend Context.(Any?) -> Any?
 
 fun now() = java.util.Calendar.getInstance().timeInMillis
 

@@ -145,6 +145,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         private fun SequencerScope.synchronize(identifier: Any?, stage: ContextStep?) =
             if (stage !== null) form(stage)
             else ignore
+
         private fun SequencerScope.synchronize(identifier: Any?, vararg step: AnyStep, stage: ContextStep?) =
             if (stage !== null) form(stage, *step)
             else ignore
@@ -152,6 +153,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         private val ignore get() = @Tag(IGNORE) emptyStep
 
         private fun SequencerScope.form(stage: ContextStep) = suspend { change(stage) }
+
         private fun SequencerScope.form(stage: ContextStep, vararg step: AnyStep) = step.first() then form(stage)
 
         private fun markTagsForReform(tag: String, stage: ContextStep?, form: AnyStep, job: Job) =
@@ -212,7 +214,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             register(callback) }
 
         constructor(name: String, priority: Int = currentThread.priority, callback: Runnable) : this(name, priority) {
-            queue.add(callback) }
+            register(callback) }
 
         var id = -1
             private set
@@ -220,13 +222,14 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         override fun start() {
             id = indexOf(queue)
             super.start() }
+
         fun alsoStart(): Clock {
             start()
             return this }
 
-        fun startAsync() {
-            commitAsync(this, { !isAlive }) {
-                super.start() } }
+        fun startAsync() =
+            commitAsync(this, { !isAlive }, ::start)
+
         fun alsoStartAsync(): Clock {
             startAsync()
             return this }
