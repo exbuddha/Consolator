@@ -28,6 +28,8 @@ open class BaseApplication : Application(), ObjectProvider, UniqueContext {
         defer<MemoryManager>(::onTrimMemory, level) {
             super.onTrimMemory(level) }
     }
+
+    @Deprecated("Requires API Level <= 34")
     override fun onLowMemory() {
         defer<MemoryManager>(::onLowMemory) {
             super.onLowMemory() }

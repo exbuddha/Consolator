@@ -111,6 +111,7 @@ abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
         super.onDestroyView()
     }
 
+    @Deprecated("Requires API Level <= 34")
     override fun onLowMemory() {
         defer<MemoryManager>(::onLowMemory) {
             super.onLowMemory() }

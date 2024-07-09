@@ -31,6 +31,7 @@ abstract class BaseActivity : AppCompatActivity(), ReferredContext {
         super.onStop()
     }
 
+    @Deprecated("Requires API Level <= 34")
     override fun onLowMemory() {
         defer<MemoryManager>(::onLowMemory) {
             super.onLowMemory() }

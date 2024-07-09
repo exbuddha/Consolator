@@ -1053,10 +1053,10 @@ inline fun <reified T : Resolver> LifecycleOwner.defer(member: UnitKFunction, va
     defer(T::class, this, member, *context)
 
 inline fun <reified T : Resolver> LifecycleOwner.defer(member: UnitKFunction, vararg context: Any?, noinline `super`: Work) =
-    defer(T::class, this, member, *context, `super`)
+    defer(T::class, this, member, *context, implicit(`super`))
 
 inline fun <reified T : Resolver> Context.defer(member: UnitKFunction, vararg context: Any?, noinline `super`: Work) =
-    defer(T::class, this, member, *context, `super`)
+    defer(T::class, this, member, *context, implicit(`super`))
 
 inline fun <reified T : Resolver> BaseActivity.defer(member: UnitKFunction, vararg context: Any?, noinline `super`: Work) =
     (this as Context).defer<T>(member, *context, `super` = `super`)
@@ -1068,6 +1068,10 @@ interface Resolver : ResolverScope {
     fun commit(vararg context: Any?) =
         context.lastOrNull().asWork()?.invoke()
 }
+
+inline fun implicit(noinline `super`: Work): Work {
+    `super`()
+    return emptyWork }
 
 fun schedule(step: Step) = Scheduler.postValue(step)
 fun scheduleAhead(step: Step) { Scheduler.value = step }

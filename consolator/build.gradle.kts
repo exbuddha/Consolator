@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace = "net.consolator"
-    compileSdk = 34
+    compileSdk = 35
 
     buildFeatures.buildConfig = true
 
