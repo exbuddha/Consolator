@@ -303,6 +303,7 @@ typealias IntMutableList = MutableList<Int>
 typealias IntFunction = () -> Int
 typealias LongFunction = () -> Long
 typealias StringFunction = Any?.() -> String
+typealias StringPointer = () -> String?
 typealias ThrowableFunction = (Throwable?) -> Unit
 typealias Predicate = () -> Boolean
 typealias AnyPredicate = (Any?) -> Boolean

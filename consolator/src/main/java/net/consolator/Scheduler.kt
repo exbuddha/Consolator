@@ -978,11 +978,13 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             true, is Job, Unit -> result
             else -> transfer?.invoke(@Enlisted step) } }
 
-    private fun reattach(step: CoroutineStep, handler: CoroutineFunction = ::launch) =
+    private fun reattach(step: CoroutineStep, handler: CoroutineFunction = Scheduler::launch) =
         trySafelyForResult { detach(step) }?.run(handler)
 
     private fun detach(step: CoroutineStep) =
         with(Clock) { getRunnable(step) ?: getMessage(step) }?.detach()?.asCoroutine() ?: step
+
+    private fun launch(it: CoroutineStep) = launch(Scheduler, block = it)
 
     override fun <R> fold(initial: R, operation: (R, CoroutineContext.Element) -> R): R {
         // update continuation state
@@ -1411,7 +1413,7 @@ suspend fun CoroutineScope.registerContext(context: WeakContext, scope: Coroutin
 private var jobs: JobFunctionSet? = null
 
 operator fun Job.get(tag: String) =
-    jobs?.find { tag == it.first }?.second.asAnyArray()?.get(1)
+    jobs?.find { tag == it.first() }?.second.asAnyArray()?.get(1)
 
 operator fun Job.set(tag: String, value: Any?) {
     // addressable layer work
@@ -1427,7 +1429,7 @@ private fun JobFunctionSet.save(tag: Tag?, self: AnyKCallable) =
     else save(null, false, self)
 
 private fun JobFunctionSet.save(tag: String?, keep: Boolean, function: AnyKCallable) =
-    add((tag ?: currentThreadJob().toJobId().toString()) to arrayOf(keep, function)) // rewire related parts
+    add((tag?.let { { it } } ?: currentThreadJob().toJobId()::toString) to arrayOf(keep, function)) // rewire related parts
 
 private fun combineTags(tag: String, self: String?) =
     if (self === null) tag
@@ -1769,7 +1771,7 @@ typealias JobFunction = suspend (Any?) -> Unit
 private typealias JobFunctionSet = MutableSet<JobFunctionItem>
 private typealias JobFunctionItem = StringToAnyPair
 private typealias JobPredicate = (Job) -> Boolean
-private typealias StringToAnyPair = Pair<String, Any>
+private typealias StringToAnyPair = Pair<StringPointer, Any>
 private typealias SchedulerWork = Scheduler.() -> Unit
 
 typealias Sequencer = Scheduler.Sequencer
