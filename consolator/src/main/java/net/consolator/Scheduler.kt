@@ -1427,17 +1427,17 @@ private fun JobFunctionSet.save(tag: Tag?, self: AnyKCallable) =
     else save(null, false, self)
 
 private fun JobFunctionSet.save(tag: String?, keep: Boolean, function: AnyKCallable) =
-    add((tag ?: currentThreadJob().hashCode().toString()) to arrayOf(keep, function)) // rewire related parts
+    add((tag ?: currentThreadJob().toJobId().toString()) to arrayOf(keep, function)) // rewire related parts
 
 private fun combineTags(tag: String, self: String?) =
     if (self === null) tag
     else "$tag.$self"
 
+private fun returnItsTag(it: Any?) = it.asNullable().tag?.string
+
 fun AnyKCallable.markTag() = tag.also { jobs?.save(it, this) }
 
 fun Any.markTag() = asCallable().markTag()
-
-private fun returnItsTag(it: Any?) = it.asNullable().tag?.string
 
 fun Any?.markTag(tag: String) = jobs?.save(tag, asNullable())
 
@@ -1472,7 +1472,7 @@ private fun markTagsForJobLaunch(vararg function: Any?, i: Int = 0) =
         val stepTag = step.string
         val jobId = function[i + 4]?.let { job ->
             jobs?.save("$stepTag.$JOB", step.keep, job.asCallable())
-            job.asJob().hashCode() } /* job */
+            job.toJobId() } /* job */
         function[i]?.let { context ->
             jobs?.save("$stepTag@$jobId.$CONTEXT", false, context.asCallable()) } /* context */
         function[i + 1]?.let { start ->
@@ -1481,7 +1481,7 @@ private fun markTagsForJobLaunch(vararg function: Any?, i: Int = 0) =
 private fun markTagsForJobRepeat(vararg function: Any?, i: Int = 0) =
     function[i + 2]?.markTag()?.also { blockTag ->
         val blockTag = blockTag.string
-        val jobId = function[i + 3].asInt()
+        val jobId = function[i + 3].toJobId()
         function[i + 1]?.let { delay ->
             jobs?.save("$blockTag@$jobId.$DELAY", delay.asCallable()) } /* delay */
         function[i]?.let { predicate ->
@@ -1490,17 +1490,14 @@ private fun markTagsForJobRepeat(vararg function: Any?, i: Int = 0) =
 private fun markTagsForClkAttach(vararg function: Any?, i: Int = 0) =
     function[i + 1]?.let { step -> when (step) {
         is Runnable -> {
-            val step = step.asRunnable()!!
             val stepTag = getTag(step)
             jobs?.save("$stepTag.$CALLBACK", step.asCallable()) /* callback */
             function[i]?.let { index ->
                 jobs?.save("$stepTag.$INDEX", index.asCallable()) } /* index */ }
         is Message -> {
-            val step = step.asMessage()!!
             jobs?.save("${getTag(step)}.$MSG", step.asCallable()) /* message */ }
         else -> {
-            val step = step.asInt()!!
-            jobs?.save("${getTag(step)}.$WHAT", step.asCallable()) /* what */ } } }
+            jobs?.save("${getTag(step.asInt() ?: return@let null)}.$WHAT", step.asCallable()) /* what */ } } }
 
 private fun markTagsForSeqAttach(vararg function: Any?, i: Int = 0) =
     function[i]?.asString().let { stepTag ->
@@ -1514,7 +1511,7 @@ private fun markTagsForSeqLaunch(vararg function: Any?, i: Int = 0) =
     function[i]?.markTag()?.also { stepTag ->
         val stepTag = stepTag.string
         val index = function[i + 1]?.asInt()!! // optionally, readjust by remarks or from seq here instead
-        val jobId = function[i + 3].asJob().hashCode()
+        val jobId = function[i + 3].toJobId()
         function[i + 2]?.let { context ->
             jobs?.save("$stepTag#$index@$jobId.$CONTEXT", false, context.asNullable()) } /* context */ }
 
@@ -1522,7 +1519,7 @@ private fun markTagsForCtxReform(vararg function: Any?, i: Int = 0) =
     function[i + 1].markSequentialTag(function[i].asString())?.also { stageTag ->
         val jobId = function[i + 3]?.let { job ->
             jobs?.save("$stageTag.$JOB", false, job.asCallable())
-            job.asJob().hashCode() } /* job */
+            job.toJobId() } /* job */
         function[i + 2]?.let { form ->
             jobs?.save("$stageTag@$jobId.$FORM", false, form.asCallable()) } /* form */ }
 
@@ -1600,6 +1597,8 @@ fun <R> KCallable<R>.with(vararg args: Any?): () -> R = {
 
 fun <R> call(vararg args: Any?): (KCallable<R>) -> R = {
     it.call(*args) }
+
+fun Any?.toJobId() = asJob().hashCode()
 
 suspend fun currentJob() = currentCoroutineContext().job
 fun currentThreadJob() = ::currentJob.block()
