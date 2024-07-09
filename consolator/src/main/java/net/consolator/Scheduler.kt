@@ -85,9 +85,9 @@ fun commit(vararg context: Any?): Any? =
         } }
         else -> Unit }
 
-object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), StepObserver, Synchronizer<Step>, AttachOperator<CoroutineStep>, (SchedulerWork) -> Unit {
-    sealed interface BaseServiceScope : ResolverScope, IBinder, (Intent?) -> IBinder, ReferredContext, UniqueContext {
-        override fun invoke(intent: Intent?): IBinder {
+object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), StepObserver, Synchronizer<Step>, AttachOperator<CoroutineStep> {
+    sealed interface BaseServiceScope : ResolverScope, IBinder, ReferredContext, UniqueContext {
+        operator fun invoke(intent: Intent?): IBinder {
             mode = getModeExtra(intent)
             if (intent !== null && intent.hasCategory(START_TIME_KEY) && clock?.isNotStarted() == true)
                 clock?.start()
@@ -592,10 +592,10 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             queue.clear()
             clearLatestObjects() }
 
-        companion object : (SequencerWork) -> Unit? {
+        companion object {
             const val ATTACHED_ALREADY = -1
 
-            override fun invoke(work: SequencerWork) = sequencer?.work()
+            operator fun invoke(work: SequencerWork) = sequencer?.work()
         }
 
         override fun adjust(index: Int) = index
@@ -975,7 +975,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         val transfer: CoroutineFunction? = (args.secondOrNull() ?: ::reattach).asType()
         return when (val result = enlist?.invoke(step)) {
             null, false -> transfer?.invoke(@Unlisted step)
-            true, is Job -> result
+            true, is Job, Unit -> result
             else -> transfer?.invoke(@Enlisted step) } }
 
     private fun reattach(step: CoroutineStep, handler: CoroutineFunction = ::launch) =
@@ -1023,7 +1023,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
 
     enum class Lock : State { Closed, Open }
 
-    override fun invoke(work: SchedulerWork) = this.work()
+    operator fun invoke(work: SchedulerWork) = this.work()
 }
 
 abstract class Buffer : AbstractFlow<Any?>()
@@ -1133,7 +1133,7 @@ private fun Any.detach() = when (this) {
     is Message -> detach()?.asRunnable()
     else -> null }
 
-private fun CoroutineStep.asStep(): Step = { block(annotatedScopeOrScheduler()) }
+private fun CoroutineStep.asStep() = suspend { invoke(annotatedScopeOrScheduler()) }
 
 private fun Runnable.asStep() = suspend { run() }
 
@@ -1232,6 +1232,7 @@ suspend fun SequencerScope.resetByTag(tag: String) = net.consolator.resetByTag(t
 suspend fun <R> SequencerScope.capture(capture: () -> R) = emit {
     reset()
     capture() }
+
 suspend fun <R> SequencerScope.captureByTag(tag: String, capture: () -> R) = emit {
     resetByTag(tag)
     capture() }
@@ -1239,6 +1240,7 @@ suspend fun <R> SequencerScope.captureByTag(tag: String, capture: () -> R) = emi
 private suspend inline fun <R> SequencerScope.reset(block: () -> R): R {
     reset()
     return block() }
+
 private suspend inline fun <R> SequencerScope.resetByTag(tag: String, block: () -> R): R {
     resetByTag(tag)
     return block() }
