@@ -1323,11 +1323,14 @@ fun SchedulerScope.close(job: Job, exit: ThrowableFunction? = null) {}
 
 fun SchedulerScope.keepAlive(job: Job) = keepAliveNode(job.node)
 
+fun SchedulerScope.keepAliveOrClose(job: Job) = keepAliveOrCloseNode(job.node)
+
 fun SchedulerScope.keepAliveNode(node: SchedulerNode): Boolean = false
 
-fun SchedulerScope.keepAliveOrClose(job: Job) =
-    job.node.let { node ->
-        keepAliveNode(node) || job.close(node) }
+fun SchedulerScope.keepAliveOrCloseNode(node: SchedulerNode) =
+    keepAliveNode(node) || node.close()
+
+fun SchedulerNode.close(): Boolean = true
 
 fun Job.close(node: SchedulerNode): Boolean = true
 
