@@ -79,7 +79,7 @@ abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
         } given { _ ->
             db !== null
         } otherwise { job, _ ->
-            Scheduler.retry(job)
+            retry(job)
         } then @Path(STAGE_BUILD_SESSION) { _, _ ->
             tryCancelingSuspended(::buildSession)
         } then @Committing @Event(ACTION_MIGRATE_APP) { _, _ ->
@@ -87,11 +87,11 @@ abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
         } given { _ ->
             session !== null
         } otherwise { job, _ ->
-            Scheduler.retry(job)
+            retry(job)
         } onError { _, _ ->
             State[1] = Ambiguous
         } onCancel { job, _ ->
-            Scheduler.retry(job)
+            retry(job)
         } then { job, _ ->
             enact(job) { err ->
                 // catch cancellation and/or error
