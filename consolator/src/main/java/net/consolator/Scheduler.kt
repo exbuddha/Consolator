@@ -1103,37 +1103,6 @@ fun <T> safeRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { trySaf
 fun <T> interruptingRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { tryInterrupting(step) }
 fun <T> safeInterruptingRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { trySafelyInterrupting(step) }
 
-inline fun <R> commitAsync(lock: Any, predicate: Predicate, block: () -> R) {
-    if (predicate())
-        synchronized(lock) {
-            if (predicate()) block() } }
-
-inline fun <R, S : R> commitAsyncForResult(lock: Any, predicate: Predicate, block: () -> R, fallback: () -> S? = { null }): R? {
-    if (predicate())
-        synchronized(lock) {
-            if (predicate()) return block() }
-    return fallback() }
-
-inline fun <R> blockAsync(lock: Any, crossinline predicate: Predicate, crossinline block: suspend () -> R) {
-    if (predicate())
-        synchronized(lock) {
-            runBlocking {
-                if (predicate()) block() } } }
-
-inline fun <R, S : R> blockAsyncForResult(lock: Any, crossinline predicate: Predicate, crossinline block: suspend () -> R, noinline fallback: suspend () -> S? = { null }) =
-    if (predicate())
-        synchronized(lock) {
-            runBlocking {
-                if (predicate()) block()
-                else fallback() } }
-    else fallback.block()
-
-inline fun <R> blockAsync(lock: AnyKProperty, crossinline block: suspend () -> R) =
-    blockAsync(lock, lock::isNotNull, block)
-
-inline fun <R, S : R> blockAsyncForResult(lock: AnyKProperty, crossinline block: suspend () -> R, noinline fallback: suspend () -> S? = { null }) =
-    blockAsyncForResult(lock, lock::isNotNull, block, fallback)
-
 private fun Any.detach() = when (this) {
     is Runnable -> detach()
     is Message -> detach()?.asRunnable()
@@ -1603,6 +1572,37 @@ fun <R> KCallable<R>.with(vararg args: Any?): () -> R = {
 
 fun <R> call(vararg args: Any?): (KCallable<R>) -> R = {
     it.call(*args) }
+
+inline fun <R> commitAsync(lock: Any, predicate: Predicate, block: () -> R) {
+    if (predicate())
+        synchronized(lock) {
+            if (predicate()) block() } }
+
+inline fun <R, S : R> commitAsyncForResult(lock: Any, predicate: Predicate, block: () -> R, fallback: () -> S? = { null }): R? {
+    if (predicate())
+        synchronized(lock) {
+            if (predicate()) return block() }
+    return fallback() }
+
+inline fun <R> blockAsync(lock: Any, crossinline predicate: Predicate, crossinline block: suspend () -> R) {
+    if (predicate())
+        synchronized(lock) {
+            runBlocking {
+                if (predicate()) block() } } }
+
+inline fun <R, S : R> blockAsyncForResult(lock: Any, crossinline predicate: Predicate, crossinline block: suspend () -> R, noinline fallback: suspend () -> S? = { null }) =
+    if (predicate())
+        synchronized(lock) {
+            runBlocking {
+                if (predicate()) block()
+                else fallback() } }
+    else fallback.block()
+
+inline fun <R> blockAsync(lock: AnyKProperty, crossinline block: suspend () -> R) =
+    blockAsync(lock, lock::isNotNull, block)
+
+inline fun <R, S : R> blockAsyncForResult(lock: AnyKProperty, crossinline block: suspend () -> R, noinline fallback: suspend () -> S? = { null }) =
+    blockAsyncForResult(lock, lock::isNotNull, block, fallback)
 
 fun Any?.toJobId() = asJob().hashCode()
 
