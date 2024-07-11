@@ -128,7 +128,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
 
         private suspend inline fun <reified D : RoomDatabase> SequencerScope.buildDatabaseOrResetByTag(instance: KMutableProperty<out D?>, tag: String) {
             ref?.get()?.run<Context, D?> {
-                sequencer { resetByTagOnError(tag, ::buildDatabase) }
+                sequencer { tryCancelingForResult(block = { resetByTagOnError(tag, ::buildDatabase) }) }
             }?.apply(instance::set) }
 
         private suspend fun SequencerScope.blockAsyncOrResetByTag(lock: AnyKProperty, tag: String, block: AnyStep, post: AnyStep, condition: PropertyCondition) =
@@ -533,32 +533,34 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         var interruptByTag = fun(tag: String, ex: Throwable) = ex
 
         suspend inline fun <R> SequencerScope.resetOnCancel(block: () -> R) =
-            try { block() }
-            catch (ex: CancellationException) {
-                reset()
-                cancel(ex)
-                throw interrupt(ex) }
+            reset<CancellationException, _>(::reset, ::cancel, block)
 
         suspend inline fun <R> SequencerScope.resetOnError(block: () -> R) =
-            try { block() }
-            catch (ex: Throwable) {
-                reset()
-                error(ex)
-                throw interrupt(ex) }
+            reset<Throwable, _>(::reset, ::error, block)
 
         suspend inline fun <R> SequencerScope.resetByTagOnCancel(tag: String, block: () -> R) =
-            try { block() }
-            catch (ex: CancellationException) {
-                resetByTag(tag)
-                cancelByTag(tag, ex)
-                throw interruptByTag(tag, ex) }
+            resetByTag<CancellationException, _>(tag, ::resetByTag, ::cancelByTag, block)
 
         suspend inline fun <R> SequencerScope.resetByTagOnError(tag: String, block: () -> R) =
+            resetByTag<Throwable, _>(tag, ::resetByTag, ::errorByTag, block)
+
+        suspend inline fun <reified T : Throwable, R> SequencerScope.reset(reset: Work, register: (Throwable) -> Unit, block: () -> R) =
             try { block() }
-            catch (ex: Throwable) {
-                resetByTag(tag)
-                errorByTag(tag, ex)
-                throw interruptByTag(tag, ex) }
+            catch (ex: Throwable) { when (ex) {
+                is T -> {
+                    reset()
+                    register(ex)
+                    throw interrupt(ex) }
+                else -> throw ex } }
+
+        suspend inline fun <reified T : Throwable, R> SequencerScope.resetByTag(tag: String, reset: (String) -> Unit, register: (String, Throwable) -> Unit, block: () -> R) =
+            try { block() }
+            catch (ex: Throwable) { when (ex) {
+                is T -> {
+                    reset(tag)
+                    register(tag, ex)
+                    throw interruptByTag(tag, ex) }
+                else -> throw ex } }
 
         // preserve tags
         private fun resettingFirstly(step: SequencerStep) = step after { reset() }
