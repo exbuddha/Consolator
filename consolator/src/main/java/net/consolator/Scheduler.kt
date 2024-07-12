@@ -115,32 +115,28 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             return this }
 
         private suspend inline fun <reified D : RoomDatabase> SequencerScope.coordinateBuildDatabase(identifier: Any?, instance: KMutableProperty<out D?>, noinline stage: ContextStep?) =
-            returnItsTag(identifier)?.let { tag ->
-                blockAsyncOrResetByTag(instance, tag, {
-                    buildDatabaseOrResetByTag(instance, tag) },
-                    post = markTagsForReform(tag, stage, synchronize(identifier, stage), currentJob())) }
+            buildDatabaseOrResetByTag(identifier, instance, stage, synchronize(identifier, stage))
 
         private suspend inline fun <reified D : RoomDatabase> SequencerScope.coordinateBuildDatabase(identifier: Any?, instance: KMutableProperty<out D?>, vararg step: AnyStep, noinline stage: ContextStep?) =
+            buildDatabaseOrResetByTag(identifier, instance, stage, synchronize(identifier, *step, stage = stage))
+
+        private suspend inline fun <reified D : RoomDatabase> SequencerScope.buildDatabaseOrResetByTag(identifier: Any?, instance: KMutableProperty<out D?>, noinline stage: ContextStep?, noinline post: AnyStep) =
+            buildDatabaseOrResetByTag(identifier, instance, stage, post, ::whenNotNullOrResetByTag)
+
+        private suspend inline fun <reified D : RoomDatabase> SequencerScope.buildDatabaseOrResetByTag(identifier: Any?, instance: KMutableProperty<out D?>, noinline stage: ContextStep?, noinline post: AnyStep, condition: PropertyCondition) =
             returnItsTag(identifier)?.let { tag ->
-                blockAsyncOrResetByTag(instance, tag, {
-                    buildDatabaseOrResetByTag(instance, tag) },
-                    post = markTagsForReform(tag, stage, synchronize(identifier, *step, stage = stage), currentJob())) }
+                buildDatabaseOrResetByTag(instance, tag)
+                condition(instance, tag,
+                    markTagsForReform(tag, stage, post, currentJob())) }
 
         private suspend inline fun <reified D : RoomDatabase> SequencerScope.buildDatabaseOrResetByTag(instance: KMutableProperty<out D?>, tag: String) {
             ref?.get()?.run<Context, D?> {
-                sequencer { tryCancelingForResult(block = { resetByTagOnError(tag, ::buildDatabase) }) }
+                sequencer { tryCancelingForResult({
+                    resetByTagOnError(tag) { commitAsyncOrResetByTag(instance, tag, ::buildDatabase) } }) }
             }?.apply(instance::set) }
 
-        private suspend fun SequencerScope.blockAsyncOrResetByTag(lock: AnyKProperty, tag: String, block: AnyStep, post: AnyStep, condition: PropertyCondition) =
-            blockAsyncOrResetByTag(lock, tag) {
-                block()
-                condition(lock, tag, post) }
-
-        private suspend fun SequencerScope.blockAsyncOrResetByTag(lock: AnyKProperty, tag: String, block: AnyStep, post: AnyStep) =
-            blockAsyncOrResetByTag(lock, tag, block, post, ::whenNotNullOrResetByTag)
-
-        private suspend fun SequencerScope.blockAsyncOrResetByTag(lock: AnyKProperty, tag: String, block: AnyStep) =
-            blockAsyncForResult(lock, lock::isNull, block) { resetByTag(tag) }
+        private suspend fun <R> SequencerScope.commitAsyncOrResetByTag(lock: AnyKProperty, tag: String, block: () -> R) =
+            commitAsyncForResult(lock, lock::isNull, block) { resetByTag(tag); null }
 
         private fun SequencerScope.synchronize(identifier: Any?, stage: ContextStep?) =
             if (stage !== null) form(stage)
@@ -371,8 +367,6 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
     }
 
     class Sequencer : Synchronizer<LiveWork>, Transactor<Int, Boolean?>, PriorityQueue<Int>, AdjustOperator<LiveWork, Int> {
-        /* when a step is identified by tag as thread-blocking, it may only run safely on the clock;
-        // otherwise, it may be attached to the current synchronizer scope. */
         fun default(async: Boolean = false, step: SequencerStep) = attach(Default, async, step)
         fun default(index: Int, async: Boolean = false, step: SequencerStep) = attach(index, Default, async, step)
         fun defaultStart(step: SequencerStep) = default(false, step).also { start() }
@@ -1227,13 +1221,13 @@ private fun resetByTag(tag: String) { sequencer?.resetByTag(tag) }
 
 private fun getTag(stage: ContextStep): String = TODO()
 
-private suspend inline fun whenNotNull(instance: AnyKProperty, stage: String, block: AnyStep) {
+private suspend inline fun whenNotNull(instance: AnyKProperty, stage: String, step: AnyStep) {
     if (instance.isNotNull())
-        block() }
+        step() }
 
-private suspend inline fun whenNotNullOrResetByTag(instance: AnyKProperty, stage: String, block: AnyStep) =
+private suspend inline fun whenNotNullOrResetByTag(instance: AnyKProperty, stage: String, step: AnyStep) =
     if (instance.isNotNull())
-        block()
+        step()
     else resetByTag(stage)
 
 private interface SchedulerElement : CoroutineContext.Element {
@@ -1588,26 +1582,6 @@ inline fun <R, S : R> commitAsyncForResult(lock: Any, predicate: Predicate, bloc
         synchronized(lock) {
             if (predicate()) return block() }
     return fallback() }
-
-inline fun <R> blockAsync(lock: Any, crossinline predicate: Predicate, crossinline block: suspend () -> R) {
-    if (predicate())
-        synchronized(lock) {
-            runBlocking {
-                if (predicate()) block() } } }
-
-inline fun <R, S : R> blockAsyncForResult(lock: Any, crossinline predicate: Predicate, crossinline block: suspend () -> R, noinline fallback: suspend () -> S? = { null }) =
-    if (predicate())
-        synchronized(lock) {
-            runBlocking {
-                if (predicate()) block()
-                else fallback() } }
-    else fallback.block()
-
-inline fun <R> blockAsync(lock: AnyKProperty, crossinline block: suspend () -> R) =
-    blockAsync(lock, lock::isNotNull, block)
-
-inline fun <R, S : R> blockAsyncForResult(lock: AnyKProperty, crossinline block: suspend () -> R, noinline fallback: suspend () -> S? = { null }) =
-    blockAsyncForResult(lock, lock::isNotNull, block, fallback)
 
 fun Any?.toJobId() = asJob().hashCode()
 
