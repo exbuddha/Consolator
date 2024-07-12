@@ -789,10 +789,10 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         fun captureOnceBefore(block: CaptureFunction) =
             captureOnce(before, block)
 
-        private fun stepToNull(async: Boolean = false, step: LiveStepFunction) = Triple(step, nullBlock, async)
+        private fun stepToNull(async: Boolean = false, step: LiveStepPointer) = Triple(step, nullBlock, async)
         private fun nullStepTo(block: CaptureFunction) = Triple(nullStep, block, false)
 
-        private val nullStep: LiveStepFunction = @Tag(NULL_STEP) { null }
+        private val nullStep: LiveStepPointer = @Tag(NULL_STEP) { null }
         private val nullBlock: CaptureFunction? = null
 
         private fun LiveWork.isAsynchronous() = third
@@ -1776,9 +1776,9 @@ private typealias SequencerScope = LiveDataScope<Step?>
 private typealias SequencerStep = suspend SequencerScope.(Any?) -> Unit
 private typealias StepObserver = Observer<Step?>
 private typealias LiveStep = LiveData<Step?>
-private typealias LiveStepFunction = () -> LiveStep?
+private typealias LiveStepPointer = () -> LiveStep?
 private typealias CaptureFunction = AnyToAnyFunction
-private typealias LiveWork = Triple<LiveStepFunction, CaptureFunction?, Boolean>
+private typealias LiveWork = Triple<LiveStepPointer, CaptureFunction?, Boolean>
 private typealias LiveSequence = MutableList<LiveWork>
 private typealias LiveWorkPredicate = (LiveWork) -> Boolean
 private typealias SequencerWork = Sequencer.() -> Unit
