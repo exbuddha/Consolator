@@ -1115,7 +1115,8 @@ private fun CoroutineStep.asStep() = suspend { invoke(annotatedScopeOrScheduler(
 
 private fun Runnable.asStep() = suspend { run() }
 
-private fun Runnable.asCoroutine(): CoroutineStep = TODO()
+private fun Runnable.asCoroutine(): CoroutineStep =
+    Clock.getCoroutine(this) ?: { run() }
 
 private fun Runnable.asMessage() =
     with(Clock) { getCoroutine(this@asMessage)?.run(::getMessage) }
@@ -1128,7 +1129,7 @@ private fun Runnable.close() {}
 
 private fun Message.asStep() = callback.asStep()
 
-private fun Message.asCoroutine(): CoroutineStep = TODO()
+private fun Message.asCoroutine() = callback.asCoroutine()
 
 private fun Message.asRunnable() = callback
 
