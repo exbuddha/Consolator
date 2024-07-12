@@ -545,21 +545,21 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             resetByTag<Throwable, _>(tag, ::resetByTag, ::errorByTag, block)
 
         suspend inline fun <reified T : Throwable, R> SequencerScope.reset(reset: Work, register: (Throwable) -> Unit, block: () -> R) =
-            try { block() }
-            catch (ex: Throwable) { when (ex) {
-                is T -> {
-                    reset()
-                    register(ex)
-                    throw interrupt(ex) }
-                else -> throw ex } }
+            tryCatching<T, _>(block) { ex ->
+                reset()
+                register(ex)
+                throw interrupt(ex) }
 
         suspend inline fun <reified T : Throwable, R> SequencerScope.resetByTag(tag: String, reset: (String) -> Unit, register: (String, Throwable) -> Unit, block: () -> R) =
+            tryCatching<T, _>(block) { ex ->
+                reset(tag)
+                register(tag, ex)
+                throw interruptByTag(tag, ex) }
+
+        suspend inline fun <reified T : Throwable, R> SequencerScope.tryCatching(block: () -> R, exit: (Throwable) -> Nothing) =
             try { block() }
             catch (ex: Throwable) { when (ex) {
-                is T -> {
-                    reset(tag)
-                    register(tag, ex)
-                    throw interruptByTag(tag, ex) }
+                is T -> exit(ex)
                 else -> throw ex } }
 
         // preserve tags
