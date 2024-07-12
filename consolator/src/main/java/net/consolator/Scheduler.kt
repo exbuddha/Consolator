@@ -1020,6 +1020,9 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         fun commit(event: Transit) =
             queue.add(event)
 
+        fun commit(vararg event: Event) =
+            event.forEach { commit(it.transit) }
+
         override var queue: MutableList<Any?> = mutableListOf()
 
         fun clear() {
@@ -1064,6 +1067,10 @@ inline fun <reified T : Resolver> Context.defer(member: UnitKFunction, vararg co
 inline fun <reified T : Resolver> BaseActivity.defer(member: UnitKFunction, vararg context: Any?, noinline `super`: Work) =
     (this as Context).defer<T>(member, *context, `super` = `super`)
 
+inline fun implicit(noinline `super`: Work): Work {
+    `super`()
+    return emptyWork }
+
 interface Resolver : ResolverScope {
     override fun commit(step: CoroutineStep) =
         commit(blockOf(step))
@@ -1072,9 +1079,9 @@ interface Resolver : ResolverScope {
         context.lastOrNull().asWork()?.invoke()
 }
 
-inline fun implicit(noinline `super`: Work): Work {
-    `super`()
-    return emptyWork }
+fun ResolverScope.commit(vararg tag: Tag): Any? = TODO()
+
+fun ResolverScope.commit(vararg path: Path): Any? = TODO()
 
 fun schedule(step: Step) = Scheduler.postValue(step)
 fun scheduleAhead(step: Step) { Scheduler.value = step }
@@ -1653,13 +1660,13 @@ typealias ChannelType = Short
 fun Number?.toChannel() = this?.asType<ChannelType>()
 
 @Retention(SOURCE)
-@Target(CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+@Target(CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION, ANNOTATION_CLASS)
 annotation class Tag(
     val string: String,
     val keep: Boolean = true)
 
 @Retention(SOURCE)
-@Target(CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+@Target(CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION, ANNOTATION_CLASS)
 annotation class Keep
 
 @Retention(SOURCE)
@@ -1726,11 +1733,11 @@ annotation class JobTreeRoot
 annotation class Scope(val type: KClass<out CoroutineScope> = Scheduler::class)
 
 @Retention(SOURCE)
-@Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+@Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION, ANNOTATION_CLASS)
 annotation class LaunchScope
 
 @Retention(SOURCE)
-@Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+@Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION, ANNOTATION_CLASS)
 private annotation class Synchronous(val node: SchedulerNode = Annotation::class)
 
 @Retention(SOURCE)
