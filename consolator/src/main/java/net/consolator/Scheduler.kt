@@ -89,7 +89,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
     sealed interface BaseServiceScope : ResolverScope, IBinder, ReferredContext, UniqueContext {
         operator fun invoke(intent: Intent?): IBinder {
             mode = getModeExtra(intent)
-            if (intent !== null && intent.hasCategory(START_TIME_KEY) && clock?.isNotStarted() == true)
+            if (intent !== null && intent.hasCategory(START_TIME_KEY) && clock?.isNotStarted == true)
                 clock?.start()
             if (State[2] !is Resolved) commit @Tag(INIT) @Synchronous {
                 trySafelyForResult { getStartTimeExtra(intent) }?.apply(
@@ -234,8 +234,9 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             startAsync()
             return this }
 
-        fun isStarted() = id != -1
-        fun isNotStarted() = id == -1
+        val isStarted get() = id != -1
+        val isNotStarted get() = id == -1
+        var isRunning = false
 
         override fun run() {
             hLock = Lock.Open()
@@ -243,6 +244,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
                 override fun handleMessage(msg: Message) {
                     super.handleMessage(msg)
                     DEFAULT_HANDLE(msg) } }
+            isRunning = true
             queue.run() }
 
         override fun commit(step: Message) =
@@ -975,8 +977,9 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         val transfer: CoroutineFunction? = (args.secondOrNull() ?: ::reattach).asType()
         return when (val result = enlist?.invoke(step)) {
             null, false -> transfer?.invoke(@Unlisted step)
-            true, is Job, Unit -> result
-            else -> transfer?.invoke(@Enlisted step) } }
+            true, is Job -> result
+            else -> if (clock?.isRunning == false) transfer?.invoke(@Enlisted step)
+            else result } }
 
     private fun reattach(step: CoroutineStep, handler: CoroutineFunction = Scheduler::launch) =
         trySafelyForResult { detach(step) }?.run(handler)
