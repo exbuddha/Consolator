@@ -1650,6 +1650,8 @@ annotation class Event(val transit: TransitType = 0) {
 
 typealias ChannelType = Short
 
+fun Number?.toChannel() = this?.asType<ChannelType>()
+
 @Retention(SOURCE)
 @Target(CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
 annotation class Tag(
@@ -1705,15 +1707,19 @@ object FromLastCancellation : SchedulerIntent() {
 
 open class Propagate : Throwable()
 
-@Retention(SOURCE)
-@Target(CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
-annotation class JobTreeRoot
+typealias LevelType = UByte
+
+fun Number?.toLevel() = this?.toByte()?.toUByte()
 
 @Retention(SOURCE)
 @Target(CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
 annotation class JobTree(
     val branch: String = "",
-    val level: UByte = 0u)
+    val level: LevelType = 0u)
+
+@Retention(SOURCE)
+@Target(CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+annotation class JobTreeRoot
 
 @Retention(SOURCE)
 @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
@@ -1874,6 +1880,8 @@ private operator fun AnyKCallable.plus(lock: AnyKCallable) = this
 private fun <R> AnyKCallable.synchronize(block: () -> R) = synchronized(this, block)
 
 private typealias ID = Short
+
+fun Number?.toStateId() = this?.asType<ID>()
 
 sealed interface State {
     object Succeeded : Resolved
