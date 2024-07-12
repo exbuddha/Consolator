@@ -1768,59 +1768,18 @@ private val CoroutineStep.annotatedScope
 
 private fun CoroutineStep.annotatedScopeOrScheduler() = annotatedScope ?: Scheduler
 
-private typealias SchedulerNode = KClass<out Annotation>
-private typealias SchedulerPath = Array<KClass<out Throwable>>
-private typealias SchedulerStep = suspend SchedulerScope.(Job, Any?) -> Unit
-typealias JobFunction = suspend (Any?) -> Unit
-private typealias JobFunctionSet = MutableSet<JobFunctionItem>
-private typealias JobFunctionItem = StringToAnyPair
-private typealias JobPredicate = (Job) -> Boolean
-private typealias StringToAnyPair = Pair<StringPointer, Any>
-private typealias SchedulerWork = Scheduler.() -> Unit
-
-typealias Sequencer = Scheduler.Sequencer
-private typealias SequencerScope = LiveDataScope<Step?>
-private typealias SequencerStep = suspend SequencerScope.(Any?) -> Unit
-private typealias StepObserver = Observer<Step?>
-private typealias LiveStep = LiveData<Step?>
-private typealias LiveStepPointer = () -> LiveStep?
-private typealias CaptureFunction = AnyToAnyFunction
-private typealias LiveWork = Triple<LiveStepPointer, CaptureFunction?, Boolean>
-private typealias LiveSequence = MutableList<LiveWork>
-private typealias LiveWorkPredicate = (LiveWork) -> Boolean
-private typealias SequencerWork = Sequencer.() -> Unit
-
-private typealias PropertyPredicate = suspend (AnyKProperty) -> Boolean
 private typealias PropertyCondition = suspend (AnyKProperty, String, AnyStep) -> Any?
+private typealias PropertyPredicate = suspend (AnyKProperty) -> Boolean
+private typealias PropertyState = suspend (AnyKProperty) -> Any?
 
 private typealias PredicateFunction = suspend () -> Boolean
 private typealias DelayFunction = suspend () -> Long
-
-typealias Clock = Scheduler.Clock
-private typealias MessageFunction = (Message) -> Any?
-private typealias HandlerFunction = Clock.(Message) -> Unit
-private typealias RunnableList = MutableList<Runnable>
-private typealias RunnableGrid = MutableList<RunnableList>
-private typealias CoroutineFunction = (CoroutineStep) -> Any?
-
-typealias Work = () -> Unit
-typealias Step = suspend () -> Unit
-typealias AnyStep = suspend () -> Any?
-typealias AnyToAnyStep = suspend (Any?) -> Any?
-typealias CoroutineStep = suspend CoroutineScope.() -> Unit
-private typealias AnyFlowCollector = FlowCollector<Any?>
-
-typealias ExceptionHandler = Thread.UncaughtExceptionHandler
-typealias Process = android.os.Process
-
-val emptyWork = {}
-val emptyStep = suspend {}
 
 interface Expiry : MutableSet<Lifetime> {
     fun unsetAll(property: AnyKMutableProperty) {
         // must be strengthened by connecting to other expiry sets
         forEach { alive ->
-            if (alive(property) == false)
+            if (alive(property) == false && State.of(property) !== Lock.Closed)
                 property.expire()
     } }
     companion object : Expiry {
@@ -1870,6 +1829,48 @@ fun Any?.asLiveWork() = asType<LiveWork>()
 fun Any?.asJob() = asType<Job>()
 fun Any?.asWork() = asType<Work>()
 
+private typealias SchedulerNode = KClass<out Annotation>
+private typealias SchedulerPath = Array<KClass<out Throwable>>
+private typealias SchedulerStep = suspend SchedulerScope.(Job, Any?) -> Unit
+typealias JobFunction = suspend (Any?) -> Unit
+private typealias JobFunctionSet = MutableSet<JobFunctionItem>
+private typealias JobFunctionItem = StringToAnyPair
+private typealias JobPredicate = (Job) -> Boolean
+private typealias StringToAnyPair = Pair<StringPointer, Any>
+private typealias SchedulerWork = Scheduler.() -> Unit
+
+typealias Sequencer = Scheduler.Sequencer
+private typealias SequencerScope = LiveDataScope<Step?>
+private typealias SequencerStep = suspend SequencerScope.(Any?) -> Unit
+private typealias StepObserver = Observer<Step?>
+private typealias LiveStep = LiveData<Step?>
+private typealias LiveStepPointer = () -> LiveStep?
+private typealias CaptureFunction = AnyToAnyFunction
+private typealias LiveWork = Triple<LiveStepPointer, CaptureFunction?, Boolean>
+private typealias LiveSequence = MutableList<LiveWork>
+private typealias LiveWorkPredicate = (LiveWork) -> Boolean
+private typealias SequencerWork = Sequencer.() -> Unit
+
+typealias Clock = Scheduler.Clock
+private typealias MessageFunction = (Message) -> Any?
+private typealias HandlerFunction = Clock.(Message) -> Unit
+private typealias RunnableList = MutableList<Runnable>
+private typealias RunnableGrid = MutableList<RunnableList>
+private typealias CoroutineFunction = (CoroutineStep) -> Any?
+
+typealias Work = () -> Unit
+typealias Step = suspend () -> Unit
+typealias AnyStep = suspend () -> Any?
+typealias AnyToAnyStep = suspend (Any?) -> Any?
+typealias CoroutineStep = suspend CoroutineScope.() -> Unit
+private typealias AnyFlowCollector = FlowCollector<Any?>
+
+typealias ExceptionHandler = Thread.UncaughtExceptionHandler
+typealias Process = android.os.Process
+
+val emptyWork = {}
+val emptyStep = suspend {}
+
 private typealias JobKFunction = KFunction<Job>
 private typealias JobKProperty = KMutableProperty<Job?>
 private typealias ResolverKClass = KClass<out Resolver>
@@ -1909,6 +1910,8 @@ sealed interface State {
         operator fun invoke(): State = Lock.Open
 
         fun of(vararg args: Any?): State = Ambiguous
+
+        fun of(property: AnyKProperty): State = Ambiguous
 
         operator fun get(id: ID): State = when (id.toInt()) {
             1 -> Resolved unless { db === null || session === null }
