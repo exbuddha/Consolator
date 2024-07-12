@@ -1036,7 +1036,7 @@ abstract class Buffer : AbstractFlow<Any?>()
 private typealias TransitType = Short
 private typealias Transit = TransitType?
 
-fun Number?.toTransit() = this?.toShort()
+fun Number?.toTransit() = this?.asType<TransitType>()
 
 val Any?.transit: Transit
     get() = when (this) {
