@@ -133,8 +133,11 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             ref?.get()?.run<Context, D?> {
                 sequencer { trySafelyCanceling {
                     resetByTagOnError(tag) {
-                        commitAsyncOrResetByTag(instance, tag, ::buildDatabase) } } }
+                        commitAsyncAndResetByTag(instance, tag, ::buildDatabase) } } }
             }?.apply(instance::set) }
+
+        private suspend inline fun <R> SequencerScope.commitAsyncAndResetByTag(lock: AnyKProperty, tag: String, block: () -> R) =
+            commitAsyncOrResetByTag(lock, tag) { block().also { resetByTag(tag) } }
 
         private suspend inline fun <R> SequencerScope.commitAsyncOrResetByTag(lock: AnyKProperty, tag: String, block: () -> R) =
             commitAsyncForResult(lock, lock::isNull, block) { resetByTag(tag); null }
