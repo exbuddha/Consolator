@@ -1206,7 +1206,7 @@ fun <T, R> unconfinedCapture(step: suspend LiveDataScope<T>.() -> Unit, capture:
     capture(Unconfined, step, capture)
 
 fun <T, R> Pair<LiveData<T>, (T) -> R>.toLiveWork(async: Boolean = false) =
-    LiveWork(::first.asType<LiveStepPointer>()!!, ::second.get().asType(), async)
+    LiveWork(::first.asType<LiveStepPointer>()!!, second.asType(), async)
 
 fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(owner: LifecycleOwner, observer: Observer<T> = disposerOf(this)): Observer<T> {
     first.observe(owner, observer)
