@@ -600,13 +600,20 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         companion object {
             const val ATTACHED_ALREADY = -1
 
-            fun start() = sequencer?.start()
-            fun resume(tag: String) = sequencer?.resume(tag)
-            fun resume(tag: Tag) = sequencer?.resume(tag)
-            fun resume() = sequencer?.resume()
-            fun resumeAsync() = sequencer?.resumeAsync()
+            fun attach(step: LiveWork, tag: String? = null) = invoke { attach(step, tag) }
+            fun attachOnce(step: LiveWork, tag: String? = null) = invoke { attachOnce(step, tag) }
+            fun attachAfter(step: LiveWork, tag: String? = null) = invoke { attachAfter(step, tag) }
+            fun attachBefore(step: LiveWork, tag: String? = null) = invoke { attachBefore(step, tag) }
+            fun attachOnceAfter(step: LiveWork, tag: String? = null) = invoke { attachOnceAfter(step, tag) }
+            fun attachOnceBefore(step: LiveWork, tag: String? = null) = invoke { attachOnceBefore(step, tag) }
 
-            operator fun invoke(work: SequencerWork) = sequencer?.work()
+            fun start() = invoke { start() }
+            fun resume(tag: String) = invoke { resume(tag) }
+            fun resume(tag: Tag) = invoke { resume(tag) }
+            fun resume() = invoke { resume() }
+            fun resumeAsync() = invoke { resumeAsync() }
+
+            operator fun <R> invoke(work: Sequencer.() -> R) = sequencer?.work()
         }
 
         override fun adjust(index: Int) = index
@@ -615,6 +622,8 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             add(element)
         private fun LiveSequence.attach(index: Int, element: LiveWork) =
             add(index, element)
+
+        private fun LiveWork.setTag(tag: String?) = this
 
         override fun attach(step: LiveWork, vararg args: Any?) = synchronize { with(seq) {
             attach(step)
@@ -625,6 +634,8 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             if (work.isNotAttached())
                 attach(work)
             else ATTACHED_ALREADY }
+
+        fun attachOnce(work: LiveWork, tag: String? = null): Int = TODO()
 
         fun attachOnce(range: IntRange, work: LiveWork) = synchronize {
             if (work.isNotAttached(range))
@@ -667,8 +678,12 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         fun attachOnceAfter(work: LiveWork) =
             attachOnce(after, work)
 
+        fun attachOnceAfter(work: LiveWork, tag: String? = null): Int = TODO()
+
         fun attachOnceBefore(work: LiveWork) =
             attachOnce(before, work)
+
+        fun attachOnceBefore(work: LiveWork, tag: String? = null): Int = TODO()
 
         private fun markTagsForLaunch(step: SequencerStep, index: IntFunction, context: CoroutineContext? = null) =
             step after { currentJob().let { job ->
@@ -1040,7 +1055,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
 
     enum class Lock : State { Closed, Open }
 
-    operator fun invoke(work: SchedulerWork) = this.work()
+    operator fun <R> invoke(work: Scheduler.() -> R) = this.work()
 }
 
 abstract class Buffer : AbstractFlow<Any?>()
@@ -1160,6 +1175,24 @@ private fun Message.close() {}
 private operator fun Message.get(tag: String): Any? = TODO()
 
 private operator fun Message.set(tag: String, value: Any?) {}
+
+fun LiveWork.attach(tag: String? = null) =
+    Sequencer.attach(this, tag)
+
+fun LiveWork.attachOnce(tag: String? = null) =
+    Sequencer.attachOnce(this, tag)
+
+fun LiveWork.attachAfter(tag: String? = null) =
+    Sequencer.attachAfter(this, tag)
+
+fun LiveWork.attachBefore(tag: String? = null) =
+    Sequencer.attachBefore(this, tag)
+
+fun LiveWork.attachOnceAfter(tag: String? = null) =
+    Sequencer.attachOnceAfter(this, tag)
+
+fun LiveWork.attachOnceBefore(tag: String? = null) =
+    Sequencer.attachOnceBefore(this, tag)
 
 inline fun <R> sequencer(block: Sequencer.() -> R) = sequencer?.block()
 
