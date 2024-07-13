@@ -32,7 +32,7 @@ val networkCapabilities
 private val connectivityManager
     get() = foregroundContext.getSystemService(ConnectivityManager::class.java)!!
 
-@Tag(NET_CAP_REGISTER)
+@Coordinate @Tag(NET_CAP_REGISTER)
 fun registerNetworkCallback() {
     networkCallback?.apply(connectivityManager::registerDefaultNetworkCallback) }
 
@@ -51,11 +51,11 @@ private var networkCallback: NetworkCallback? = null
 var reactToNetworkCapabilitiesChanged: (Network, NetworkCapabilities) -> Unit = { network, networkCapabilities ->
     commit @Tag(NET_CAP_UPDATE) { updateNetworkCapabilities(network, networkCapabilities) } }
 
-@Tag(INET_REGISTER)
+@Coordinate @Tag(INET_REGISTER)
 fun LifecycleOwner.registerInternetCallback() {
     relaunch(::networkCaller, IO, step = ::repeatNetworkCallFunction) }
 
-@Tag(INET_REGISTER)
+@Coordinate @Tag(INET_REGISTER)
 fun registerInternetCallback() {
     Scheduler.relaunch(::networkCaller, IO, step = ::repeatNetworkCallFunction) }
 
@@ -71,8 +71,8 @@ fun unregisterInternetCallback() {
     netCallDelayTime = -1L
     clearInternetCallbackObjects() }
 
-@Tag(INET)
 @JobTreeRoot @NetworkListener
+@Coordinate @Tag(INET)
 var networkCaller: Job? = null
     set(value) {
         // update addressable layer

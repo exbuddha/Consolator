@@ -75,7 +75,7 @@ fun commit(vararg context: Any?): Any? =
     when (val task = context.firstOrNull()) {
         (task === START) -> {
             Scheduler.observe()
-            clock = Clock(SVC, Thread.MAX_PRIORITY) @Tag(CLOCK_INIT) @Synchronous {
+            clock = Clock(SVC, Thread.MAX_PRIORITY) @Synchronous @Tag(CLOCK_INIT) {
                 // turn clock until scope is active
                 log(info, SVC_TAG, "Clock is detected.")
             }.alsoStart()
@@ -85,13 +85,14 @@ fun commit(vararg context: Any?): Any? =
         } }
         else -> Unit }
 
+@Coordinate
 object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), StepObserver, Synchronizer<Step>, AttachOperator<CoroutineStep> {
     sealed interface BaseServiceScope : ResolverScope, IBinder, ReferredContext, UniqueContext {
         operator fun invoke(intent: Intent?): IBinder {
             mode = getModeExtra(intent)
             if (intent !== null && intent.hasCategory(START_TIME_KEY) && clock?.isNotStarted == true)
                 clock?.start()
-            if (State[2] !is Resolved) commit @Tag(INIT) @Synchronous {
+            if (State[2] !is Resolved) commit @Synchronous @Tag(INIT) {
                 trySafelyForResult { getStartTimeExtra(intent) }?.apply(
                     ::startTime::set)
                 Sequencer {
@@ -347,6 +348,8 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             queue.clear() }
 
         companion object : RunnableGrid by mutableListOf() {
+            private var DEFAULT_HANDLE: HandlerFunction = { commit(it) }
+
             private fun Clock.register() {
                 queue = mutableListOf()
                 add(queue) }
@@ -368,7 +371,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
 
             fun getTime(step: CoroutineStep): Long? = null
 
-            private var DEFAULT_HANDLE: HandlerFunction = { commit(it) }
+            fun quit() = clock?.quit()
         }
     }
 
@@ -470,11 +473,12 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         var bypass = fun(step: Int) = capture(step)
         var finish = fun() = end()
 
-        private fun advance() {
+        private fun advance() { tryAvoiding {
             activate() // periodic pre-configuration can be done here
-            while (next(ln) ?: return /* or issue task resolution */)
-                work.let { run(it) ?: bypass(it) } || return
-            isCompleted = finish() }
+            while (next(ln) ?: return /* or issue task resolution */) {
+                yield()
+                work.let { run(it) ?: bypass(it) } || return }
+            isCompleted = finish() } }
 
         fun prepare() { if (ln < 0) ln = -1 }
 
@@ -490,23 +494,27 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             val (liveStep, _, async) = synchronize {
                 step = adjust(step)
                 seq[step] }
-            try {
+            tryPropagating({
                 val liveStep = liveStep() // process tags to reuse live step
+                yield()
                 latestStep = liveStep // live step <-> work
                 if (liveStep !== null)
-                    synchronize { getLifecycleOwner(adjust(step)) }?.let { owner ->
-                        liveStep.observe(owner, observer) } ?:
-                    liveStep.observeForever(observer)
+                    synchronize {
+                        getLifecycleOwner(adjust(step)) }?.let { owner ->
+                            liveStep.observe(owner, observer) }
+                    ?: liveStep.observeForever(observer)
                 else return null
-            } catch (ex: Throwable) {
+            }, { ex ->
                 error(ex)
-                return false }
+                return false
+            })
             isObserving = true
             return async }
 
         fun capture(step: Int): Boolean {
             val work = synchronize { seq[adjust(step)] }
             val capture = work.second
+            yield()
             latestCapture = capture
             val async = capture?.invoke(work)
             return if (async is Boolean) async
@@ -574,6 +582,8 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         var hasError = false
         var ex: Throwable? = null
 
+        private fun yield() { if (isCancelled) throw Propagate() }
+
         fun clearFlags() {
             isActive = false
             isObserving = false
@@ -606,6 +616,8 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             fun resume(tag: Tag) = invoke { resume(tag) }
             fun resume() = invoke { resume() }
             fun resumeAsync() = invoke { resumeAsync() }
+
+            fun destroy() = invoke { isCancelled = true }
 
             operator fun <R> invoke(work: Sequencer.() -> R) = sequencer?.work()
         }
@@ -938,10 +950,10 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
     fun ignore() = removeObserver(this)
 
     var clock: Clock? = null
-        get() = field.singleton().also { field = it }
+        get() = ::isActive.then { field.singleton() }.also { field = it }
 
     var sequencer: Sequencer? = null
-        get() = field.singleton().also { field = it }
+        get() = ::isActive.then { field.singleton() }.also { field = it }
 
     fun <T : Resolver> defer(resolver: KClass<out T>, provider: Any = resolver, vararg context: Any?): Unit? {
         fun ResolverKProperty.setResolverThenCommit() =
@@ -983,6 +995,15 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
     fun clearObjects() {
         clock = null
         sequencer = null }
+
+    fun destroy() {
+        (Scheduler as CoroutineScope).cancel()
+        ignore()
+        Clock.quit()
+        Sequencer.destroy()
+        clearObjects() }
+
+    private fun isActive() = (Scheduler as CoroutineScope).isActive
 
     override val coroutineContext
         get() = IO
@@ -1052,27 +1073,6 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
     operator fun <R> invoke(work: Scheduler.() -> R) = this.work()
 }
 
-abstract class Buffer : AbstractFlow<Any?>()
-
-private typealias TransitType = Short
-private typealias Transit = TransitType?
-
-fun Number?.toTransit() = this?.asType<TransitType>()
-
-val Any?.transit: Transit
-    get() = when (this) {
-        is Relay -> transit
-        is Number -> toTransit()
-        else -> asNullable().event?.transit }
-
-fun Step.relay(transit: Transit = this.transit) = Relay(transit)
-
-fun Step.reinvoke(transit: Transit = this.transit) = object : Relay(transit) {
-    override suspend fun invoke() = this@reinvoke() }
-
-open class Relay(val transit: Transit = null) : Step {
-    override suspend fun invoke() {} }
-
 inline fun <reified T : Resolver> LifecycleOwner.defer(member: UnitKFunction, vararg context: Any?) =
     defer(T::class, this, member, *context)
 
@@ -1089,6 +1089,19 @@ inline fun implicit(noinline `super`: Work): Work {
     `super`()
     return emptyWork }
 
+abstract class Buffer : AbstractFlow<Any?>()
+
+fun Step.relay(transit: Transit = this.transit) =
+    Relay(transit)
+
+fun Step.reinvoke(transit: Transit = this.transit) =
+    object : Relay(transit) {
+        override suspend fun invoke() = this@reinvoke() }
+
+open class Relay(val transit: Transit = null) : Step {
+    override suspend fun invoke() {}
+}
+
 interface Resolver : ResolverScope {
     override fun commit(step: CoroutineStep) =
         commit(blockOf(step))
@@ -1098,10 +1111,24 @@ interface Resolver : ResolverScope {
 }
 
 fun ResolverScope.commit(vararg tag: Tag) =
-    commit(*tag.mapToTypedArray { it.string })
+    commit(*tag.mapToStringArray())
 
 fun ResolverScope.commit(vararg path: Path) =
-    commit(*path.mapToTypedArray { it.name })
+    commit(*path.mapToStringArray())
+
+fun <T> ResolverScope.unit(ref: Coordinate) =
+    with(ref) { unit<T>(target, key) }
+
+private fun <T> ResolverScope.unit(target: AnyKClass = Any::class, key: KeyType): T = TODO()
+
+private fun liveStep(target: AnyKClass, key: KeyType) =
+    Scheduler.unit<SequencerStep>(target, key)
+
+private fun coroutineStep(target: AnyKClass, key: KeyType) =
+    Scheduler.unit<CoroutineStep>(target, key)
+
+private fun step(target: AnyKClass, key: KeyType) =
+    Scheduler.unit<Step>(target, key)
 
 fun schedule(step: Step) = Scheduler.postValue(step)
 fun scheduleAhead(step: Step) { Scheduler.value = step }
@@ -1169,6 +1196,9 @@ private fun Message.close() {}
 private operator fun Message.get(tag: String): Any? = TODO()
 
 private operator fun Message.set(tag: String, value: Any?) {}
+
+fun SequencerScope.commit(vararg tag: Tag) =
+    commit(*tag.mapToStringArray())
 
 fun LiveWork.attach(tag: String? = null) =
     Sequencer.attach(this, tag)
@@ -1644,16 +1674,16 @@ fun Any?.toJobId() = asJob().hashCode()
 suspend fun currentJob() = currentCoroutineContext().job
 fun currentThreadJob() = ::currentJob.block()
 
-val currentThread get() = Thread.currentThread()
-val mainThread = currentThread
-fun Thread.isMainThread() = this === mainThread
-fun onMainThread() = currentThread.isMainThread()
+private typealias TransitType = Short
+private typealias Transit = TransitType?
 
-lateinit var mainUncaughtExceptionHandler: ExceptionHandler
+val Any?.transit: Transit
+    get() = when (this) {
+        is Relay -> transit
+        is Number -> toTransit()
+        else -> asNullable().event?.transit }
 
-private fun newThread(group: ThreadGroup, name: String, priority: Int, target: Runnable) = Thread(group, target, name).also { it.priority = priority }
-private fun newThread(name: String, priority: Int, target: Runnable) = Thread(target, name).also { it.priority = priority }
-private fun newThread(priority: Int, target: Runnable) = Thread(target).also { it.priority = priority }
+fun Number?.toTransit() = this?.asType<TransitType>()
 
 @Retention(SOURCE)
 @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
@@ -1696,9 +1726,23 @@ annotation class Event(val transit: TransitType = 0) {
         val pathwise: SchedulerPath = [])
 }
 
+private typealias KeyType = Short
+
+fun Number?.toCoordinateTarget(): AnyKClass = Any::class
+
+fun Number?.toCoordinateKey() = this?.asType<KeyType>()
+
+@Retention(SOURCE)
+@Target(CLASS, CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+annotation class Coordinate(
+    val target: AnyKClass = Any::class,
+    val key: KeyType = 0)
+
 typealias ChannelType = Short
 
 fun Number?.toChannel() = this?.asType<ChannelType>()
+
+fun Array<out Tag>.mapToStringArray() = mapToTypedArray { it.string }
 
 @Retention(SOURCE)
 @Target(CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION, ANNOTATION_CLASS)
@@ -1707,8 +1751,10 @@ annotation class Tag(
     val keep: Boolean = true)
 
 @Retention(SOURCE)
-@Target(CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION, ANNOTATION_CLASS)
+@Target(CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
 annotation class Keep
+
+fun Array<out Path>.mapToStringArray() = mapToTypedArray { it.name }
 
 @Retention(SOURCE)
 @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
@@ -1774,11 +1820,11 @@ annotation class JobTreeRoot
 annotation class Scope(val type: KClass<out CoroutineScope> = Scheduler::class)
 
 @Retention(SOURCE)
-@Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION, ANNOTATION_CLASS)
+@Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
 annotation class LaunchScope
 
 @Retention(SOURCE)
-@Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION, ANNOTATION_CLASS)
+@Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
 private annotation class Synchronous(val node: SchedulerNode = Annotation::class)
 
 @Retention(SOURCE)
@@ -1909,6 +1955,15 @@ typealias Process = android.os.Process
 
 val emptyWork = {}
 val emptyStep = suspend {}
+
+val currentThread get() = Thread.currentThread()
+val mainThread = currentThread
+fun Thread.isMainThread() = this === mainThread
+fun onMainThread() = currentThread.isMainThread()
+
+private fun newThread(group: ThreadGroup, name: String, priority: Int, target: Runnable) = Thread(group, target, name).also { it.priority = priority }
+private fun newThread(name: String, priority: Int, target: Runnable) = Thread(target, name).also { it.priority = priority }
+private fun newThread(priority: Int, target: Runnable) = Thread(target).also { it.priority = priority }
 
 private typealias JobKFunction = KFunction<Job>
 private typealias JobKProperty = KMutableProperty<Job?>

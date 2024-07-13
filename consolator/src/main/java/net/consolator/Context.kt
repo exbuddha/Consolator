@@ -168,11 +168,40 @@ fun getDelayTime(interval: Long, last: Long) =
 fun isTimeIntervalExceeded(interval: Long, last: Long) =
     getDelayTime(interval, last) <= 0 || last == 0L
 
-inline fun <reified T : Throwable, R> tryCatching(block: () -> R, exit: (Throwable) -> Nothing) =
+inline fun <R> Boolean.then(block: () -> R) =
+    if (this) block() else null
+
+inline fun <R> Boolean.otherwise(block: () -> R) =
+    not().then(block)
+
+inline fun <R> Predicate.then(block: () -> R) =
+    this().then(block)
+
+inline fun <R> Predicate.otherwise(block: () -> R) =
+    this().not().then(block)
+
+inline fun <reified T : Throwable, R> tryCatching(block: () -> R, exit: (Throwable) -> Nothing = { throw it }) =
     try { block() }
     catch (ex: Throwable) { when (ex) {
         is T -> exit(ex)
         else -> throw ex } }
+
+inline fun <reified T : Throwable, R> tryMapping(block: () -> R, transform: (Throwable) -> R) =
+    try { block() }
+    catch (ex: Throwable) { when (ex) {
+        is T -> transform(ex)
+        else -> throw ex } }
+
+inline fun <reified T : Throwable, R> tryBypassing(block: () -> R) =
+    tryMapping<T, _>(block) { null }
+
+inline fun <R> tryAvoiding(block: () -> R) =
+    try { block() } catch (_: Propagate) {}
+
+inline fun <R> tryPropagating(block: () -> R, transform: (Throwable) -> R) =
+    try { block() }
+    catch (ex: Propagate) { throw ex }
+    catch (ex: Throwable) { transform(ex) }
 
 inline fun <R> trySafely(block: () -> R) =
     try { block() } catch (_: Throwable) {}
@@ -317,6 +346,8 @@ typealias ThrowableFunction = (Throwable?) -> Unit
 typealias Predicate = () -> Boolean
 typealias AnyPredicate = (Any?) -> Boolean
 typealias IntPredicate = (Int) -> Boolean
+
+lateinit var mainUncaughtExceptionHandler: ExceptionHandler
 
 open class BaseImplementationRestriction(
     override val message: String? = "Base implementation restricted",
