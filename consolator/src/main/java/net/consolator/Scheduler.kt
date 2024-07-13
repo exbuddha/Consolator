@@ -454,6 +454,9 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             fun getIndex(tag: String): Int = TODO()
             resume(getIndex(tag)) }
 
+        fun resume(tag: Tag) =
+            resume(tag.string)
+
         fun resume() {
             isActive = true
             advance() }
@@ -596,6 +599,12 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
 
         companion object {
             const val ATTACHED_ALREADY = -1
+
+            fun start() = sequencer?.start()
+            fun resume(tag: String) = sequencer?.resume(tag)
+            fun resume(tag: Tag) = sequencer?.resume(tag)
+            fun resume() = sequencer?.resume()
+            fun resumeAsync() = sequencer?.resumeAsync()
 
             operator fun invoke(work: SequencerWork) = sequencer?.work()
         }
@@ -801,7 +810,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             this === work || (first === work.first && second === work.second)
 
         private fun LiveWork.isNotSameWork(work: LiveWork) =
-            this !== work || first !== work.first || second !== work.second
+            this !== work && first !== work.first && second !== work.second
 
         private fun LiveWork.isSameCapture(block: CaptureFunction) =
             second === block
@@ -1079,9 +1088,11 @@ interface Resolver : ResolverScope {
         context.lastOrNull().asWork()?.invoke()
 }
 
-fun ResolverScope.commit(vararg tag: Tag): Any? = TODO()
+fun ResolverScope.commit(vararg tag: Tag) =
+    commit(*tag.mapToTypedArray { it.string })
 
-fun ResolverScope.commit(vararg path: Path): Any? = TODO()
+fun ResolverScope.commit(vararg path: Path) =
+    commit(*path.mapToTypedArray { it.name })
 
 fun schedule(step: Step) = Scheduler.postValue(step)
 fun scheduleAhead(step: Step) { Scheduler.value = step }
@@ -1166,6 +1177,9 @@ fun <T, R> mainCapture(step: suspend LiveDataScope<T>.() -> Unit, capture: (T) -
 
 fun <T, R> unconfinedCapture(step: suspend LiveDataScope<T>.() -> Unit, capture: (T) -> R) =
     capture(Unconfined, step, capture)
+
+fun <T, R> Pair<LiveData<T>, (T) -> R>.toLiveWork(async: Boolean = false) =
+    LiveWork(::first.asType<LiveStepPointer>()!!, ::second.getter.call().asType(), async)
 
 fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(owner: LifecycleOwner, observer: Observer<T> = disposerOf(this)): Observer<T> {
     first.observe(owner, observer)

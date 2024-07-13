@@ -202,6 +202,9 @@ fun <R> trySafelyInterrupting(step: suspend CoroutineScope.() -> R) =
 inline fun <R> tryInterruptingForResult(noinline step: suspend CoroutineScope.() -> R, exit: (Throwable) -> R? = { null }) =
     try { blockOf(step)() } catch (ex: InterruptedException) { throw InterruptedStepException(step, cause = ex) } catch (ex: Throwable) { exit(ex) }
 
+inline fun <T, reified R> Array<out T>.mapToTypedArray(transform: (T) -> R) =
+    map(transform).toTypedArray()
+
 fun <T> Array<out T>.secondOrNull(): T? =
     if (size > 1) get(1)
     else null
