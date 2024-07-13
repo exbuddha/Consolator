@@ -559,12 +559,6 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
                 register(tag, ex)
                 throw interruptByTag(tag, ex) }
 
-        suspend inline fun <reified T : Throwable, R> SequencerScope.tryCatching(block: () -> R, exit: (Throwable) -> Nothing) =
-            try { block() }
-            catch (ex: Throwable) { when (ex) {
-                is T -> exit(ex)
-                else -> throw ex } }
-
         // preserve tags
         private fun resettingFirstly(step: SequencerStep) = step after { reset() }
         private fun resettingLastly(step: SequencerStep) = step then { reset() }
@@ -1212,7 +1206,7 @@ fun <T, R> unconfinedCapture(step: suspend LiveDataScope<T>.() -> Unit, capture:
     capture(Unconfined, step, capture)
 
 fun <T, R> Pair<LiveData<T>, (T) -> R>.toLiveWork(async: Boolean = false) =
-    LiveWork(::first.asType<LiveStepPointer>()!!, ::second.getter.call().asType(), async)
+    LiveWork(::first.asType<LiveStepPointer>()!!, ::second.get().asType(), async)
 
 fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(owner: LifecycleOwner, observer: Observer<T> = disposerOf(this)): Observer<T> {
     first.observe(owner, observer)
@@ -1884,7 +1878,6 @@ private typealias JobFunctionSet = MutableSet<JobFunctionItem>
 private typealias JobFunctionItem = StringToAnyPair
 private typealias JobPredicate = (Job) -> Boolean
 private typealias StringToAnyPair = Pair<StringPointer, Any>
-private typealias SchedulerWork = Scheduler.() -> Unit
 
 typealias Sequencer = Scheduler.Sequencer
 private typealias SequencerScope = LiveDataScope<Step?>
@@ -1896,7 +1889,6 @@ private typealias CaptureFunction = AnyToAnyFunction
 private typealias LiveWork = Triple<LiveStepPointer, CaptureFunction?, Boolean>
 private typealias LiveSequence = MutableList<LiveWork>
 private typealias LiveWorkPredicate = (LiveWork) -> Boolean
-private typealias SequencerWork = Sequencer.() -> Unit
 
 typealias Clock = Scheduler.Clock
 private typealias MessageFunction = (Message) -> Any?

@@ -168,6 +168,12 @@ fun getDelayTime(interval: Long, last: Long) =
 fun isTimeIntervalExceeded(interval: Long, last: Long) =
     getDelayTime(interval, last) <= 0 || last == 0L
 
+inline fun <reified T : Throwable, R> tryCatching(block: () -> R, exit: (Throwable) -> Nothing) =
+    try { block() }
+    catch (ex: Throwable) { when (ex) {
+        is T -> exit(ex)
+        else -> throw ex } }
+
 inline fun <R> trySafely(block: () -> R) =
     try { block() } catch (_: Throwable) {}
 
