@@ -46,7 +46,7 @@ open class BaseApplication : Application(), ObjectProvider, UniqueContext {
         MemoryManager::class ->
             ::applicationMemoryManager.require(constructor = ::MemoryManager)
         else ->
-            throw BaseImplementationRestriction }
+            throw BaseImplementationRestriction() }
 
     companion object {
         const val ACTION_MIGRATE_APP: Short = 1

@@ -49,12 +49,12 @@ private inline fun <reified R> onNullInteraction(cls: AnyKClass): R = postbackPo
 private inline fun <reified R> postbackPositiveType() = when (R::class) {
     Boolean::class -> true as R
     else ->
-        throw BaseImplementationRestriction }
+        throw BaseImplementationRestriction() }
 
 private inline fun <reified R> postbackNegativeType() = when (R::class) {
     Boolean::class -> false as R
     else ->
-        throw BaseImplementationRestriction }
+        throw BaseImplementationRestriction() }
 
 private fun AnyKFunction.returnType() = returnType.jvmErasure
 

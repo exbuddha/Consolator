@@ -1796,10 +1796,9 @@ annotation class Path(
 
 open class SchedulerIntent : Throwable()
 
-object FromLastCancellation : SchedulerIntent() {
-    private fun readResolve(): Any = this }
+abstract class FromLastCancellation : SchedulerIntent()
 
-open class Propagate : Throwable()
+open class Propagate : SchedulerIntent()
 
 typealias LevelType = UByte
 
@@ -1995,10 +1994,9 @@ sealed interface State {
                 if (predicate()) Unresolved
                 else this
     } }
-    interface Unresolved : State {
-        companion object : Unresolved }
-    interface Ambiguous : State {
-        companion object : Ambiguous }
+
+    interface Unresolved : State { companion object : Unresolved }
+    interface Ambiguous : State { companion object : Ambiguous }
 
     companion object {
         operator fun invoke(): State = Lock.Open

@@ -47,5 +47,5 @@ open class MainActivity : BaseActivity(), ObjectProvider {
         MemoryManager::class ->
             ::applicationMemoryManager.require(constructor = ::MemoryManager)
         else ->
-            throw BaseImplementationRestriction }
+            throw BaseImplementationRestriction() }
 }
