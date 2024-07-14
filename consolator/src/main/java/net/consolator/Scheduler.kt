@@ -1283,13 +1283,13 @@ suspend fun SequencerScope.change(event: Transit) = reset {
 suspend fun SequencerScope.change(stage: ContextStep) = resetByTag(getTag(stage)) {
     EventBus.commit(stage) }
 
-suspend fun <R> SequencerScope.capture(capture: () -> R) = emit {
+suspend fun <R> SequencerScope.capture(block: () -> R) = emit {
     reset()
-    capture() }
+    block() }
 
-suspend fun <R> SequencerScope.captureByTag(tag: String, capture: () -> R) = emit {
+suspend fun <R> SequencerScope.captureByTag(tag: String, block: () -> R) = emit {
     resetByTag(tag)
-    capture() }
+    block() }
 
 private suspend inline fun <R> SequencerScope.reset(block: () -> R): R {
     reset()
@@ -1733,7 +1733,7 @@ fun Number?.toCoordinateTarget(): AnyKClass = Any::class
 fun Number?.toCoordinateKey() = this?.asType<KeyType>()
 
 @Retention(SOURCE)
-@Target(CLASS, CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+@Target(ANNOTATION_CLASS, CLASS, CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
 annotation class Coordinate(
     val target: AnyKClass = Any::class,
     val key: KeyType = 0)
@@ -1745,51 +1745,51 @@ fun Number?.toChannel() = this?.asType<ChannelType>()
 fun Array<out Tag>.mapToStringArray() = mapToTypedArray { it.string }
 
 @Retention(SOURCE)
-@Target(CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION, ANNOTATION_CLASS)
+@Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
 annotation class Tag(
     val string: String,
     val keep: Boolean = true)
 
 @Retention(SOURCE)
-@Target(CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+@Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
 annotation class Keep
 
 fun Array<out Path>.mapToStringArray() = mapToTypedArray { it.name }
 
 @Retention(SOURCE)
-@Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+@Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
 @Repeatable
 annotation class Path(
     val name: String = "",
     val route: SchedulerPath = []) {
 
     @Retention(SOURCE)
-    @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+    @Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
     @Repeatable
     annotation class Adjacent(val paths: StringArray = [])
 
     @Retention(SOURCE)
-    @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+    @Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
     @Repeatable
     annotation class Preceding(val paths: StringArray = [])
 
     @Retention(SOURCE)
-    @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+    @Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
     @Repeatable
     annotation class Proceeding(val paths: StringArray = [])
 
     @Retention(SOURCE)
-    @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+    @Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
     @Repeatable
     annotation class Parallel(val paths: StringArray = [])
 
     @Retention(SOURCE)
-    @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+    @Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
     @Repeatable
     annotation class Diverging(val paths: StringArray = [])
 
     @Retention(SOURCE)
-    @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+    @Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
     @Repeatable
     annotation class Converging(val paths: StringArray = [])
 }
@@ -1805,25 +1805,25 @@ typealias LevelType = UByte
 fun Number?.toLevel() = this?.toByte()?.toUByte()
 
 @Retention(SOURCE)
-@Target(CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+@Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
 annotation class JobTree(
     val branch: String = "",
     val level: LevelType = 0u)
 
 @Retention(SOURCE)
-@Target(CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+@Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
 annotation class JobTreeRoot
 
 @Retention(SOURCE)
-@Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+@Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
 annotation class Scope(val type: KClass<out CoroutineScope> = Scheduler::class)
 
 @Retention(SOURCE)
-@Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+@Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
 annotation class LaunchScope
 
 @Retention(SOURCE)
-@Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+@Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
 private annotation class Synchronous(val node: SchedulerNode = Annotation::class)
 
 @Retention(SOURCE)
