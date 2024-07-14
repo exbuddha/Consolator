@@ -1197,6 +1197,12 @@ private operator fun Message.get(tag: String): Any? = TODO()
 
 private operator fun Message.set(tag: String, value: Any?) {}
 
+val SequencerScope.isActive
+    get() = Sequencer { isCancelled } == false
+
+fun SequencerScope.cancel() {
+    Sequencer { isCancelled = true } }
+
 fun SequencerScope.commit(vararg tag: Tag) =
     commit(*tag.mapToStringArray())
 
