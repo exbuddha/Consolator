@@ -1026,7 +1026,8 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
     private fun detach(step: CoroutineStep) =
         with(Clock) { getRunnable(step) ?: getMessage(step) }?.detach()?.asCoroutine() ?: step
 
-    private fun launch(it: CoroutineStep) = launch(Scheduler, block = it)
+    private fun launch(it: CoroutineStep) = launch(Scheduler, block = it.markTagForSchLaunch() after { job, _ ->
+        markTagsForJobLaunch(null, null, it, job) })
 
     override fun <R> fold(initial: R, operation: (R, CoroutineContext.Element) -> R): R {
         // update continuation state
@@ -1130,19 +1131,15 @@ private fun coroutineStep(target: AnyKClass, key: KeyType) =
 private fun step(target: AnyKClass, key: KeyType) =
     Scheduler.unit<Step>(target, key)
 
-fun schedule(step: Step) = Scheduler.postValue(step)
-fun scheduleAhead(step: Step) { Scheduler.value = step }
+fun schedule(step: Step) = Scheduler.postValue(step.markTagForSchPost())
+fun scheduleAhead(step: Step) { Scheduler.value = step.markTagForSchPost() }
+
+fun reattach(step: CoroutineStep) = Scheduler.postValue(step.asStep())
+fun reattachAhead(step: CoroutineStep) { Scheduler.value = step.asStep() }
 
 // runnable <-> message
 fun post(callback: Runnable) = clock?.post?.invoke(callback)
 fun postAhead(callback: Runnable) = clock?.postAhead?.invoke(callback)
-
-private fun getTag(callback: Runnable): String? = TODO()
-private fun getTag(msg: Message): String? = TODO()
-private fun getTag(what: Int): String? = TODO()
-
-fun reattach(step: CoroutineStep) = Scheduler.postValue(step.asStep())
-fun reattachAhead(step: CoroutineStep) { Scheduler.value = step.asStep() }
 
 // step <-> runnable
 fun handle(step: CoroutineStep) = post(runnableOf(step))
@@ -1153,6 +1150,10 @@ fun handleInterrupting(step: CoroutineStep) = post(interruptingRunnableOf(step))
 fun handleAheadInterrupting(step: CoroutineStep) = postAhead(interruptingRunnableOf(step))
 fun handleSafelyInterrupting(step: CoroutineStep) = post(safeInterruptingRunnableOf(step))
 fun handleAheadSafelyInterrupting(step: CoroutineStep) = postAhead(safeInterruptingRunnableOf(step))
+
+private fun getTag(callback: Runnable): String? = TODO()
+private fun getTag(msg: Message): String? = TODO()
+private fun getTag(what: Int): String? = TODO()
 
 fun <T> blockOf(step: suspend CoroutineScope.() -> T): () -> T = { runBlocking(block = step) }
 fun <T> runnableOf(step: suspend CoroutineScope.() -> T) = Runnable { runBlocking(block = step) }
@@ -1165,7 +1166,7 @@ private fun Any.detach() = when (this) {
     is Message -> detach()?.asRunnable()
     else -> null }
 
-private fun CoroutineStep.asStep() = suspend { invoke(annotatedScopeOrScheduler()) }
+private fun CoroutineStep.asStep() = suspend { invoke(annotatedOrCurrentScope()) }
 
 private fun Runnable.asStep() = suspend { run() }
 
@@ -1196,6 +1197,8 @@ private fun Message.close() {}
 private operator fun Message.get(tag: String): Any? = TODO()
 
 private operator fun Message.set(tag: String, value: Any?) {}
+
+private fun Step.asLiveStep(): SequencerStep = { invoke() }
 
 val SequencerScope.isActive
     get() = Sequencer { isCancelled } == false
@@ -1343,13 +1346,16 @@ private fun relaunch(launcher: JobKFunction, instance: JobKProperty, context: Co
 fun launch(it: CoroutineStep) = launch(step = it)
 
 fun launch(context: CoroutineContext = Scheduler, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep) =
-    ProcessLifecycleOwner.get().launch(context, start, step)
+    ProcessLifecycleOwner.get().launch(context, start,
+        step.markTagForPloLaunch()
+            .afterMarkingTagsForJobLaunch(context, start))
 
 fun LifecycleOwner.launch(context: CoroutineContext = Scheduler, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep): Job {
     val (scope, task) = determineScopeAndCoroutine(context, start, step)
     val (context, start, step) = task
-    return scope.launch(context, start, step after { job, _ ->
-        markTagsForJobLaunch(context, start, step, job) }) }
+    return scope.launch(context, start,
+        step.markTagForFloLaunch()
+            .afterMarkingTagsForJobLaunch(context, start)) }
 
 private fun LifecycleOwner.determineScopeAndCoroutine(context: CoroutineContext, start: CoroutineStart, step: CoroutineStep) =
     determineScope(step).let { scope ->
@@ -1369,37 +1375,74 @@ private fun CoroutineScope.determineCoroutine(context: CoroutineContext, start: 
 private fun CoroutineContext.isSchedulerContext() =
     this is Scheduler || this[SchedulerKey] is SchedulerElement
 
-inline fun <reified T> T.annotatedOrCurrentScope(): CoroutineScope = TODO()
+private fun CoroutineStep.afterMarkingTagsForJobLaunch(context: CoroutineContext, start: CoroutineStart) =
+    after { job, _ -> markTagsForJobLaunch(context, start, this, job) }
 
-infix fun Job.then(next: SchedulerStep): CoroutineStep = {}
+private fun CoroutineStep.markedJob(): Job = TODO()
 
-infix fun Job.after(prev: SchedulerStep): CoroutineStep = {}
+private fun Job.markedCoroutineStep(): CoroutineStep = {}
 
-infix fun Job.given(predicate: JobPredicate): CoroutineStep = {}
+private fun CoroutineStep.isCurrentlyTrue(predicate: JobPredicate) =
+    predicate(markedJob())
 
-infix fun Job.unless(predicate: JobPredicate): CoroutineStep = {}
+private fun CoroutineStep.isCurrentlyFalse(predicate: JobPredicate) =
+    predicate(markedJob()).not()
 
-infix fun Job.otherwise(next: SchedulerStep): CoroutineStep = {}
+private inline fun CoroutineStep.isCurrentlyFalseReferring(crossinline target: SchedulerStep) =
+    currentConditionReferring(target).not()
 
-infix fun Job.onCancel(action: SchedulerStep): CoroutineStep = {}
+private fun CoroutineStep.currentCondition() = true
 
-infix fun Job.onError(action: SchedulerStep): CoroutineStep = {}
+private inline fun CoroutineStep.currentConditionReferring(crossinline target: SchedulerStep) = true
 
-infix fun Job.onTimeout(action: SchedulerStep): CoroutineStep = {}
+private fun CoroutineStep.annotatedOrCurrentScope(): CoroutineScope = TODO()
+
+private fun SchedulerStep.annotatedOrCurrentScope(): CoroutineScope = TODO()
+
+private inline fun CoroutineStep.annotatedOrCurrentScopeReferring(crossinline target: SchedulerStep): CoroutineScope = TODO()
+
+private inline fun SchedulerStep.annotatedOrCurrentScopeReferring(crossinline target: CoroutineStep): CoroutineScope = TODO()
+
+infix fun Job.then(next: SchedulerStep) =
+    markedCoroutineStep().then(next)
+
+infix fun Job.after(prev: SchedulerStep) =
+    markedCoroutineStep().after(prev)
+
+infix fun Job.given(predicate: JobPredicate) =
+    markedCoroutineStep().given(predicate)
+
+infix fun Job.unless(predicate: JobPredicate) =
+    markedCoroutineStep().unless(predicate)
+
+infix fun Job.otherwise(next: SchedulerStep) =
+    markedCoroutineStep().otherwise(next)
+
+infix fun Job.onCancel(action: SchedulerStep) =
+    markedCoroutineStep().onCancel(action)
+
+infix fun Job.onError(action: SchedulerStep) =
+    markedCoroutineStep().onError(action)
+
+infix fun Job.onTimeout(action: SchedulerStep) =
+    markedCoroutineStep().onTimeout(action)
 
 infix fun CoroutineStep.then(next: SchedulerStep): CoroutineStep = {
-    annotatedOrCurrentScope().this@then()
+    annotatedOrCurrentScopeReferring(next).this@then()
     next(next.annotatedOrCurrentScope(), currentJob(), null) }
 
 infix fun CoroutineStep.after(prev: SchedulerStep): CoroutineStep = {
-    prev(prev.annotatedOrCurrentScope(), currentJob(), null)
+    prev(prev.annotatedOrCurrentScopeReferring(this@after), currentJob(), null)
     annotatedOrCurrentScope().this@after() }
 
-infix fun CoroutineStep.given(predicate: JobPredicate): CoroutineStep = {}
+infix fun CoroutineStep.given(predicate: JobPredicate): CoroutineStep = {
+    if (isCurrentlyTrue(predicate)) this@given() }
 
-infix fun CoroutineStep.unless(predicate: JobPredicate): CoroutineStep = {}
+infix fun CoroutineStep.unless(predicate: JobPredicate): CoroutineStep = {
+    if (isCurrentlyFalse(predicate)) this@unless() }
 
-infix fun CoroutineStep.otherwise(next: SchedulerStep): CoroutineStep = {}
+infix fun CoroutineStep.otherwise(next: SchedulerStep): CoroutineStep = {
+    if (isCurrentlyFalseReferring(next)) this@otherwise() }
 
 infix fun CoroutineStep.onCancel(action: SchedulerStep): CoroutineStep = this
 
@@ -1518,8 +1561,15 @@ fun Any?.markSequentialTag(vararg tag: String?): String? = TODO()
 private fun <T> T.applyMarkTag(tag: String) = apply { markTag(tag) }
 
 private fun Step?.markTagForSchExec() = applyMarkTag(SCH_EXEC)
+private fun Step.markTagForSchPost() = applyMarkTag(SCH_POST)
+
+private fun CoroutineStep.markTagForFloLaunch() = applyMarkTag(FLO_LAUNCH)
+private fun CoroutineStep.markTagForPloLaunch() = applyMarkTag(PLO_LAUNCH)
 private fun CoroutineStep.markTagForSchCommit() = applyMarkTag(SCH_COMMIT)
+private fun CoroutineStep.markTagForSchLaunch() = applyMarkTag(SCH_LAUNCH)
 private fun CoroutineStep.markTagForSvcCommit() = applyMarkTag(SVC_COMMIT)
+
+private fun SequencerStep.setTagTo(step: Step) = this
 
 fun markTags(vararg function: Any?) {
     when (function.firstOrNull()) {
@@ -1568,8 +1618,9 @@ private fun markTagsForClkAttach(vararg function: Any?, i: Int = 0) =
                 jobs?.save("$stepTag.$INDEX", index.asCallable()) } /* index */ }
         is Message -> {
             jobs?.save("${getTag(step)}.$MSG", step.asCallable()) /* message */ }
-        else -> {
-            jobs?.save("${getTag(step.asInt() ?: return@let null)}.$WHAT", step.asCallable()) /* what */ } } }
+        is Int ->
+            jobs?.save("${getTag(step)}.$WHAT", step.asCallable() /* what */ )
+        else -> null } }
 
 private fun markTagsForSeqAttach(vararg function: Any?, i: Int = 0) =
     function[i]?.asString().let { stepTag ->
@@ -1609,7 +1660,12 @@ inline infix fun <R, S> (suspend () -> R).thru(crossinline next: suspend (R) -> 
 inline fun <R> (suspend () -> R).given(crossinline predicate: Predicate, crossinline fallback: suspend () -> R): suspend () -> R = {
     if (predicate()) this@given() else fallback() }
 
+inline fun <R> (suspend () -> R).unless(crossinline predicate: Predicate, crossinline fallback: suspend () -> R): suspend () -> R = {
+    if (predicate().not()) this@unless() else fallback() }
+
 inline infix fun Step.given(crossinline predicate: Predicate) = given(predicate, emptyStep)
+
+inline infix fun Step.unless(crossinline predicate: Predicate) = unless(predicate, emptyStep)
 
 inline infix fun <T, R, S> (suspend T.() -> R).then(crossinline next: suspend T.() -> S): suspend T.() -> S = {
     this@then()
@@ -1625,6 +1681,9 @@ inline infix fun <T, R, S> (suspend T.() -> R).thru(crossinline next: suspend (R
 inline fun <T, R> (suspend T.() -> R).given(crossinline predicate: Predicate, crossinline fallback: suspend T.() -> R): suspend T.() -> R = {
     if (predicate()) this@given() else fallback() }
 
+inline fun <T, R> (suspend T.() -> R).unless(crossinline predicate: Predicate, crossinline fallback: suspend T.() -> R): suspend T.() -> R = {
+    if (predicate().not()) this@unless() else fallback() }
+
 inline infix fun <T, U, R, S> (suspend T.(U) -> R).then(crossinline next: suspend T.(U) -> S): suspend T.(U) -> S = {
     this@then(it)
     next(it) }
@@ -1638,6 +1697,9 @@ inline infix fun <T, U, R, S> (suspend T.(U) -> R).thru(crossinline next: suspen
 
 inline fun <T, U, R> (suspend T.(U) -> R).given(crossinline predicate: Predicate, crossinline fallback: suspend T.(U) -> R): suspend T.(U) -> R = {
     if (predicate()) this@given(it) else fallback(it) }
+
+inline fun <T, U, R> (suspend T.(U) -> R).unless(crossinline predicate: Predicate, crossinline fallback: suspend T.(U) -> R): suspend T.(U) -> R = {
+    if (predicate().not()) this@unless(it) else fallback(it) }
 
 inline infix fun <R, S> (() -> R).then(crossinline next: () -> S): () -> S = {
     this@then()
@@ -1653,7 +1715,12 @@ inline infix fun <R, S> (() -> R).thru(crossinline next: (R) -> S): () -> S = {
 inline fun <R> (() -> R).given(crossinline predicate: Predicate, crossinline fallback: () -> R): () -> R = {
     if (predicate()) this@given() else fallback() }
 
+inline fun <R> (() -> R).unless(crossinline predicate: Predicate, crossinline fallback: () -> R): () -> R = {
+    if (predicate().not()) this@unless() else fallback() }
+
 inline infix fun AnyFunction.given(crossinline predicate: Predicate) = given(predicate, emptyWork)
+
+inline infix fun AnyFunction.unless(crossinline predicate: Predicate) = unless(predicate, emptyWork)
 
 inline infix fun <T, R, S> ((T) -> R).thru(crossinline next: (R) -> S): (T) -> S = {
     next(this@thru(it)) }

@@ -180,25 +180,37 @@ inline fun <R> Predicate.then(block: () -> R) =
 inline fun <R> Predicate.otherwise(block: () -> R) =
     this().not().then(block)
 
-inline fun <reified T : Throwable, R> tryCatching(block: () -> R, exit: (Throwable) -> Nothing = { throw it }) =
+inline fun <reified T : Throwable, R> tryCatching(block: () -> R, predicate: ThrowablePredicate = { it is T }, exit: ThrowableNothing = { throw it }) =
     try { block() }
-    catch (ex: Throwable) { when (ex) {
-        is T -> exit(ex)
-        else -> throw ex } }
+    catch (ex: Throwable) {
+        if (predicate(ex)) exit(ex)
+        else throw ex }
 
-inline fun <reified T : Throwable, R> tryMapping(block: () -> R, transform: (Throwable) -> R) =
+inline fun <reified T : Throwable, reified U : Throwable, R> tryMapping(block: () -> R) =
+    tryCatching<T, _>(block) { with(it) { throw U::class.new(message, cause) } }
+
+inline fun <reified T : Throwable, reified U : Throwable, R> tryFlatMapping(block: () -> R) =
+    tryCatching<T, _>(block) { throw it.cause?.run { U::class.new(message, cause) } ?: U::class.new() }
+
+inline fun <reified T : Throwable, reified U : Throwable, R> tryOuterMapping(block: () -> R) =
+    tryCatching<T, _>(block, { it !is T }) { with(it) { throw U::class.new(message, cause) } }
+
+inline fun <reified T : Throwable, reified U : Throwable, R> tryOuterFlatMapping(block: () -> R) =
+    tryCatching<T, _>(block, { it !is T }) { throw it.cause?.run { U::class.new(message, cause) } ?: U::class.new() }
+
+inline fun <reified T : Throwable, R, S : R> tryMapping(block: () -> R, predicate: ThrowablePredicate = { it is T }, transform: (Throwable) -> S) =
     try { block() }
-    catch (ex: Throwable) { when (ex) {
-        is T -> transform(ex)
-        else -> throw ex } }
+    catch (ex: Throwable) {
+        if (predicate(ex)) transform(ex)
+        else throw ex }
 
 inline fun <reified T : Throwable, R> tryBypassing(block: () -> R) =
-    tryMapping<T, _>(block) { null }
+    tryMapping<T, _, _>(block) { null }
 
 inline fun <R> tryAvoiding(block: () -> R) =
     try { block() } catch (_: Propagate) {}
 
-inline fun <R> tryPropagating(block: () -> R, transform: (Throwable) -> R) =
+inline fun <R, S : R> tryPropagating(block: () -> R, transform: (Throwable) -> S) =
     try { block() }
     catch (ex: Propagate) { throw ex }
     catch (ex: Throwable) { transform(ex) }
@@ -346,6 +358,8 @@ typealias ThrowableFunction = (Throwable?) -> Unit
 typealias Predicate = () -> Boolean
 typealias AnyPredicate = (Any?) -> Boolean
 typealias IntPredicate = (Int) -> Boolean
+typealias ThrowablePredicate = (Throwable) -> Boolean
+typealias ThrowableNothing = (Throwable) -> Nothing
 
 lateinit var mainUncaughtExceptionHandler: ExceptionHandler
 
@@ -405,6 +419,7 @@ const val REPEAT = "repeat"
 const val DELAY = "delay"
 const val YIELD = "yield"
 const val CALL = "call"
+const val POST = "post"
 const val CALLBACK = "callback"
 const val MSG = "msg"
 const val WHAT = "what"
@@ -437,6 +452,8 @@ const val SERVICE = "service"
 const val SVC = "svc"
 const val CLOCK = "clock"
 const val CLK = "clk"
+const val FLO = "flo"
+const val PLO = "plo"
 const val SCH = "sch"
 const val SEQ = "seq"
 const val LOG = "log"
@@ -454,8 +471,12 @@ const val VIEW_ATTACH = "$VIEW.$ATTACH"
 const val CTX_REFORM = "$CTX.$REFORM"
 const val JOB_LAUNCH = "$JOB.$LAUNCH"
 const val JOB_REPEAT = "$JOB.$REPEAT"
+const val FLO_LAUNCH = "$FLO.$LAUNCH"
+const val PLO_LAUNCH = "$PLO.$LAUNCH"
 const val SCH_COMMIT = "$SCH.$COMMIT"
+const val SCH_LAUNCH = "$SCH.$LAUNCH"
 const val SCH_EXEC = "$SCH.$EXEC"
+const val SCH_POST = "$SCH.$POST"
 const val SEQ_ATTACH = "$SEQ.$ATTACH"
 const val SEQ_LAUNCH = "$SEQ.$LAUNCH"
 const val SVC_COMMIT = "$SVC.$COMMIT"
