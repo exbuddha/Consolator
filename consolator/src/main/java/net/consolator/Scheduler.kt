@@ -363,6 +363,10 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
 
             fun getCoroutine(callback: Runnable): CoroutineStep? = null
 
+            fun getMessage(step: Step): Message? = null
+
+            fun getRunnable(step: Step): Runnable? = null
+
             fun getStep(callback: Runnable): Step? = null
 
             fun getEstimatedDelay(step: CoroutineStep): Long? = null
@@ -370,6 +374,12 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             fun getDelay(step: CoroutineStep): Long? = null
 
             fun getTime(step: CoroutineStep): Long? = null
+
+            fun getEstimatedDelay(step: Step): Long? = null
+
+            fun getDelay(step: Step): Long? = null
+
+            fun getTime(step: Step): Long? = null
 
             fun quit() = clock?.quit()
         }
@@ -1151,15 +1161,27 @@ fun handleAheadInterrupting(step: CoroutineStep) = postAhead(interruptingRunnabl
 fun handleSafelyInterrupting(step: CoroutineStep) = post(safeInterruptingRunnableOf(step))
 fun handleAheadSafelyInterrupting(step: CoroutineStep) = postAhead(safeInterruptingRunnableOf(step))
 
-private fun getTag(callback: Runnable): String? = TODO()
-private fun getTag(msg: Message): String? = TODO()
-private fun getTag(what: Int): String? = TODO()
+// step <-> runnable
+fun reinvoke(step: Step) = post(runnableOf(step))
+fun reinvokeAhead(step: Step) = postAhead(runnableOf(step))
+fun reinvokeSafely(step: Step) = post(safeRunnableOf(step))
+fun reinvokeAheadSafely(step: Step) = postAhead(safeRunnableOf(step))
+fun reinvokeInterrupting(step: Step) = post(interruptingRunnableOf(step))
+fun reinvokeAheadInterrupting(step: Step) = postAhead(interruptingRunnableOf(step))
+fun reinvokeSafelyInterrupting(step: Step) = post(safeInterruptingRunnableOf(step))
+fun reinvokeAheadSafelyInterrupting(step: Step) = postAhead(safeInterruptingRunnableOf(step))
 
 fun <T> blockOf(step: suspend CoroutineScope.() -> T): () -> T = { runBlocking(block = step) }
 fun <T> runnableOf(step: suspend CoroutineScope.() -> T) = Runnable { runBlocking(block = step) }
 fun <T> safeRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { trySafely(blockOf(step)) }
 fun <T> interruptingRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { tryInterrupting(step) }
 fun <T> safeInterruptingRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { trySafelyInterrupting(step) }
+
+fun <T> blockOf(step: suspend () -> T): () -> T = step::block
+fun <T> runnableOf(step: suspend () -> T) = Runnable { step.block() }
+fun <T> safeRunnableOf(step: suspend () -> T) = Runnable { trySafely(blockOf(step)) }
+fun <T> interruptingRunnableOf(step: suspend () -> T) = Runnable { tryInterrupting(blockOf(step)) }
+fun <T> safeInterruptingRunnableOf(step: suspend () -> T) = Runnable { trySafelyInterrupting(blockOf(step)) }
 
 private fun Any.detach() = when (this) {
     is Runnable -> detach()
@@ -1171,7 +1193,9 @@ private fun CoroutineStep.asStep() = suspend { invoke(annotatedOrCurrentScope())
 private fun Runnable.asStep() = suspend { run() }
 
 private fun Runnable.asCoroutine(): CoroutineStep =
-    Clock.getCoroutine(this) ?: { run() }
+    Clock.getCoroutine(this) ?: toCoroutine()
+
+private fun Runnable.toCoroutine(): CoroutineStep = { run() }
 
 private fun Runnable.asMessage() =
     with(Clock) { getCoroutine(this@asMessage)?.run(::getMessage) }
@@ -1199,6 +1223,9 @@ private operator fun Message.get(tag: String): Any? = TODO()
 private operator fun Message.set(tag: String, value: Any?) {}
 
 private fun Step.asLiveStep(): SequencerStep = { invoke() }
+
+// step <-> step
+fun liveStep(step: CoroutineStep): SequencerStep = { step(step.annotatedOrCurrentScope()) }
 
 val SequencerScope.isActive
     get() = Sequencer { isCancelled } == false
@@ -1570,6 +1597,10 @@ private fun CoroutineStep.markTagForSchLaunch() = applyMarkTag(SCH_LAUNCH)
 private fun CoroutineStep.markTagForSvcCommit() = applyMarkTag(SVC_COMMIT)
 
 private fun SequencerStep.setTagTo(step: Step) = this
+
+private fun getTag(callback: Runnable): String? = TODO()
+private fun getTag(msg: Message): String? = TODO()
+private fun getTag(what: Int): String? = TODO()
 
 fun markTags(vararg function: Any?) {
     when (function.firstOrNull()) {
