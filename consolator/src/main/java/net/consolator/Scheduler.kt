@@ -1388,14 +1388,12 @@ infix fun Job.onError(action: SchedulerStep): CoroutineStep = {}
 infix fun Job.onTimeout(action: SchedulerStep): CoroutineStep = {}
 
 infix fun CoroutineStep.then(next: SchedulerStep): CoroutineStep = {
-    with(annotatedOrCurrentScope()) {
-        this@then() }
+    annotatedOrCurrentScope().this@then()
     next(next.annotatedOrCurrentScope(), currentJob(), null) }
 
 infix fun CoroutineStep.after(prev: SchedulerStep): CoroutineStep = {
     prev(prev.annotatedOrCurrentScope(), currentJob(), null)
-    with(annotatedOrCurrentScope()) {
-        this@after() } }
+    annotatedOrCurrentScope().this@after() }
 
 infix fun CoroutineStep.given(predicate: JobPredicate): CoroutineStep = {}
 
