@@ -1369,6 +1369,8 @@ private fun CoroutineScope.determineCoroutine(context: CoroutineContext, start: 
 private fun CoroutineContext.isSchedulerContext() =
     this is Scheduler || this[SchedulerKey] is SchedulerElement
 
+inline fun <reified T> T.annotatedOrCurrentScope(): CoroutineScope = TODO()
+
 infix fun Job.then(next: SchedulerStep): CoroutineStep = {}
 
 infix fun Job.after(prev: SchedulerStep): CoroutineStep = {}
@@ -1385,9 +1387,15 @@ infix fun Job.onError(action: SchedulerStep): CoroutineStep = {}
 
 infix fun Job.onTimeout(action: SchedulerStep): CoroutineStep = {}
 
-infix fun CoroutineStep.then(next: SchedulerStep): CoroutineStep = {}
+infix fun CoroutineStep.then(next: SchedulerStep): CoroutineStep = {
+    with(annotatedOrCurrentScope()) {
+        this@then() }
+    next(next.annotatedOrCurrentScope(), currentJob(), null) }
 
-infix fun CoroutineStep.after(prev: SchedulerStep): CoroutineStep = {}
+infix fun CoroutineStep.after(prev: SchedulerStep): CoroutineStep = {
+    prev(prev.annotatedOrCurrentScope(), currentJob(), null)
+    with(annotatedOrCurrentScope()) {
+        this@after() } }
 
 infix fun CoroutineStep.given(predicate: JobPredicate): CoroutineStep = {}
 
@@ -1395,27 +1403,27 @@ infix fun CoroutineStep.unless(predicate: JobPredicate): CoroutineStep = {}
 
 infix fun CoroutineStep.otherwise(next: SchedulerStep): CoroutineStep = {}
 
-infix fun CoroutineStep.onCancel(action: SchedulerStep): CoroutineStep = {}
+infix fun CoroutineStep.onCancel(action: SchedulerStep): CoroutineStep = this
 
-infix fun CoroutineStep.onError(action: SchedulerStep): CoroutineStep = {}
+infix fun CoroutineStep.onError(action: SchedulerStep): CoroutineStep = this
 
-infix fun CoroutineStep.onTimeout(action: SchedulerStep): CoroutineStep = {}
+infix fun CoroutineStep.onTimeout(action: SchedulerStep): CoroutineStep = this
 
-fun SchedulerScope.enact(job: Job, exit: ThrowableFunction? = null) {}
+fun CoroutineScope.enact(job: Job, exit: ThrowableFunction? = null) {}
 
-fun SchedulerScope.error(job: Job, exit: ThrowableFunction? = null) {}
+fun CoroutineScope.error(job: Job, exit: ThrowableFunction? = null) {}
 
-fun SchedulerScope.retry(job: Job, exit: ThrowableFunction? = null) {}
+fun CoroutineScope.retry(job: Job, exit: ThrowableFunction? = null) {}
 
-fun SchedulerScope.close(job: Job, exit: ThrowableFunction? = null) {}
+fun CoroutineScope.close(job: Job, exit: ThrowableFunction? = null) {}
 
-fun SchedulerScope.keepAlive(job: Job) = keepAliveNode(job.node)
+fun CoroutineScope.keepAlive(job: Job) = keepAliveNode(job.node)
 
-fun SchedulerScope.keepAliveOrClose(job: Job) = keepAliveOrCloseNode(job.node)
+fun CoroutineScope.keepAliveOrClose(job: Job) = keepAliveOrCloseNode(job.node)
 
-fun SchedulerScope.keepAliveNode(node: SchedulerNode): Boolean = false
+fun CoroutineScope.keepAliveNode(node: SchedulerNode): Boolean = false
 
-fun SchedulerScope.keepAliveOrCloseNode(node: SchedulerNode) =
+fun CoroutineScope.keepAliveOrCloseNode(node: SchedulerNode) =
     keepAliveNode(node) || node.close()
 
 fun SchedulerNode.close(): Boolean = true
@@ -1439,22 +1447,22 @@ fun LifecycleOwner.reattach(node: SchedulerNode) {}
 
 fun LifecycleOwner.close(node: SchedulerNode) {}
 
-fun SchedulerScope.change(event: Transit) =
+fun CoroutineScope.change(event: Transit) =
     EventBus.commit(event)
 
-fun SchedulerScope.change(stage: ContextStep) =
+fun CoroutineScope.change(stage: ContextStep) =
     EventBus.commit(stage)
 
-fun <R> SchedulerScope.change(member: KFunction<R>, stage: ContextStep) =
+fun <R> CoroutineScope.change(member: KFunction<R>, stage: ContextStep) =
     EventBus.commit(stage)
 
-fun <R> SchedulerScope.change(owner: LifecycleOwner, member: KFunction<R>, stage: ContextStep) =
+fun <R> CoroutineScope.change(owner: LifecycleOwner, member: KFunction<R>, stage: ContextStep) =
     EventBus.commit(stage)
 
-fun <R> SchedulerScope.change(ref: WeakContext, member: KFunction<R>, stage: ContextStep) =
+fun <R> CoroutineScope.change(ref: WeakContext, member: KFunction<R>, stage: ContextStep) =
     EventBus.commit(stage)
 
-fun <R> SchedulerScope.change(ref: WeakContext, owner: LifecycleOwner, member: KFunction<R>, stage: ContextStep) =
+fun <R> CoroutineScope.change(ref: WeakContext, owner: LifecycleOwner, member: KFunction<R>, stage: ContextStep) =
     EventBus.commit(stage)
 
 suspend fun CoroutineScope.repeatSuspended(scope: CoroutineScope = this, predicate: PredicateFunction = @Tag(IS_ACTIVE) { isActive }, delayTime: DelayFunction = @Tag(YIELD) { 0L }, block: JobFunction) {
@@ -1855,10 +1863,10 @@ private val AnyKCallable.schedulerScope
 private val AnyKCallable.launchScope
     get() = annotations.find { it is LaunchScope } as? LaunchScope
 
-private val CoroutineStep.annotatedScope
+private val Any.annotatedScope
     get() = trySafelyForResult { asCallable().schedulerScope!!.type.reconstruct(this) }
 
-private fun CoroutineStep.annotatedScopeOrScheduler() = annotatedScope ?: Scheduler
+private fun Any.annotatedScopeOrScheduler() = annotatedScope ?: Scheduler
 
 private typealias PropertyCondition = suspend (AnyKProperty, String, AnyStep) -> Any?
 private typealias PropertyPredicate = suspend (AnyKProperty) -> Boolean
@@ -1923,7 +1931,7 @@ fun Any?.asWork() = asType<Work>()
 
 private typealias SchedulerNode = KClass<out Annotation>
 private typealias SchedulerPath = Array<KClass<out Throwable>>
-private typealias SchedulerStep = suspend SchedulerScope.(Job, Any?) -> Unit
+private typealias SchedulerStep = suspend CoroutineScope.(Job, Any?) -> Unit
 typealias JobFunction = suspend (Any?) -> Unit
 private typealias JobFunctionSet = MutableSet<JobFunctionItem>
 private typealias JobFunctionItem = StringToAnyPair
