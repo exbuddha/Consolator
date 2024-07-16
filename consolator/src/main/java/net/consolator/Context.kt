@@ -343,12 +343,14 @@ fun Any?.asInt() = asType<Int>()
 fun Any?.asLong() = asType<Long>()
 fun Any?.asAnyArray() = asType<AnyArray>()
 
+typealias ObjectPointer = () -> Any
 typealias ObjectProvider = (AnyKClass) -> Any
 
 typealias AnyArray = Array<*>
 typealias StringArray = Array<String>
 typealias AnyFunction = () -> Any?
 typealias AnyToAnyFunction = (Any?) -> Any?
+typealias StateToAnyFunction = (State?) -> Any?
 typealias IntMutableList = MutableList<Int>
 typealias IntFunction = () -> Int
 typealias LongFunction = () -> Long
@@ -357,7 +359,9 @@ typealias StringPointer = () -> String?
 typealias ThrowableFunction = (Throwable?) -> Unit
 typealias Predicate = () -> Boolean
 typealias AnyPredicate = (Any?) -> Boolean
+typealias ObjectPredicate = (Any) -> Boolean
 typealias IntPredicate = (Int) -> Boolean
+typealias StatePredicate = (Any, Any?) -> Boolean
 typealias ThrowablePredicate = (Throwable) -> Boolean
 typealias ThrowableNothing = (Throwable) -> Nothing
 

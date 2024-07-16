@@ -1559,8 +1559,9 @@ operator fun Job.set(tag: String, value: Any?) {
     // addressable layer work
     value.markTag(tag) }
 
-private fun JobFunctionSet.save(tag: String, function: AnyKCallable) = function.tag.apply {
-    save(combineTags(tag, this?.string), this?.keep ?: true, function) }
+private fun JobFunctionSet.save(tag: String, function: AnyKCallable) =
+    function.tag.apply {
+        save(combineTags(tag, this?.string), this?.keep ?: true, function) }
 
 private fun JobFunctionSet.save(tag: String, unit: String, function: AnyKCallable) {}
 
@@ -1756,17 +1757,18 @@ inline infix fun AnyFunction.unless(crossinline predicate: Predicate) = unless(p
 inline infix fun <T, R, S> ((T) -> R).thru(crossinline next: (R) -> S): (T) -> S = {
     next(this@thru(it)) }
 
-fun <R> (suspend () -> R).block() = runBlocking { invoke() }
-fun <T, R> (suspend T.() -> R).block(scope: T) = runBlocking { invoke(scope) }
-fun <T, U, R> (suspend T.(U) -> R).block(scope: T, value: U) = runBlocking { invoke(scope, value) }
-fun <T, U, R> (suspend T.(U) -> R).block(scope: () -> T, value: U) = runBlocking { invoke(scope(), value) }
-fun <T, U, R> (suspend T.(U) -> R).block(scope: KCallable<T>, value: U) = runBlocking { invoke(scope.call(), value) }
-
 fun <R> KCallable<R>.with(vararg args: Any?): () -> R = {
     this@with.call(*args) }
 
 fun <R> call(vararg args: Any?): (KCallable<R>) -> R = {
     it.call(*args) }
+
+inline fun <L : Any, R, S : R> transact(noinline lock: () -> L, predicate: (() -> L, L?) -> Boolean, block: (L) -> R, fallback: () -> S? = { null }): R? {
+    if (predicate(lock, null))
+        lock().let { key ->
+            synchronized(key) {
+                if (predicate(lock, key)) return block(key) } }
+    return fallback() }
 
 inline fun <R> commitAsync(lock: Any, predicate: Predicate, block: () -> R) {
     if (predicate())
@@ -1783,6 +1785,12 @@ fun Any?.toJobId() = asJob().hashCode()
 
 suspend fun currentJob() = currentCoroutineContext().job
 fun currentThreadJob() = ::currentJob.block()
+
+fun <R> (suspend () -> R).block() = runBlocking { invoke() }
+fun <T, R> (suspend T.() -> R).block(scope: T) = runBlocking { invoke(scope) }
+fun <T, U, R> (suspend T.(U) -> R).block(scope: T, value: U) = runBlocking { invoke(scope, value) }
+fun <T, U, R> (suspend T.(U) -> R).block(scope: () -> T, value: U) = runBlocking { invoke(scope(), value) }
+fun <T, U, R> (suspend T.(U) -> R).block(scope: KCallable<T>, value: U) = runBlocking { invoke(scope.call(), value) }
 
 private typealias TransitType = Short
 private typealias Transit = TransitType?
@@ -2108,7 +2116,9 @@ sealed interface State {
     interface Unresolved : State { companion object : Unresolved }
     interface Ambiguous : State { companion object : Ambiguous }
 
-    companion object {
+    companion object : Transactor<StateToAnyFunction, State?> {
+        override fun commit(step: StateToAnyFunction): State? = TODO()
+
         operator fun invoke(): State = Lock.Open
 
         fun of(vararg args: Any?): State = Ambiguous
