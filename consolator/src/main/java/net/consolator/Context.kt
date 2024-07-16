@@ -360,7 +360,6 @@ typealias Predicate = () -> Boolean
 typealias AnyPredicate = (Any?) -> Boolean
 typealias ObjectPredicate = (Any) -> Boolean
 typealias IntPredicate = (Int) -> Boolean
-typealias StatePredicate = (Any, Any?) -> Boolean
 typealias ThrowablePredicate = (Throwable) -> Boolean
 typealias ThrowableNothing = (Throwable) -> Nothing
 

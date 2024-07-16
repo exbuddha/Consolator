@@ -1770,6 +1770,13 @@ inline fun <L : Any, R, S : R> transact(noinline lock: () -> L, predicate: (L?) 
                 if (predicate(key)) return block(key) } }
     return fallback() }
 
+inline fun <R, S : R> transact(state: State, predicate: StatePredicate, block: (Any) -> R, fallback: () -> S? = { null }): R? {
+    if (predicate(state, null))
+        state().let { lock ->
+            synchronized(lock) {
+                if (predicate(state, lock)) return block(lock) } }
+    return fallback() }
+
 inline fun <R> commitAsync(lock: Any, predicate: Predicate, block: () -> R) {
     if (predicate())
         synchronized(lock) {
@@ -2060,7 +2067,8 @@ private typealias RunnableList = MutableList<Runnable>
 private typealias RunnableGrid = MutableList<RunnableList>
 private typealias CoroutineFunction = (CoroutineStep) -> Any?
 
-typealias StateToAnyFunction = (State?) -> Any?
+private typealias StateToAnyFunction = (State?) -> Any?
+private typealias StatePredicate = (Any, Any?) -> Boolean
 
 typealias Work = () -> Unit
 typealias Step = suspend () -> Unit
