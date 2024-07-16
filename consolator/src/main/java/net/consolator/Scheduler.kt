@@ -1763,11 +1763,11 @@ fun <R> KCallable<R>.with(vararg args: Any?): () -> R = {
 fun <R> call(vararg args: Any?): (KCallable<R>) -> R = {
     it.call(*args) }
 
-inline fun <L : Any, R, S : R> transact(noinline lock: () -> L, predicate: (() -> L, L?) -> Boolean, block: (L) -> R, fallback: () -> S? = { null }): R? {
-    if (predicate(lock, null))
+inline fun <L : Any, R, S : R> transact(noinline lock: () -> L, predicate: (L?) -> Boolean = { true }, block: (L) -> R, fallback: () -> S? = { null }): R? {
+    if (predicate(null))
         lock().let { key ->
             synchronized(key) {
-                if (predicate(lock, key)) return block(key) } }
+                if (predicate(key)) return block(key) } }
     return fallback() }
 
 inline fun <R> commitAsync(lock: Any, predicate: Predicate, block: () -> R) {
@@ -2060,6 +2060,8 @@ private typealias RunnableList = MutableList<Runnable>
 private typealias RunnableGrid = MutableList<RunnableList>
 private typealias CoroutineFunction = (CoroutineStep) -> Any?
 
+typealias StateToAnyFunction = (State?) -> Any?
+
 typealias Work = () -> Unit
 typealias Step = suspend () -> Unit
 typealias AnyStep = suspend () -> Any?
@@ -2117,7 +2119,7 @@ sealed interface State {
     interface Ambiguous : State { companion object : Ambiguous }
 
     companion object : Transactor<StateToAnyFunction, State?> {
-        override fun commit(step: StateToAnyFunction): State? = TODO()
+        override fun commit(step: StateToAnyFunction): State? = null
 
         operator fun invoke(): State = Lock.Open
 

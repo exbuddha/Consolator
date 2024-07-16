@@ -350,7 +350,6 @@ typealias AnyArray = Array<*>
 typealias StringArray = Array<String>
 typealias AnyFunction = () -> Any?
 typealias AnyToAnyFunction = (Any?) -> Any?
-typealias StateToAnyFunction = (State?) -> Any?
 typealias IntMutableList = MutableList<Int>
 typealias IntFunction = () -> Int
 typealias LongFunction = () -> Long
