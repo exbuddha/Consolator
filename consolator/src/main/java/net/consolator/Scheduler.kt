@@ -275,7 +275,9 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             else result } }
 
     private fun reattach(step: CoroutineStep, handler: CoroutineFunction = Scheduler::launch) =
-        trySafelyForResult { detach(step) }?.run(handler)
+        if (step.isEnlisted)
+            trySafelyForResult { detach(step) }?.run(handler)
+        else handler(step)
 
     private fun detach(step: CoroutineStep) =
         with(Clock) {
@@ -2069,6 +2071,12 @@ private val Any.annotatedScope
     get() = trySafelyForResult { asCallable().schedulerScope!!.type.reconstruct(this) }
 
 private fun Any.annotatedScopeOrScheduler() = annotatedScope ?: Scheduler
+
+private val Any.isEnlisted
+    get() = asCallable().annotations.find { it is Enlisted } !== null
+
+private val Any.isUnlisted
+    get() = asCallable().annotations.find { it is Unlisted } !== null
 
 private typealias PropertyCondition = suspend (AnyKProperty, String, AnyStep) -> Any?
 private typealias PropertyPredicate = suspend (AnyKProperty) -> Boolean
