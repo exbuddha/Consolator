@@ -1306,7 +1306,7 @@ fun LiveWork.detach() {}
 fun LiveWork.close() {}
 
 fun <T, R> Pair<LiveData<T>, (T) -> R>.toLiveWork(async: Boolean = false) =
-    LiveWork(::first.asType<LiveStepPointer>()!!, second.asType(), async)
+    LiveWork(@Keep { first.asType() }, second.asType(), async)
 
 fun <T, R> capture(context: CoroutineContext, step: suspend LiveDataScope<T>.() -> Unit, capture: (T) -> R) =
     liveData(context, block = step) to capture
