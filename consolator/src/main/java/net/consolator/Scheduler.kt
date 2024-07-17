@@ -128,7 +128,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             returnItsTag(identifier)?.let { tag ->
                 buildDatabaseOrResetByTag(instance, tag)
                 condition(instance, tag,
-                    markTagsForReform(tag, stage, post, currentJob())) }
+                    formAfterMarkingTagsForCtxReform(tag, stage, post, currentJob())) }
 
         private suspend inline fun <reified D : RoomDatabase> SequencerScope.buildDatabaseOrResetByTag(instance: KMutableProperty<out D?>, tag: String) {
             ref?.get()?.run<Context, D?> {
@@ -157,7 +157,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
 
         private fun SequencerScope.form(stage: ContextStep, vararg step: AnyStep) = step.first() then form(stage)
 
-        private fun markTagsForReform(tag: String, stage: ContextStep?, form: AnyStep, job: Job) =
+        private fun formAfterMarkingTagsForCtxReform(tag: String, stage: ContextStep?, form: AnyStep, job: Job) =
             form after { markTagsForCtxReform(tag, stage, form, job) }
 
         override fun commit(step: CoroutineStep) =
@@ -427,12 +427,12 @@ open class Clock(
 
     private fun isSynchronized(msg: Message) =
         isSynchronized(msg.callback) ||
-                msg.asCallable().isSynchronized()
+        msg.asCallable().isSynchronized()
 
     private fun isSynchronized(callback: Runnable) =
         getCoroutine(callback).asNullable().isSynchronized() ||
-                callback.asCallable().isSynchronized() ||
-                callback::run.isSynchronized()
+        callback.asCallable().isSynchronized() ||
+        callback::run.isSynchronized()
 
     private fun AnyKCallable.isSynchronized() =
         annotations.any { it is Synchronous }
