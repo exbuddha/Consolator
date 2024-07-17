@@ -1141,6 +1141,9 @@ private fun coroutineStep(target: AnyKClass, key: KeyType) =
 private fun step(target: AnyKClass, key: KeyType) =
     Scheduler.unit<Step>(target, key)
 
+private fun runnable(target: AnyKClass, key: KeyType) =
+    Scheduler.unit<Runnable>(target, key)
+
 fun schedule(step: Step) = Scheduler.postValue(step.markTagForSchPost())
 fun scheduleAhead(step: Step) { Scheduler.value = step.markTagForSchPost() }
 
@@ -1269,9 +1272,6 @@ infix fun Runnable.onTimeout(action: Runnable): Runnable = this
 
 private fun Step.asLiveStep(): SequencerStep = { invoke() }
 
-// step <-> step
-fun liveStep(step: CoroutineStep): SequencerStep = { step(step.annotatedOrCurrentScope()) }
-
 val SequencerScope.isActive
     get() = Sequencer { isCancelled } == false
 
@@ -1298,6 +1298,10 @@ fun LiveWork.attachOnceAfter(tag: String? = null) =
 
 fun LiveWork.attachOnceBefore(tag: String? = null) =
     Sequencer.attachOnceBefore(this, tag)
+
+fun LiveWork.detach() {}
+
+fun LiveWork.close() {}
 
 fun <T, R> Pair<LiveData<T>, (T) -> R>.toLiveWork(async: Boolean = false) =
     LiveWork(::first.asType<LiveStepPointer>()!!, second.asType(), async)
