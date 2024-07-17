@@ -283,8 +283,8 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             getMessage(step)?.detach()?.asRunnable()
         }?.asCoroutine() ?: step
 
-    private fun launch(it: CoroutineStep) = launch(Scheduler, block = it.markTagForSchLaunch() after { job, _ ->
-        markTagsForJobLaunch(null, null, it, job) })
+    private fun launch(it: CoroutineStep) =
+        launch(Scheduler, block = it.markTagForSchLaunch().afterMarkingTagsForJobLaunch())
 
     override fun <R> fold(initial: R, operation: (R, CoroutineContext.Element) -> R): R {
         // update continuation state
@@ -1469,7 +1469,7 @@ private fun CoroutineScope.determineCoroutine(context: CoroutineContext, start: 
 private fun CoroutineContext.isSchedulerContext() =
     this is Scheduler || this[SchedulerKey] is SchedulerElement
 
-private fun CoroutineStep.afterMarkingTagsForJobLaunch(context: CoroutineContext, start: CoroutineStart) =
+private fun CoroutineStep.afterMarkingTagsForJobLaunch(context: CoroutineContext? = null, start: CoroutineStart? = null) =
     after { job, _ -> markTagsForJobLaunch(context, start, this, job) }
 
 private fun CoroutineStep.attachToContext(next: CoroutineStep): CoroutineStep = TODO()
