@@ -1034,7 +1034,10 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         trySafelyForResult { detach(step) }?.run(handler)
 
     private fun detach(step: CoroutineStep) =
-        with(Clock) { getRunnable(step) ?: getMessage(step) }?.detach()?.asCoroutine() ?: step
+        with(Clock) {
+            getRunnable(step)?.detach() ?:
+            getMessage(step)?.detach()?.asRunnable()
+        }?.asCoroutine() ?: step
 
     private fun launch(it: CoroutineStep) = launch(Scheduler, block = it.markTagForSchLaunch() after { job, _ ->
         markTagsForJobLaunch(null, null, it, job) })
@@ -1182,11 +1185,6 @@ fun <T> runnableOf(step: suspend () -> T) = Runnable { step.block() }
 fun <T> safeRunnableOf(step: suspend () -> T) = Runnable { trySafely(blockOf(step)) }
 fun <T> interruptingRunnableOf(step: suspend () -> T) = Runnable { tryInterrupting(blockOf(step)) }
 fun <T> safeInterruptingRunnableOf(step: suspend () -> T) = Runnable { trySafelyInterrupting(blockOf(step)) }
-
-private fun Any.detach() = when (this) {
-    is Runnable -> detach()
-    is Message -> detach()?.asRunnable()
-    else -> null }
 
 private fun CoroutineStep.asStep() = suspend { invoke(annotatedOrCurrentScope()) }
 
