@@ -1474,11 +1474,17 @@ private fun CoroutineContext.isSchedulerContext() =
 private fun CoroutineStep.afterMarkingTagsForJobLaunch(context: CoroutineContext? = null, start: CoroutineStart? = null) =
     after { job, _ -> markTagsForJobLaunch(context, start, this, job) }
 
+private fun Job.attachToElement(next: CoroutineStep): CoroutineStep = TODO()
+
+private fun Job.markedCoroutineStep(): CoroutineStep = TODO()
+
+// from this point on, step and context are the same
+// this is not the coroutine context but the context of the step for the job
+// steps that are concurrent (by design) will be double-pointed for uniqueness
+
 private fun CoroutineStep.attachToContext(next: CoroutineStep): CoroutineStep = TODO()
 
 private fun CoroutineStep.markedJob(): Job = TODO()
-
-private fun Job.markedCoroutineStep(): CoroutineStep = TODO()
 
 private fun CoroutineStep.currentExtra(): Any? = TODO()
 
@@ -1523,29 +1529,29 @@ private inline fun CoroutineStep.annotatedOrCurrentScopeReferring(crossinline ta
 
 private inline fun SchedulerStep.annotatedOrCurrentScopeReferring(crossinline target: CoroutineStep): CoroutineScope = TODO()
 
-infix fun Job.then(next: SchedulerStep) =
-    markedCoroutineStep().then(next)
+infix fun Job.then(next: SchedulerStep) = attachToElement {
+    markedCoroutineStep().then(next) }
 
-infix fun Job.after(prev: SchedulerStep) =
-    markedCoroutineStep().after(prev)
+infix fun Job.after(prev: SchedulerStep) = attachToElement {
+    markedCoroutineStep().after(prev) }
 
-infix fun Job.given(predicate: JobPredicate) =
-    markedCoroutineStep().given(predicate)
+infix fun Job.given(predicate: JobPredicate) = attachToElement {
+    markedCoroutineStep().given(predicate) }
 
-infix fun Job.unless(predicate: JobPredicate) =
-    markedCoroutineStep().unless(predicate)
+infix fun Job.unless(predicate: JobPredicate) = attachToElement {
+    markedCoroutineStep().unless(predicate) }
 
-infix fun Job.otherwise(next: SchedulerStep) =
-    markedCoroutineStep().otherwise(next)
+infix fun Job.otherwise(next: SchedulerStep) = attachToElement {
+    markedCoroutineStep().otherwise(next) }
 
-infix fun Job.onCancel(action: SchedulerStep) =
-    markedCoroutineStep().onCancel(action)
+infix fun Job.onCancel(action: SchedulerStep) = attachToElement {
+    markedCoroutineStep().onCancel(action) }
 
-infix fun Job.onError(action: SchedulerStep) =
-    markedCoroutineStep().onError(action)
+infix fun Job.onError(action: SchedulerStep) = attachToElement {
+    markedCoroutineStep().onError(action) }
 
-infix fun Job.onTimeout(action: SchedulerStep) =
-    markedCoroutineStep().onTimeout(action)
+infix fun Job.onTimeout(action: SchedulerStep) = attachToElement {
+    markedCoroutineStep().onTimeout(action) }
 
 infix fun CoroutineStep.then(next: SchedulerStep): CoroutineStep = attachToContext {
     annotatedOrCurrentScopeReferring(next).this@then()
@@ -1575,6 +1581,9 @@ infix fun CoroutineStep.onCancel(action: SchedulerStep): CoroutineStep = this
 infix fun CoroutineStep.onError(action: SchedulerStep): CoroutineStep = this
 
 infix fun CoroutineStep.onTimeout(action: SchedulerStep): CoroutineStep = this
+
+// from this point on, job controller handles the execution of each step and
+// following a structured form that was built they react to any other continuation
 
 fun CoroutineScope.enact(job: Job, exit: ThrowableFunction? = null) {}
 
