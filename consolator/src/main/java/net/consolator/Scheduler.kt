@@ -1481,7 +1481,7 @@ private fun CoroutineStep.afterMarkingTagsForJobLaunch(context: CoroutineContext
 
 private fun Job.saveNewElement(step: CoroutineStep) {}
 
-private fun Job.attachToElement(next: CoroutineStep): CoroutineStep = TODO()
+private fun Job.attachToElement(next: CoroutinePointer): CoroutineStep = TODO()
 
 private fun Job.markedCoroutineStep(): CoroutineStep = TODO()
 
@@ -2182,6 +2182,7 @@ private typealias JobFunctionSet = MutableSet<JobFunctionItem>
 private typealias JobFunctionItem = StringToAnyPair
 private typealias JobPredicate = (Job) -> Boolean
 private typealias CoroutineFunction = (CoroutineStep) -> Any?
+private typealias CoroutinePointer = () -> CoroutineStep?
 private typealias StringToAnyPair = Pair<StringPointer, Any>
 
 private typealias SequencerScope = LiveDataScope<Step?>
