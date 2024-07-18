@@ -1602,6 +1602,22 @@ infix fun CoroutineStep?.onError(action: SchedulerStep): CoroutineStep? = this
 
 infix fun CoroutineStep?.onTimeout(action: SchedulerStep): CoroutineStep? = this
 
+infix fun Job?.thenJob(next: Job) = this
+
+infix fun Job?.afterJob(prev: Job) = this
+
+infix fun Job?.givenJob(predicate: JobPredicate) = this
+
+infix fun Job?.unlessJob(predicate: JobPredicate) = this
+
+infix fun Job?.otherwiseJob(next: Job) = this
+
+infix fun Job?.onCancelJob(action: Job) = this
+
+infix fun Job?.onErrorJob(action: Job) = this
+
+infix fun Job?.onTimeoutJob(action: Job) = this
+
 // from this point on, job controller handles the execution of each step and
 // following a structured form that was built they react to any other continuation
 
