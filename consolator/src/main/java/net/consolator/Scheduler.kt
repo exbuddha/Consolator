@@ -1451,9 +1451,9 @@ fun launch(context: CoroutineContext = Scheduler, start: CoroutineStart = Corout
         .apply { saveNewElement(step) } }
 
 fun LifecycleOwner.launch(context: CoroutineContext = Scheduler, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep): Job {
+    val (scope, task) = determineScopeAndCoroutine(context, start, step)
     step.markTagForFloLaunch()
         .afterMarkingTagsForJobLaunch(context, start).let { step ->
-    val (scope, task) = determineScopeAndCoroutine(context, start, step)
     val (context, start, step) = task
     return scope.launch(context, start, step)
         .apply { saveNewElement(step) } } }
