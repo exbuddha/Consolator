@@ -154,7 +154,7 @@ fun Context.weakRef() =
     else WeakReference(this)
 
 fun <T : Context> WeakReference<out T>?.unique(context: T) =
-    this ?: WeakReference(context)
+    require { WeakReference(context) }
 
 interface UniqueContext { var startTime: Long }
 

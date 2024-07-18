@@ -1480,6 +1480,8 @@ private fun CoroutineStep.markedJob(): Job = TODO()
 
 private fun Job.markedCoroutineStep(): CoroutineStep = TODO()
 
+private fun CoroutineStep.currentExtra(): Any? = TODO()
+
 private fun CoroutineStep.isCurrentlyTrue(predicate: JobPredicate) =
     predicate(markedJob())
 
@@ -1495,11 +1497,14 @@ private inline fun CoroutineStep.currentConditionReferring(crossinline target: S
 
 private inline fun CoroutineStep.accept(crossinline it: CoroutineStep) {}
 
-private inline fun CoroutineStep.acceptAsTrue(crossinline it: CoroutineStep) {}
+private inline fun CoroutineStep.acceptAsTrue(crossinline it: CoroutineStep) {
+    /* current context must resolve first then provide the next step */ }
 
 private inline fun CoroutineStep.acceptAsFalse(crossinline it: CoroutineStep) {}
 
-private inline fun CoroutineStep.acceptAsFalseReferring(crossinline target: SchedulerStep, crossinline it: CoroutineStep) {}
+private suspend inline fun CoroutineStep.acceptAsFalseReferring(noinline target: SchedulerStep, crossinline it: CoroutineStep) {
+    /* target may be switched in-place here */
+    target.annotatedOrCurrentScope().target(markedJob(), currentExtra()) }
 
 private inline fun CoroutineStep.reject(crossinline it: CoroutineStep) {}
 
@@ -1507,7 +1512,8 @@ private inline fun CoroutineStep.rejectAsTrue(crossinline it: CoroutineStep) {}
 
 private inline fun CoroutineStep.rejectAsFalse(crossinline it: CoroutineStep) {}
 
-private inline fun CoroutineStep.rejectAsFalseReferring(crossinline target: SchedulerStep, crossinline it: CoroutineStep) {}
+private inline fun CoroutineStep.rejectAsFalseReferring(crossinline target: SchedulerStep, crossinline it: CoroutineStep) {
+    /* target must be used to find the next step in current context */ }
 
 private fun CoroutineStep.annotatedOrCurrentScope(): CoroutineScope = TODO()
 
@@ -1543,10 +1549,10 @@ infix fun Job.onTimeout(action: SchedulerStep) =
 
 infix fun CoroutineStep.then(next: SchedulerStep): CoroutineStep = attachToContext {
     annotatedOrCurrentScopeReferring(next).this@then()
-    next(next.annotatedOrCurrentScope(), currentJob(), null) }
+    next(next.annotatedOrCurrentScope(), currentJob(), currentExtra()) }
 
 infix fun CoroutineStep.after(prev: SchedulerStep): CoroutineStep = attachToContext {
-    prev(prev.annotatedOrCurrentScopeReferring(this@after), currentJob(), null)
+    prev(prev.annotatedOrCurrentScopeReferring(this@after), currentJob(), currentExtra())
     annotatedOrCurrentScope().this@after() }
 
 infix fun CoroutineStep.given(predicate: JobPredicate): CoroutineStep = attachToContext {
