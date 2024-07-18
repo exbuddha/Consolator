@@ -148,7 +148,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             else ignore
 
         private fun SequencerScope.synchronize(identifier: Any?, vararg step: AnyStep, stage: ContextStep?) =
-            if (stage !== null) form(stage, *step)
+            if (stage !== null) form(stage, *step)!!
             else ignore
 
         private val ignore get() = @Tag(IGNORE) emptyStep
@@ -158,7 +158,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         private fun SequencerScope.form(stage: ContextStep, vararg step: AnyStep) = step.first() then form(stage)
 
         private fun formAfterMarkingTagsForCtxReform(tag: String, stage: ContextStep?, form: AnyStep, job: Job) =
-            form after { markTagsForCtxReform(tag, stage, form, job) }
+            (form after { markTagsForCtxReform(tag, stage, form, job) })!!
 
         override fun commit(step: CoroutineStep) =
             attach(step.markTagForSvcCommit(), ::handleAhead)
@@ -837,8 +837,8 @@ class Sequencer : Synchronizer<LiveWork>, Transactor<Int, Boolean?>, PriorityQue
     fun attachOnceBefore(work: LiveWork, tag: String? = null): Int = TODO()
 
     private fun stepAfterMarkingTagsForSeqLaunch(step: SequencerStep, index: IntFunction, context: CoroutineContext? = null) =
-        step after { currentJob().let { job ->
-            synchronize { markTagsForSeqLaunch(step, adjust(index()), context, job) } } }
+        (step after { currentJob().let { job ->
+            synchronize { markTagsForSeqLaunch(step, adjust(index()), context, job) } } })!!
 
     fun attach(async: Boolean = false, step: SequencerStep): LiveWork {
         var index = -1
@@ -1442,9 +1442,10 @@ private fun relaunch(launcher: JobKFunction, instance: JobKProperty, context: Co
 fun launch(it: CoroutineStep) = launch(step = it)
 
 fun launch(context: CoroutineContext = Scheduler, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep) =
-    ProcessLifecycleOwner.get().launch(context, start,
-        step.markTagForPloLaunch()
-            .afterMarkingTagsForJobLaunch(context, start))
+    ProcessLifecycleOwner.get()
+        .lifecycleScope.launch(context, start,
+            step.markTagForPloLaunch()
+                .afterMarkingTagsForJobLaunch(context, start))
 
 fun LifecycleOwner.launch(context: CoroutineContext = Scheduler, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep): Job {
     val (scope, task) = determineScopeAndCoroutine(context, start, step)
@@ -1472,7 +1473,7 @@ private fun CoroutineContext.isSchedulerContext() =
     this is Scheduler || this[SchedulerKey] is SchedulerElement
 
 private fun CoroutineStep.afterMarkingTagsForJobLaunch(context: CoroutineContext? = null, start: CoroutineStart? = null) =
-    after { job, _ -> markTagsForJobLaunch(context, start, this, job) }
+    (after { job, _ -> markTagsForJobLaunch(context, start, this, job) })!!
 
 private fun Job.attachToElement(next: CoroutineStep): CoroutineStep = TODO()
 
@@ -1529,58 +1530,71 @@ private inline fun CoroutineStep.annotatedOrCurrentScopeReferring(crossinline ta
 
 private inline fun SchedulerStep.annotatedOrCurrentScopeReferring(crossinline target: CoroutineStep): CoroutineScope = TODO()
 
-infix fun Job.then(next: SchedulerStep) = attachToElement {
-    markedCoroutineStep().then(next) }
+infix fun Job?.then(next: SchedulerStep) = this?.let {
+    attachToElement {
+        markedCoroutineStep().then(next) } }
 
-infix fun Job.after(prev: SchedulerStep) = attachToElement {
-    markedCoroutineStep().after(prev) }
+infix fun Job?.after(prev: SchedulerStep) = this?.let {
+    attachToElement {
+        markedCoroutineStep().after(prev) } }
 
-infix fun Job.given(predicate: JobPredicate) = attachToElement {
-    markedCoroutineStep().given(predicate) }
+infix fun Job?.given(predicate: JobPredicate) = this?.let {
+    attachToElement {
+        markedCoroutineStep().given(predicate) } }
 
-infix fun Job.unless(predicate: JobPredicate) = attachToElement {
-    markedCoroutineStep().unless(predicate) }
+infix fun Job?.unless(predicate: JobPredicate) = this?.let {
+    attachToElement {
+        markedCoroutineStep().unless(predicate) } }
 
-infix fun Job.otherwise(next: SchedulerStep) = attachToElement {
-    markedCoroutineStep().otherwise(next) }
+infix fun Job?.otherwise(next: SchedulerStep) = this?.let {
+    attachToElement {
+        markedCoroutineStep().otherwise(next) } }
 
-infix fun Job.onCancel(action: SchedulerStep) = attachToElement {
-    markedCoroutineStep().onCancel(action) }
+infix fun Job?.onCancel(action: SchedulerStep) = this?.let {
+    attachToElement {
+        markedCoroutineStep().onCancel(action) } }
 
-infix fun Job.onError(action: SchedulerStep) = attachToElement {
-    markedCoroutineStep().onError(action) }
+infix fun Job?.onError(action: SchedulerStep) = this?.let {
+    attachToElement {
+        markedCoroutineStep().onError(action) } }
 
-infix fun Job.onTimeout(action: SchedulerStep) = attachToElement {
-    markedCoroutineStep().onTimeout(action) }
+infix fun Job?.onTimeout(action: SchedulerStep) = this?.let {
+    attachToElement {
+        markedCoroutineStep().onTimeout(action) } }
 
-infix fun CoroutineStep.then(next: SchedulerStep): CoroutineStep = attachToContext {
-    annotatedOrCurrentScopeReferring(next).this@then()
-    next(next.annotatedOrCurrentScope(), currentJob(), currentExtra()) }
+infix fun CoroutineStep?.then(next: SchedulerStep): CoroutineStep? = this?.let {
+    attachToContext {
+        annotatedOrCurrentScopeReferring(next).this@then()
+        next(next.annotatedOrCurrentScope(), currentJob(), currentExtra()) } }
 
-infix fun CoroutineStep.after(prev: SchedulerStep): CoroutineStep = attachToContext {
-    prev(prev.annotatedOrCurrentScopeReferring(this@after), currentJob(), currentExtra())
-    annotatedOrCurrentScope().this@after() }
+infix fun CoroutineStep?.after(prev: SchedulerStep): CoroutineStep? = this?.let {
+    attachToContext {
+        prev(prev.annotatedOrCurrentScopeReferring(this@after), currentJob(), currentExtra())
+        annotatedOrCurrentScope().this@after() } }
 
-infix fun CoroutineStep.given(predicate: JobPredicate): CoroutineStep = attachToContext {
-    if (isCurrentlyTrue(predicate))
-        acceptAsTrue(this@given)
-    else rejectAsTrue(this@given) }
+infix fun CoroutineStep?.given(predicate: JobPredicate): CoroutineStep? = this?.let {
+    attachToContext {
+        if (isCurrentlyTrue(predicate))
+            acceptAsTrue(this@given)
+        else rejectAsTrue(this@given) } }
 
-infix fun CoroutineStep.unless(predicate: JobPredicate): CoroutineStep = attachToContext {
-    if (isCurrentlyFalse(predicate))
-        acceptAsFalse(this@unless)
-    else rejectAsFalse(this@unless) }
+infix fun CoroutineStep?.unless(predicate: JobPredicate): CoroutineStep? = this?.let {
+    attachToContext {
+        if (isCurrentlyFalse(predicate))
+            acceptAsFalse(this@unless)
+        else rejectAsFalse(this@unless) } }
 
-infix fun CoroutineStep.otherwise(next: SchedulerStep): CoroutineStep = attachToContext {
-    if (isCurrentlyFalseReferring(next))
-        acceptAsFalseReferring(next, this@otherwise)
-    else rejectAsFalseReferring(next, this@otherwise) }
+infix fun CoroutineStep?.otherwise(next: SchedulerStep): CoroutineStep? = this?.let {
+    attachToContext {
+        if (isCurrentlyFalseReferring(next))
+            acceptAsFalseReferring(next, this@otherwise)
+        else rejectAsFalseReferring(next, this@otherwise) } }
 
-infix fun CoroutineStep.onCancel(action: SchedulerStep): CoroutineStep = this
+infix fun CoroutineStep?.onCancel(action: SchedulerStep): CoroutineStep? = this
 
-infix fun CoroutineStep.onError(action: SchedulerStep): CoroutineStep = this
+infix fun CoroutineStep?.onError(action: SchedulerStep): CoroutineStep? = this
 
-infix fun CoroutineStep.onTimeout(action: SchedulerStep): CoroutineStep = this
+infix fun CoroutineStep?.onTimeout(action: SchedulerStep): CoroutineStep? = this
 
 // from this point on, job controller handles the execution of each step and
 // following a structured form that was built they react to any other continuation
@@ -1786,84 +1800,84 @@ private fun markTagsForCtxReform(vararg function: Any?, i: Int = 0) =
         function[i + 2]?.let { form ->
             jobs?.save("$stageTag@$jobId.$FORM", false, form.asCallable()) } /* form */ }
 
-inline infix fun <R, S> (suspend () -> R).then(crossinline next: suspend () -> S): suspend () -> S = {
+inline infix fun <R, S> (suspend () -> R)?.then(crossinline next: suspend () -> S): (suspend () -> S)? = this?.let { {
     this@then()
-    next() }
+    next() } }
 
-inline infix fun <R, S> (suspend () -> R).after(crossinline prev: suspend () -> S): suspend () -> R = {
+inline infix fun <R, S> (suspend () -> R)?.after(crossinline prev: suspend () -> S): (suspend () -> R)? = this?.let { {
     prev()
-    this@after() }
+    this@after() } }
 
-inline infix fun <R, S> (suspend () -> R).thru(crossinline next: suspend (R) -> S): suspend () -> S = {
-    next(this@thru()) }
+inline infix fun <R, S> (suspend () -> R)?.thru(crossinline next: suspend (R) -> S): (suspend () -> S)? = this?.let { {
+    next(this@thru()) } }
 
-inline fun <R> (suspend () -> R).given(crossinline predicate: Predicate, crossinline fallback: suspend () -> R): suspend () -> R = {
-    if (predicate()) this@given() else fallback() }
+inline fun <R> (suspend () -> R)?.given(crossinline predicate: Predicate, crossinline fallback: suspend () -> R): (suspend () -> R)? = this?.let { {
+    if (predicate()) this@given() else fallback() } }
 
-inline fun <R> (suspend () -> R).unless(crossinline predicate: Predicate, crossinline fallback: suspend () -> R): suspend () -> R = {
-    if (predicate().not()) this@unless() else fallback() }
+inline fun <R> (suspend () -> R)?.unless(crossinline predicate: Predicate, crossinline fallback: suspend () -> R): (suspend () -> R)? = this?.let { {
+    if (predicate().not()) this@unless() else fallback() } }
 
-inline infix fun Step.given(crossinline predicate: Predicate) = given(predicate, emptyStep)
+inline infix fun Step?.given(crossinline predicate: Predicate) = this?.let { given(predicate, emptyStep) }
 
-inline infix fun Step.unless(crossinline predicate: Predicate) = unless(predicate, emptyStep)
+inline infix fun Step?.unless(crossinline predicate: Predicate) = this?.let { unless(predicate, emptyStep) }
 
-inline infix fun <T, R, S> (suspend T.() -> R).then(crossinline next: suspend T.() -> S): suspend T.() -> S = {
+inline infix fun <T, R, S> (suspend T.() -> R)?.then(crossinline next: suspend T.() -> S): (suspend T.() -> S)? = this?.let { {
     this@then()
-    next() }
+    next() } }
 
-inline infix fun <T, R, S> (suspend T.() -> R).after(crossinline prev: suspend T.() -> S): suspend T.() -> R = {
+inline infix fun <T, R, S> (suspend T.() -> R)?.after(crossinline prev: suspend T.() -> S): (suspend T.() -> R)? = this?.let { {
     prev()
-    this@after() }
+    this@after() } }
 
-inline infix fun <T, R, S> (suspend T.() -> R).thru(crossinline next: suspend (R) -> S): suspend T.() -> S = {
-    next(this@thru()) }
+inline infix fun <T, R, S> (suspend T.() -> R)?.thru(crossinline next: suspend (R) -> S): (suspend T.() -> S)? = this?.let { {
+    next(this@thru()) } }
 
-inline fun <T, R> (suspend T.() -> R).given(crossinline predicate: Predicate, crossinline fallback: suspend T.() -> R): suspend T.() -> R = {
-    if (predicate()) this@given() else fallback() }
+inline fun <T, R> (suspend T.() -> R)?.given(crossinline predicate: Predicate, crossinline fallback: suspend T.() -> R): (suspend T.() -> R)? = this?.let { {
+    if (predicate()) this@given() else fallback() } }
 
-inline fun <T, R> (suspend T.() -> R).unless(crossinline predicate: Predicate, crossinline fallback: suspend T.() -> R): suspend T.() -> R = {
-    if (predicate().not()) this@unless() else fallback() }
+inline fun <T, R> (suspend T.() -> R)?.unless(crossinline predicate: Predicate, crossinline fallback: suspend T.() -> R): (suspend T.() -> R)? = this?.let { {
+    if (predicate().not()) this@unless() else fallback() } }
 
-inline infix fun <T, U, R, S> (suspend T.(U) -> R).then(crossinline next: suspend T.(U) -> S): suspend T.(U) -> S = {
+inline infix fun <T, U, R, S> (suspend T.(U) -> R)?.then(crossinline next: suspend T.(U) -> S): (suspend T.(U) -> S)? = this?.let { {
     this@then(it)
-    next(it) }
+    next(it) } }
 
-inline infix fun <T, U, R, S> (suspend T.(U) -> R).after(crossinline prev: suspend T.(U) -> S): suspend T.(U) -> R = {
+inline infix fun <T, U, R, S> (suspend T.(U) -> R)?.after(crossinline prev: suspend T.(U) -> S): (suspend T.(U) -> R)? = this?.let { {
     prev(it)
-    this@after(it) }
+    this@after(it) } }
 
-inline infix fun <T, U, R, S> (suspend T.(U) -> R).thru(crossinline next: suspend (R) -> S): suspend T.(U) -> S = {
-    next(this@thru(it)) }
+inline infix fun <T, U, R, S> (suspend T.(U) -> R)?.thru(crossinline next: suspend (R) -> S): (suspend T.(U) -> S)? = this?.let { {
+    next(this@thru(it)) } }
 
-inline fun <T, U, R> (suspend T.(U) -> R).given(crossinline predicate: Predicate, crossinline fallback: suspend T.(U) -> R): suspend T.(U) -> R = {
-    if (predicate()) this@given(it) else fallback(it) }
+inline fun <T, U, R> (suspend T.(U) -> R)?.given(crossinline predicate: Predicate, crossinline fallback: suspend T.(U) -> R): (suspend T.(U) -> R)? = this?.let { {
+    if (predicate()) this@given(it) else fallback(it) } }
 
-inline fun <T, U, R> (suspend T.(U) -> R).unless(crossinline predicate: Predicate, crossinline fallback: suspend T.(U) -> R): suspend T.(U) -> R = {
-    if (predicate().not()) this@unless(it) else fallback(it) }
+inline fun <T, U, R> (suspend T.(U) -> R)?.unless(crossinline predicate: Predicate, crossinline fallback: suspend T.(U) -> R): (suspend T.(U) -> R)? = this?.let { {
+    if (predicate().not()) this@unless(it) else fallback(it) } }
 
-inline infix fun <R, S> (() -> R).then(crossinline next: () -> S): () -> S = {
+inline infix fun <R, S> (() -> R)?.then(crossinline next: () -> S): (() -> S)? = this?.let { {
     this@then()
-    next() }
+    next() } }
 
-inline infix fun <R, S> (() -> R).after(crossinline prev: () -> S): () -> R = {
+inline infix fun <R, S> (() -> R)?.after(crossinline prev: () -> S): (() -> R)? = this?.let { {
     prev()
-    this@after() }
+    this@after() } }
 
-inline infix fun <R, S> (() -> R).thru(crossinline next: (R) -> S): () -> S = {
-    next(this@thru()) }
+inline infix fun <R, S> (() -> R)?.thru(crossinline next: (R) -> S): (() -> S)? = this?.let { {
+    next(this@thru()) } }
 
-inline fun <R> (() -> R).given(crossinline predicate: Predicate, crossinline fallback: () -> R): () -> R = {
-    if (predicate()) this@given() else fallback() }
+inline fun <R> (() -> R)?.given(crossinline predicate: Predicate, crossinline fallback: () -> R): (() -> R)? = this?.let { {
+    if (predicate()) this@given() else fallback() } }
 
-inline fun <R> (() -> R).unless(crossinline predicate: Predicate, crossinline fallback: () -> R): () -> R = {
-    if (predicate().not()) this@unless() else fallback() }
+inline fun <R> (() -> R)?.unless(crossinline predicate: Predicate, crossinline fallback: () -> R): (() -> R)? = this?.let { {
+    if (predicate().not()) this@unless() else fallback() } }
 
-inline infix fun AnyFunction.given(crossinline predicate: Predicate) = given(predicate, emptyWork)
+inline infix fun AnyFunction?.given(crossinline predicate: Predicate) = this?.let { given(predicate, emptyWork) }
 
-inline infix fun AnyFunction.unless(crossinline predicate: Predicate) = unless(predicate, emptyWork)
+inline infix fun AnyFunction?.unless(crossinline predicate: Predicate) = this?.let { unless(predicate, emptyWork) }
 
-inline infix fun <T, R, S> ((T) -> R).thru(crossinline next: (R) -> S): (T) -> S = {
-    next(this@thru(it)) }
+inline infix fun <T, R, S> ((T) -> R)?.thru(crossinline next: (R) -> S): ((T) -> S)? = this?.let { {
+    next(this@thru(it)) } }
 
 fun <R> KCallable<R>.with(vararg args: Any?): () -> R = {
     this@with.call(*args) }
