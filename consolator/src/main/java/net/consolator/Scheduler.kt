@@ -1232,29 +1232,15 @@ fun message(callback: Runnable): Message = TODO()
 
 fun message(what: Int): Message = TODO()
 
-infix fun Message.then(next: Runnable): Message = this
+infix fun Message.thenRun(next: Runnable): Message = this
 
-infix fun Message.then(next: MessageFunction): Message = this
+infix fun Message.afterRun(prev: Runnable): Message = this
 
-infix fun Message.after(prev: Runnable): Message = this
+infix fun Message.otherwiseRun(next: Runnable): Message = this
 
-infix fun Message.given(predicate: MessagePredicate): Message = this
+infix fun Message.onErrorRun(action: Runnable): Message = this
 
-infix fun Message.unless(predicate: MessagePredicate): Message = this
-
-infix fun Message.otherwise(next: Runnable): Message = this
-
-infix fun Message.otherwise(next: MessageFunction): Message = this
-
-infix fun Message.onError(action: Runnable): Message = this
-
-infix fun Message.onTimeout(action: Runnable): Message = this
-
-infix fun Message.then(next: Int): Message = this
-
-infix fun Message.after(prev: Int): Message = this
-
-infix fun Message.otherwise(next: Int): Message = this
+infix fun Message.onTimeoutRun(action: Runnable): Message = this
 
 infix fun Runnable.then(next: Runnable): Runnable = this
 
@@ -1274,19 +1260,29 @@ infix fun Runnable.onError(action: Runnable): Runnable = this
 
 infix fun Runnable.onTimeout(action: Runnable): Runnable = this
 
-infix fun Message.thenMessage(next: Message): Message = this
+infix fun Message.then(next: Message): Message = this
 
-infix fun Message.afterMessage(prev: Message): Message = this
+infix fun Message.then(next: Int): Message = this
 
-infix fun Message.givenMessage(predicate: MessagePredicate): Message = this
+infix fun Message.after(prev: Message): Message = this
 
-infix fun Message.unlessMessage(predicate: MessagePredicate): Message = this
+infix fun Message.after(prev: Int): Message = this
 
-infix fun Message.otherwiseMessage(next: Message): Message = this
+infix fun Message.given(predicate: MessagePredicate): Message = this
 
-infix fun Message.onErrorMessage(action: Message): Message = this
+infix fun Message.unless(predicate: MessagePredicate): Message = this
 
-infix fun Message.onTimeoutMessage(action: Message): Message = this
+infix fun Message.otherwise(next: Message): Message = this
+
+infix fun Message.otherwise(next: Int): Message = this
+
+infix fun Message.onError(action: Message): Message = this
+
+infix fun Message.onTimeout(action: Message): Message = this
+
+infix fun Message.then(next: MessageFunction): Message = this
+
+infix fun Message.otherwise(next: MessageFunction): Message = this
 
 private fun Step.asLiveStep(): SequencerStep = { invoke() }
 
