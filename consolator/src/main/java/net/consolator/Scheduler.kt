@@ -1503,12 +1503,16 @@ private fun CoroutineStep.attachToContext(next: CoroutineStep): CoroutineStep = 
 
 private fun CoroutineStep.markedJob(): Job = TODO()
 
-private fun CoroutineStep.currentExtra(): Any? = TODO()
+private fun CoroutineStep.contextReferring(next: SchedulerStep?): Any? = TODO()
 
-private fun CoroutineStep.isCurrentlyTrue(predicate: JobPredicate) =
+private fun CoroutineScope.take(next: CoroutineStep) {}
+
+private fun CoroutineScope.take(next: SchedulerStep, job: Job, extra: Any?) {}
+
+private fun CoroutineStep.isCurrentlyTrueGiven(predicate: JobPredicate) =
     predicate(markedJob())
 
-private fun CoroutineStep.isCurrentlyFalse(predicate: JobPredicate) =
+private fun CoroutineStep.isCurrentlyFalseGiven(predicate: JobPredicate) =
     predicate(markedJob()).not()
 
 private inline fun CoroutineStep.isCurrentlyFalseReferring(crossinline target: SchedulerStep) =
@@ -1518,24 +1522,25 @@ private fun CoroutineStep.currentCondition() = true
 
 private inline fun CoroutineStep.currentConditionReferring(crossinline target: SchedulerStep) = true
 
-private inline fun CoroutineStep.accept(crossinline it: CoroutineStep) {}
+private inline fun CoroutineStep.accept() {}
 
-private inline fun CoroutineStep.acceptAsTrue(crossinline it: CoroutineStep) {
+private inline fun CoroutineStep.acceptOnTrue() {
     /* current context must resolve first then provide the next step */ }
 
-private inline fun CoroutineStep.acceptAsFalse(crossinline it: CoroutineStep) {}
+private inline fun CoroutineStep.acceptOnFalse() {}
 
-private suspend inline fun CoroutineStep.acceptAsFalseReferring(noinline target: SchedulerStep, crossinline it: CoroutineStep) {
+private suspend inline fun CoroutineStep.acceptOnFalseReferring(noinline target: SchedulerStep) {
     /* target may be switched in-place here */
-    target.annotatedOrCurrentScope().target(markedJob(), currentExtra()) }
+    target.annotatedOrCurrentScope()
+        .take(target, markedJob(), contextReferring(target)) }
 
-private inline fun CoroutineStep.reject(crossinline it: CoroutineStep) {}
+private inline fun CoroutineStep.reject() {}
 
-private inline fun CoroutineStep.rejectAsTrue(crossinline it: CoroutineStep) {}
+private inline fun CoroutineStep.rejectOnTrue() {}
 
-private inline fun CoroutineStep.rejectAsFalse(crossinline it: CoroutineStep) {}
+private inline fun CoroutineStep.rejectOnFalse() {}
 
-private inline fun CoroutineStep.rejectAsFalseReferring(crossinline target: SchedulerStep, crossinline it: CoroutineStep) {
+private inline fun CoroutineStep.rejectOnFalseReferring(crossinline target: SchedulerStep) {
     /* target must be used to find the next step in current context */ }
 
 private fun CoroutineStep.annotatedOrCurrentScope(): CoroutineScope = TODO()
@@ -1578,33 +1583,37 @@ infix fun Job?.onTimeout(action: SchedulerStep) = this?.let {
     attachToElement {
         markedCoroutineStep().onTimeout(action) } }
 
-infix fun CoroutineStep?.then(next: SchedulerStep): CoroutineStep? = this?.let {
+infix fun CoroutineStep?.then(next: SchedulerStep): CoroutineStep? = this?.let { prev ->
     attachToContext {
-        annotatedOrCurrentScopeReferring(next).this@then()
-        next(next.annotatedOrCurrentScope(), currentJob(), currentExtra()) } }
+        prev.annotatedOrCurrentScopeReferring(next)
+            .take(prev)
+        next.annotatedOrCurrentScope()
+            .take(next, currentJob(), prev.contextReferring(next)) } }
 
-infix fun CoroutineStep?.after(prev: SchedulerStep): CoroutineStep? = this?.let {
+infix fun CoroutineStep?.after(prev: SchedulerStep): CoroutineStep? = this?.let { next ->
     attachToContext {
-        prev(prev.annotatedOrCurrentScopeReferring(this@after), currentJob(), currentExtra())
-        annotatedOrCurrentScope().this@after() } }
+        prev.annotatedOrCurrentScopeReferring(next)
+            .take(prev, currentJob(), next.contextReferring(prev))
+        next.annotatedOrCurrentScope()
+            .take(next) } }
 
-infix fun CoroutineStep?.given(predicate: JobPredicate): CoroutineStep? = this?.let {
+infix fun CoroutineStep?.given(predicate: JobPredicate): CoroutineStep? = this?.let { cond ->
     attachToContext {
-        if (isCurrentlyTrue(predicate))
-            acceptAsTrue(this@given)
-        else rejectAsTrue(this@given) } }
+        if (cond.isCurrentlyTrueGiven(predicate))
+            cond.acceptOnTrue()
+        else cond.rejectOnTrue() } }
 
-infix fun CoroutineStep?.unless(predicate: JobPredicate): CoroutineStep? = this?.let {
+infix fun CoroutineStep?.unless(predicate: JobPredicate): CoroutineStep? = this?.let { cond ->
     attachToContext {
-        if (isCurrentlyFalse(predicate))
-            acceptAsFalse(this@unless)
-        else rejectAsFalse(this@unless) } }
+        if (cond.isCurrentlyFalseGiven(predicate))
+            cond.acceptOnFalse()
+        else cond.rejectOnFalse() } }
 
-infix fun CoroutineStep?.otherwise(next: SchedulerStep): CoroutineStep? = this?.let {
+infix fun CoroutineStep?.otherwise(next: SchedulerStep): CoroutineStep? = this?.let { cond ->
     attachToContext {
-        if (isCurrentlyFalseReferring(next))
-            acceptAsFalseReferring(next, this@otherwise)
-        else rejectAsFalseReferring(next, this@otherwise) } }
+        if (cond.isCurrentlyFalseReferring(next))
+            cond.acceptOnFalseReferring(next)
+        else cond.rejectOnFalseReferring(next) } }
 
 infix fun CoroutineStep?.onCancel(action: SchedulerStep): CoroutineStep? = this
 
@@ -1777,60 +1786,60 @@ fun markTags(vararg function: Any?) {
 
 private fun markTagsForJobLaunch(vararg function: Any?, i: Int = 0) =
     function[i + 2]?.markTag()?.also { step ->
-        val stepTag = step.string
-        val jobId = function[i + 4]?.let { job ->
-            jobs?.save("$stepTag.$JOB", step.keep, job.asCallable())
-            job.toJobId() } /* job */
-        function[i]?.let { context ->
-            jobs?.save("$stepTag@$jobId.$CONTEXT", false, context.asCallable()) } /* context */
-        function[i + 1]?.let { start ->
-            jobs?.save("$stepTag@$jobId.$START", false, start.asCallable()) } /* start */ }
+    val stepTag = step.string
+    val jobId = function[i + 4]?.let { job ->
+        jobs?.save("$stepTag.$JOB", step.keep, job.asCallable())
+        job.toJobId() } /* job */
+    function[i]?.let { context ->
+        jobs?.save("$stepTag@$jobId.$CONTEXT", false, context.asCallable()) } /* context */
+    function[i + 1]?.let { start ->
+        jobs?.save("$stepTag@$jobId.$START", false, start.asCallable()) } /* start */ }
 
 private fun markTagsForJobRepeat(vararg function: Any?, i: Int = 0) =
     function[i + 2]?.markTag()?.also { blockTag ->
-        val blockTag = blockTag.string
-        val jobId = function[i + 3].toJobId()
-        function[i + 1]?.let { delay ->
-            jobs?.save("$blockTag@$jobId.$DELAY", delay.asCallable()) } /* delay */
-        function[i]?.let { predicate ->
-            jobs?.save("$blockTag@$jobId.$PREDICATE", predicate.asCallable()) } /* predicate */ }
+    val blockTag = blockTag.string
+    val jobId = function[i + 3].toJobId()
+    function[i + 1]?.let { delay ->
+        jobs?.save("$blockTag@$jobId.$DELAY", delay.asCallable()) } /* delay */
+    function[i]?.let { predicate ->
+        jobs?.save("$blockTag@$jobId.$PREDICATE", predicate.asCallable()) } /* predicate */ }
 
 private fun markTagsForClkAttach(vararg function: Any?, i: Int = 0) =
     function[i + 1]?.let { step -> when (step) {
-        is Runnable -> {
-            val stepTag = getTag(step)
-            jobs?.save("$stepTag.$CALLBACK", step.asCallable()) /* callback */
-            function[i]?.let { index ->
-                jobs?.save("$stepTag.$INDEX", index.asCallable()) } /* index */ }
-        is Message -> {
-            jobs?.save("${getTag(step)}.$MSG", step.asCallable()) /* message */ }
-        is Int ->
-            jobs?.save("${getTag(step)}.$WHAT", step.asCallable() /* what */ )
-        else -> null } }
+    is Runnable -> {
+        val stepTag = getTag(step)
+        jobs?.save("$stepTag.$CALLBACK", step.asCallable()) /* callback */
+        function[i]?.let { index ->
+        jobs?.save("$stepTag.$INDEX", index.asCallable()) } /* index */ }
+    is Message -> {
+        jobs?.save("${getTag(step)}.$MSG", step.asCallable()) /* message */ }
+    is Int ->
+        jobs?.save("${getTag(step)}.$WHAT", step.asCallable() /* what */ )
+    else -> null } }
 
 private fun markTagsForSeqAttach(vararg function: Any?, i: Int = 0) =
     function[i]?.asString().let { stepTag ->
-        val stepTag = stepTag ?: NULL_STEP
-        function[i + 1]?.let { index ->
-            jobs?.save("$stepTag.$INDEX", index.asCallable())
-            function[i + 2]?.asLiveWork()?.let { work ->
-                jobs?.save("$stepTag#$index.$WORK", work.asCallable()) } } /* index & work */ }
+    val stepTag = stepTag ?: NULL_STEP
+    function[i + 1]?.let { index ->
+        jobs?.save("$stepTag.$INDEX", index.asCallable())
+    function[i + 2]?.asLiveWork()?.let { work ->
+        jobs?.save("$stepTag#$index.$WORK", work.asCallable()) } } /* index & work */ }
 
 private fun markTagsForSeqLaunch(vararg function: Any?, i: Int = 0) =
     function[i]?.markTag()?.also { stepTag ->
-        val stepTag = stepTag.string
-        val index = function[i + 1]?.asInt()!! // optionally, readjust by remarks or from seq here instead
-        val jobId = function[i + 3].toJobId()
-        function[i + 2]?.let { context ->
-            jobs?.save("$stepTag#$index@$jobId.$CONTEXT", false, context.asNullable()) } /* context */ }
+    val stepTag = stepTag.string
+    val index = function[i + 1]?.asInt()!! // optionally, readjust by remarks or from seq here instead
+    val jobId = function[i + 3].toJobId()
+    function[i + 2]?.let { context ->
+        jobs?.save("$stepTag#$index@$jobId.$CONTEXT", false, context.asNullable()) } /* context */ }
 
 private fun markTagsForCtxReform(vararg function: Any?, i: Int = 0) =
     function[i + 1].markSequentialTag(function[i].asString())?.also { stageTag ->
-        val jobId = function[i + 3]?.let { job ->
-            jobs?.save("$stageTag.$JOB", false, job.asCallable())
-            job.toJobId() } /* job */
-        function[i + 2]?.let { form ->
-            jobs?.save("$stageTag@$jobId.$FORM", false, form.asCallable()) } /* form */ }
+    val jobId = function[i + 3]?.let { job ->
+        jobs?.save("$stageTag.$JOB", false, job.asCallable())
+        job.toJobId() } /* job */
+    function[i + 2]?.let { form ->
+        jobs?.save("$stageTag@$jobId.$FORM", false, form.asCallable()) } /* form */ }
 
 inline infix fun <R, S> (suspend () -> R)?.then(crossinline next: suspend () -> S): (suspend () -> S)? = this?.let { {
     this@then()
