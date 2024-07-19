@@ -1505,51 +1505,51 @@ private fun CoroutineStep.markedJob(): Job = TODO()
 
 private fun CoroutineStep.contextReferring(next: SchedulerStep?): Any? = TODO()
 
-private fun CoroutineScope.take(next: CoroutineStep) {}
+private suspend fun CoroutineScope.take(next: CoroutineStep) {}
 
-private fun CoroutineScope.take(next: SchedulerStep, job: Job, extra: Any?) {}
+private suspend fun CoroutineScope.take(next: SchedulerStep, job: Job, context: Any?) {}
 
-private fun CoroutineStep.isCurrentlyTrueGiven(predicate: JobPredicate) =
+private suspend fun CoroutineStep.isCurrentlyTrueGiven(predicate: JobPredicate) =
     predicate(markedJob())
 
-private fun CoroutineStep.isCurrentlyFalseGiven(predicate: JobPredicate) =
+private suspend fun CoroutineStep.isCurrentlyFalseGiven(predicate: JobPredicate) =
     predicate(markedJob()).not()
 
-private inline fun CoroutineStep.isCurrentlyFalseReferring(crossinline target: SchedulerStep) =
+private suspend fun CoroutineStep.isCurrentlyFalseReferring(target: SchedulerStep) =
     currentConditionReferring(target).not()
 
-private fun CoroutineStep.currentCondition() = true
+private suspend fun CoroutineStep.currentCondition() = true
 
-private inline fun CoroutineStep.currentConditionReferring(crossinline target: SchedulerStep) = true
+private suspend fun CoroutineStep.currentConditionReferring(target: SchedulerStep) = true
 
-private inline fun CoroutineStep.accept() {}
+private suspend fun CoroutineStep.accept() {}
 
-private inline fun CoroutineStep.acceptOnTrue() {
+private suspend fun CoroutineStep.acceptOnTrue() {
     /* current context must resolve first then provide the next step */ }
 
-private inline fun CoroutineStep.acceptOnFalse() {}
+private suspend fun CoroutineStep.acceptOnFalse() {}
 
-private suspend inline fun CoroutineStep.acceptOnFalseReferring(noinline target: SchedulerStep) {
+private suspend fun CoroutineStep.acceptOnFalseReferring(target: SchedulerStep) {
     /* target may be switched in-place here */
     target.annotatedOrCurrentScope()
         .take(target, markedJob(), contextReferring(target)) }
 
-private inline fun CoroutineStep.reject() {}
+private suspend fun CoroutineStep.reject() {}
 
-private inline fun CoroutineStep.rejectOnTrue() {}
+private suspend fun CoroutineStep.rejectOnTrue() {}
 
-private inline fun CoroutineStep.rejectOnFalse() {}
+private suspend fun CoroutineStep.rejectOnFalse() {}
 
-private inline fun CoroutineStep.rejectOnFalseReferring(crossinline target: SchedulerStep) {
+private suspend fun CoroutineStep.rejectOnFalseReferring(target: SchedulerStep) {
     /* target must be used to find the next step in current context */ }
 
 private fun CoroutineStep.annotatedOrCurrentScope(): CoroutineScope = TODO()
 
 private fun SchedulerStep.annotatedOrCurrentScope(): CoroutineScope = TODO()
 
-private inline fun CoroutineStep.annotatedOrCurrentScopeReferring(crossinline target: SchedulerStep): CoroutineScope = TODO()
+private fun CoroutineStep.annotatedOrCurrentScopeReferring(target: SchedulerStep): CoroutineScope = TODO()
 
-private inline fun SchedulerStep.annotatedOrCurrentScopeReferring(crossinline target: CoroutineStep): CoroutineScope = TODO()
+private fun SchedulerStep.annotatedOrCurrentScopeReferring(target: CoroutineStep): CoroutineScope = TODO()
 
 infix fun Job?.then(next: SchedulerStep) = this?.let {
     attachToElement {
