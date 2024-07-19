@@ -1274,6 +1274,20 @@ infix fun Runnable.onError(action: Runnable): Runnable = this
 
 infix fun Runnable.onTimeout(action: Runnable): Runnable = this
 
+infix fun Message.thenMessage(next: Message): Message = this
+
+infix fun Message.afterMessage(prev: Message): Message = this
+
+infix fun Message.givenMessage(predicate: MessagePredicate): Message = this
+
+infix fun Message.unlessMessage(predicate: MessagePredicate): Message = this
+
+infix fun Message.otherwiseMessage(next: Message): Message = this
+
+infix fun Message.onErrorMessage(action: Message): Message = this
+
+infix fun Message.onTimeoutMessage(action: Message): Message = this
+
 private fun Step.asLiveStep(): SequencerStep = { invoke() }
 
 val SequencerScope.isActive
