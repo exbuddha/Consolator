@@ -49,7 +49,8 @@ private var networkCallback: NetworkCallback? = null
     .also { field = it }
 
 var reactToNetworkCapabilitiesChanged: (Network, NetworkCapabilities) -> Unit = { network, networkCapabilities ->
-    commit @Tag(NET_CAP_UPDATE) { updateNetworkCapabilities(network, networkCapabilities) } }
+    commit @Tag(NET_CAP_UPDATE) {
+        updateNetworkCapabilities(network, networkCapabilities) } }
 
 @Coordinate @Tag(INET_REGISTER)
 fun LifecycleOwner.registerInternetCallback() {
@@ -94,9 +95,11 @@ private var networkCallFunction: JobFunction = @Tag(INET_FUNCTION) { scope ->
             ::netCall[INET_CALL] = ::buildNetCallRequest.with("https://httpbin.org/delay/1")()
             tryCancelingForResult({
                 ::netCall.exec { response ->
-                    trySafelyCanceling { reactToNetCallResponseReceived.commit(scope, response) } }
+                trySafelyCanceling {
+                    reactToNetCallResponseReceived.commit(scope, response) } }
             }, { ex ->
-                trySafelyCanceling { reactToNetCallRequestFailed.commit(scope, ex) }
+                trySafelyCanceling {
+                    reactToNetCallRequestFailed.commit(scope, ex) }
             }) } } }
 
 private var reactToNetCallResponseReceived: JobResponseFunction = @Tag(INET_SUCCESS) { _, response ->

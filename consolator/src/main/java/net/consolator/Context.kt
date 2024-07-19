@@ -14,8 +14,8 @@ import kotlin.annotation.AnnotationRetention.*
 import kotlin.annotation.AnnotationTarget.*
 import kotlin.reflect.*
 import kotlinx.coroutines.*
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import net.consolator.Path.Diverging
 import net.consolator.Scheduler.EventBus.commit
 import android.Manifest.permission.ACCESS_NETWORK_STATE
@@ -255,6 +255,9 @@ inline fun <T, reified R> Array<out T>.mapToTypedArray(transform: (T) -> R) =
 fun <T> Array<out T>.secondOrNull(): T? =
     if (size > 1) get(1)
     else null
+
+inline fun <reified T : Any> Any?.asTypeOf(instance: T): T? =
+    instance::class.safeCast(this)
 
 inline fun <reified T : Any> Any?.asType(): T? =
     T::class.safeCast(this)

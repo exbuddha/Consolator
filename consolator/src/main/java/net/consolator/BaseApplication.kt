@@ -15,8 +15,7 @@ open class BaseApplication : Application(), ObjectProvider, UniqueContext {
                 putLong(NOW, now())
                 putBoolean(MAIN, th.isMainThread())
                 putException(ex) } }
-        Thread.setDefaultUncaughtExceptionHandler(mainUncaughtExceptionHandler)
-    }
+        Thread.setDefaultUncaughtExceptionHandler(mainUncaughtExceptionHandler) }
 
     override fun onCreate() {
         super.onCreate()
