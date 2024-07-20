@@ -59,9 +59,9 @@ abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
         } onTimeout { job, _ ->
             State[1] = Unresolved
             error(job)
-        } then
-            Job::join
-    }
+        } then { job, _ ->
+            enact(job)
+    } }
 
     override fun onAttach(context: Context) {
         super.onAttach(context)
@@ -97,8 +97,8 @@ abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
                 // catch cancellation and/or error
                 when (err) {
                     is CancellationException -> State[1] = Ambiguous
-        } } }
-    }
+                } }
+    } }
 
     override fun onResume() {
         if (State[1] !is Resolved)

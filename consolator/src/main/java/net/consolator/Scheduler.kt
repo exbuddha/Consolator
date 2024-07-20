@@ -1676,6 +1676,8 @@ infix fun Job?.onTimeoutJob(action: Job) = this
 // from this point on, job controller handles the execution of each step and
 // following a structured form that was built they react to any other continuation
 
+fun CoroutineScope.enact(job: Job) {}
+
 fun CoroutineScope.enact(job: Job, exit: ThrowableFunction? = null) {}
 
 fun CoroutineScope.error(job: Job, exit: ThrowableFunction? = null) {}
