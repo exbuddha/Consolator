@@ -66,7 +66,7 @@ abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
     override fun onAttach(context: Context) {
         super.onAttach(context)
         if (State[1] is Resolved) return
-        val context = context.weakRef()
+        val context = context.asWeakReference()
         launch(IO, LAZY) @JobTreeRoot @MainViewGroup @Retrying(
             delay = VIEW_MIN_DELAY,
             pathwise = [FromLastCancellation::class]

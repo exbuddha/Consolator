@@ -58,10 +58,10 @@ fun Context.change(stage: ContextStep) =
 fun Context.changeLocally(owner: LifecycleOwner, stage: ContextStep) =
     commit(stage)
 
-fun Context.changeBroadly(ref: WeakContext = weakRef(), stage: ContextStep) =
+fun Context.changeBroadly(ref: WeakContext = asWeakReference(), stage: ContextStep) =
     commit(stage)
 
-fun Context.changeGlobally(ref: WeakContext = weakRef(), owner: LifecycleOwner, stage: ContextStep) =
+fun Context.changeGlobally(ref: WeakContext = asWeakReference(), owner: LifecycleOwner, stage: ContextStep) =
     commit(stage)
 
 @Diverging([STAGE_BUILD_APP_DB])
@@ -149,7 +149,7 @@ interface ReferredContext { var ref: WeakContext? }
 
 typealias WeakContext = WeakReference<out Context>
 
-fun Context.weakRef() =
+fun Context.asWeakReference() =
     if (this is ReferredContext) ref!!
     else WeakReference(this)
 

@@ -10,7 +10,7 @@ import kotlin.reflect.*
 import kotlin.reflect.jvm.*
 
 var UI = fun(context: Context, _: ViewModelStoreOwner, _: Bundle?, _: Short, interceptor: InterceptFunction?): Transition =
-    OverlayFragment(context.weakRef(), interceptor) to null
+    OverlayFragment(context.asWeakReference(), interceptor) to null
 
 private open class OverlayFragment(
     private var context: WeakContext,
