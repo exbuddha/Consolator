@@ -618,12 +618,14 @@ class Sequencer : Synchronizer<LiveWork>, Transactor<Int, Boolean?>, PriorityQue
     var bypass = fun(step: Int) = capture(step)
     var finish = fun() = end()
 
-    private fun advance() { tryAvoiding {
+    private tailrec fun advance() { tryAvoiding {
         activate() // periodic pre-configuration can be done here
+        if (isCompleted) return
         while (next(ln) ?: return /* or issue task resolution */) {
             yield()
             work.let { run(it) ?: bypass(it) } || return }
-        isCompleted = finish() } }
+        isCompleted = finish() }
+        if (!isCompleted) advance() }
 
     fun prepare() { if (ln < 0) ln = -1 }
 
