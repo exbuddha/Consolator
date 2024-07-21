@@ -1808,22 +1808,22 @@ private fun getTag(msg: Message): String? = TODO()
 private fun getTag(what: Int): String? = TODO()
 
 fun markTags(vararg function: Any?) {
-    when (function.firstOrNull()) {
-        JOB_LAUNCH ->
+    when (val context = function.firstOrNull()) {
+        (context === JOB_LAUNCH) ->
             markTagsForJobLaunch(*function, i = 1)
-        SEQ_LAUNCH ->
+        (context === SEQ_LAUNCH) ->
             markTagsForSeqLaunch(*function, i = 1)
-        JOB_REPEAT ->
+        (context === JOB_REPEAT) ->
             markTagsForJobRepeat(*function, i = 1)
-        CLK_ATTACH ->
+        (context === CLK_ATTACH) ->
             markTagsForClkAttach(*function, i = 1)
-        SEQ_ATTACH ->
+        (context === SEQ_ATTACH) ->
             markTagsForSeqAttach(*function, i = 1)
-        CTX_REFORM ->
+        (context === CTX_REFORM) ->
             markTagsForCtxReform(*function, i = 1)
         else ->
-            function.forEach {
-                it.asNullable().markTag() } } }
+            function.map(Any?::asNullable)
+                .forEach(AnyKCallable::markTag) } }
 
 private fun markTagsForJobLaunch(vararg function: Any?, i: Int = 0) =
     function[i + 2]?.markTag()?.also { step ->
