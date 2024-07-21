@@ -649,9 +649,10 @@ class Sequencer : Synchronizer<LiveWork>, Transactor<Int, Boolean?>, PriorityQue
             latestStep = liveStep // live step <-> work
             if (liveStep !== null)
                 synchronize {
-                    getLifecycleOwner(adjust(step)) }?.let { owner ->
+                    getLifecycleOwner(adjust(step)) }
+                ?.let { owner ->
                     liveStep.observe(owner, observer) }
-                    ?: liveStep.observeForever(observer)
+                ?: liveStep.observeForever(observer)
             else return null
         }, { ex ->
             error(ex)
