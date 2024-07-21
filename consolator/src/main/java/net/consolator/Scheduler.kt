@@ -2190,9 +2190,15 @@ private val Any.annotatedScope
             Any::class ->
                 annotation.type.reconstruct(this)
             Fragment::class,
-            Activity::class ->
+            BaseFragment::class,
+            MainFragment::class,
+            Activity::class,
+            BaseActivity::class,
+            MainActivity::class ->
                 foregroundLifecycleOwner.asObjectProvider()!!(annotation.type)
-            Application::class ->
+            Application::class,
+            BaseApplication::class,
+            MainApplication::class ->
                 instance.asObjectProvider()!!(annotation.type)
             else ->
                 throw BaseImplementationRestriction()
