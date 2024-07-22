@@ -76,7 +76,9 @@ fun commit(step: CoroutineStep) =
 fun commit(vararg context: Any?): Any? =
     when (val task = context.firstOrNull()) {
         (task === START) -> {
-            Scheduler.observe()
+            Scheduler {
+                preferClock()
+                observe() }
             clock = Clock(SVC, Thread.MAX_PRIORITY)
             @Synchronous @Tag(CLOCK_INIT) {
                 // turn clock until scope is active
@@ -96,9 +98,8 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         operator fun invoke(intent: Intent?): IBinder {
             mode = getModeExtra(intent)
             if (intent !== null &&
-                intent.hasCategory(START_TIME_KEY) &&
-                clock?.isNotStarted == true)
-                clock?.start()
+                intent.hasCategory(START_TIME_KEY))
+                Clock.startSafely()
             if (State[2] !is Resolved)
                 commit @Synchronous @Tag(INIT) {
                     trySafelyForResult { getStartTimeExtra(intent) }
@@ -243,10 +244,12 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
     var applicationMigrationManager: MigrationManager? = null
     var applicationMemoryManager: MemoryManager? = null
 
+    fun preferClock() {
+        preferredEnlistFunction = ::handle }
+
     fun windDown() {
-        clock?.apply {
-            Process.setThreadPriority(threadId, Process.THREAD_PRIORITY_DEFAULT)
-    } }
+        Clock.apply {
+            Process.setThreadPriority(threadId, Process.THREAD_PRIORITY_DEFAULT) } }
 
     fun clearResolverObjects() {
         activityConfigurationChangeManager = null
@@ -270,8 +273,10 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
     override val coroutineContext
         get() = IO
 
+    private var preferredEnlistFunction: CoroutineFunction = Scheduler::launch
+
     override fun commit(step: CoroutineStep) =
-        attach(step.markTagForSchCommit())
+        attach(step.markTagForSchCommit(), preferredEnlistFunction)
 
     override fun attach(step: CoroutineStep, vararg args: Any?): Any? {
         val enlist: CoroutineFunction? = (args.firstOrNull()
@@ -305,6 +310,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         launch(Scheduler, block = it
             .markTagForSchLaunch()
             .afterMarkingTagsForJobLaunch())
+        .apply { saveNewElement(it) }
 
     override fun <R> fold(initial: R, operation: (R, CoroutineContext.Element) -> R): R {
         // update continuation state
@@ -516,7 +522,12 @@ open class Clock(
 
         fun getTime(step: Step): Long? = null
 
+        fun startSafely() = apply {
+            if (isNotStarted) start() }
+
         fun quit() = clock?.quit()
+
+        inline fun apply(block: Clock.() -> Unit) = clock?.apply(block)
     }
 }
 
