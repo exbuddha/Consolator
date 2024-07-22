@@ -145,6 +145,12 @@ fun Context.isPermissionGranted(permission: String) =
 fun Context.intendFor(cls: Class<*>) = Intent(this, cls)
 fun Context.intendFor(cls: AnyKClass) = intendFor(cls.java)
 
+fun Intent?.makeClockStartSafely() = make {
+    if (hasCategory(START_TIME_KEY))
+        Clock.startSafely() }
+
+inline fun <R> Intent?.make(change: Intent.() -> R) = this?.run(change)
+
 interface ReferredContext { var ref: WeakContext? }
 
 typealias WeakContext = WeakReference<out Context>

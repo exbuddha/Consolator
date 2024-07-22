@@ -6,6 +6,7 @@ import android.content.*
 open class BaseService : Service(), Scheduler.BaseServiceScope {
     override var startTime = 0L
     override var mode: Int? = null
+    override var preferredEnlistFunction: CoroutineFunction = ::handleAhead
 
     override fun onCreate() {
         super.onCreate()

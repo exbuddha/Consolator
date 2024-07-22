@@ -97,9 +97,8 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
     sealed interface BaseServiceScope : ResolverScope, IBinder, ReferredContext, UniqueContext {
         operator fun invoke(intent: Intent?): IBinder {
             mode = getModeExtra(intent)
-            if (intent !== null &&
-                intent.hasCategory(START_TIME_KEY))
-                Clock.startSafely()
+            if (preferredEnlistFunction === ::handleAhead)
+                intent.makeClockStartSafely()
             if (State[2] !is Resolved)
                 commit @Synchronous @Tag(INIT) {
                     trySafelyForResult { getStartTimeExtra(intent) }
@@ -169,8 +168,10 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         private fun formAfterMarkingTagsForCtxReform(tag: String, stage: ContextStep?, form: AnyStep, job: Job) =
             (form after { markTagsForCtxReform(tag, stage, form, job) })!!
 
+        var preferredEnlistFunction: CoroutineFunction
+
         override fun commit(step: CoroutineStep) =
-            attach(step.markTagForSvcCommit(), ::handleAhead)
+            attach(step.markTagForSvcCommit(), preferredEnlistFunction)
 
         fun getStartTimeExtra(intent: Intent?) =
             intent?.getLongExtra(START_TIME_KEY, foregroundContext.asUniqueContext()?.startTime ?: now())
@@ -2286,7 +2287,7 @@ typealias JobFunction = suspend (Any?) -> Unit
 private typealias JobFunctionSet = MutableSet<JobFunctionItem>
 private typealias JobFunctionItem = StringToAnyPair
 private typealias JobPredicate = (Job) -> Boolean
-private typealias CoroutineFunction = (CoroutineStep) -> Any?
+typealias CoroutineFunction = (CoroutineStep) -> Any?
 private typealias CoroutinePointer = () -> CoroutineStep?
 private typealias StringToAnyPair = Pair<StringPointer, Any>
 
