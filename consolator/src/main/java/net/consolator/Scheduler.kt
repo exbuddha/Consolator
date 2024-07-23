@@ -2380,6 +2380,10 @@ sealed interface State {
 
     interface Resolved : State {
         companion object : Resolved {
+            inline infix fun where(predicate: Predicate) =
+                if (predicate()) this
+                else Unresolved
+
             inline infix fun unless(predicate: Predicate) =
                 if (predicate()) Unresolved
                 else this
@@ -2398,8 +2402,8 @@ sealed interface State {
         fun of(property: AnyKProperty): State = Ambiguous
 
         operator fun get(id: ID): State = when (id.toInt()) {
-            1 -> Resolved unless { db === null || session === null }
-            2 -> Resolved unless { logDb === null || netDb === null }
+            1 -> Resolved unless ::appDbOrSessionIsNull
+            2 -> Resolved unless ::logDbOrNetDbIsNull
             else ->
                 Lock.Open
         }

@@ -97,7 +97,7 @@ fun Context.stageNetDbInitialized(scope: Any?) {
 }
 
 suspend fun buildSession() {
-    if (session === null)
+    if (sessionIsNull)
         buildNewSession() }
 
 suspend fun buildNewSession() {
@@ -145,6 +145,17 @@ private fun Long.toLocalTimestamp() = dateTimeFormat!!.format(Date(this))
 fun String.toAppTime() = toLocalTime() - dbTimeDiff!!
 
 private fun Long.toDbTime() = plus(dbTimeDiff!!)
+
+val appDbIsNull get() = db === null
+val appDbIsNotNull get() = db !== null
+val sessionIsNull get() = session === null
+val sessionIsNotNull get() = session !== null
+val logDbIsNull get() = logDb === null
+val logDbIsNotNull get() = logDb !== null
+val netDbIsNull get() = netDb === null
+val netDbIsNotNull get() = netDb !== null
+val appDbOrSessionIsNull get() = appDbIsNull || sessionIsNull
+val logDbOrNetDbIsNull get() = logDbIsNull || netDbIsNull
 
 fun clearAppDbObjects() {
     db = null }

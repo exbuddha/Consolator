@@ -77,7 +77,7 @@ abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
         } then @Committing @Event(ACTION_MIGRATE_APP) { _, _ ->
             change(Context::stageAppDbCreated)
         } given { _ ->
-            db !== null
+            appDbIsNotNull
         } otherwise { job, _ ->
             retry(job)
         } then @Path(STAGE_BUILD_SESSION) { _, _ ->
@@ -85,7 +85,7 @@ abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
         } then @Committing @Event(ACTION_MIGRATE_APP) { _, _ ->
             change(Context::stageSessionCreated)
         } given { _ ->
-            session !== null
+            sessionIsNotNull
         } otherwise { job, _ ->
             retry(job)
         } onError { _, _ ->
