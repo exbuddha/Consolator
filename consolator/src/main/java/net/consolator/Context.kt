@@ -10,6 +10,7 @@ import androidx.lifecycle.*
 import androidx.room.*
 import java.lang.*
 import java.lang.ref.*
+import java.util.*
 import kotlin.annotation.AnnotationRetention.*
 import kotlin.annotation.AnnotationTarget.*
 import kotlin.reflect.*
@@ -18,10 +19,19 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import net.consolator.Path.Diverging
 import net.consolator.Scheduler.EventBus.commit
+import net.consolator.database.AppDatabase
+import net.consolator.database.LogDatabase
+import net.consolator.database.NetworkDatabase
+import net.consolator.database.entity.RuntimeSessionEntity
+import net.consolator.database.dao.LogDao
+import net.consolator.database.dao.NetworkDao
+import net.consolator.database.dao.RuntimeDao
 import android.Manifest.permission.ACCESS_NETWORK_STATE
 import android.Manifest.permission.INTERNET
 import androidx.core.content.ContextCompat.RECEIVER_EXPORTED
 import net.consolator.Scheduler.clock
+import net.consolator.database.AppDatabase.Companion.dateTimeFormat
+import net.consolator.database.AppDatabase.Companion.dbTimeDiff
 
 var instance: BaseApplication? = null
 var service: BaseService? = null
@@ -91,12 +101,12 @@ suspend fun buildSession() {
         buildNewSession() }
 
 suspend fun buildNewSession() {
-    runtimeDao {
+    RuntimeDao {
         session = getSession(
             newSession(foregroundContext.startTime())) } }
 
 suspend fun updateNetworkState() {
-    networkDao {
+    NetworkDao {
         updateNetworkState(
             isConnected,
             hasInternet,
@@ -105,7 +115,7 @@ suspend fun updateNetworkState() {
 
 suspend fun updateNetworkCapabilities(network: Network? = net.consolator.network, networkCapabilities: NetworkCapabilities? = net.consolator.networkCapabilities) {
     networkCapabilities?.run {
-        networkDao {
+        NetworkDao {
             updateNetworkCapabilities(
                 Json.encodeToString(capabilities),
                 linkDownstreamBandwidthKbps,
@@ -127,6 +137,28 @@ inline fun <reified D : RoomDatabase> Context.commitBuildDatabase(instance: KMut
 
 fun Context.buildAppDatabase() =
     commitBuildDatabase(::db)
+
+fun String.toLocalTime() = dateTimeFormat!!.parse(this)!!.time
+
+private fun Long.toLocalTimestamp() = dateTimeFormat!!.format(Date(this))
+
+fun String.toAppTime() = toLocalTime() - dbTimeDiff!!
+
+private fun Long.toDbTime() = plus(dbTimeDiff!!)
+
+fun clearAppDbObjects() {
+    db = null }
+fun clearLogDbObjects() {
+    logDb = null }
+fun clearNetDbObjects() {
+    netDb = null }
+fun clearAllDbObjects() {
+    clearAppDbObjects()
+    clearLogDbObjects()
+    clearNetDbObjects()
+    AppDatabase.clearObjects() }
+fun clearSessionObjects() {
+    session = null }
 
 fun Context.registerReceiver(filter: IntentFilter) =
     ContextCompat.registerReceiver(this, receiver, filter, null,
@@ -363,7 +395,9 @@ typealias IntMutableList = MutableList<Int>
 typealias IntFunction = () -> Int
 typealias LongFunction = () -> Long
 typealias StringFunction = Any?.() -> String
+typealias CharsFunction = Any?.() -> CharSequence
 typealias StringPointer = () -> String?
+typealias CharsPointer = () -> CharSequence?
 typealias ThrowableFunction = (Throwable?) -> Unit
 typealias Predicate = () -> Boolean
 typealias AnyPredicate = (Any?) -> Boolean

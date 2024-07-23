@@ -1178,22 +1178,22 @@ fun ResolverScope.commit(vararg tag: Tag) =
 fun ResolverScope.commit(vararg path: Path) =
     commit(*path.mapToStringArray())
 
-fun <T> ResolverScope.unit(ref: Coordinate) =
-    with(ref) { unit<T>(target, key) }
+fun <T> ResolverScope.item(ref: Coordinate) =
+    with(ref) { item<T>(target, key) }
 
-private fun <T> ResolverScope.unit(target: AnyKClass = Any::class, key: KeyType): T = TODO()
+private fun <T> ResolverScope.item(target: AnyKClass = Any::class, key: KeyType): T = TODO()
 
 private fun liveStep(target: AnyKClass, key: KeyType) =
-    Scheduler.unit<SequencerStep>(target, key)
+    Scheduler.item<SequencerStep>(target, key)
 
 private fun coroutineStep(target: AnyKClass, key: KeyType) =
-    Scheduler.unit<CoroutineStep>(target, key)
+    Scheduler.item<CoroutineStep>(target, key)
 
 private fun step(target: AnyKClass, key: KeyType) =
-    Scheduler.unit<Step>(target, key)
+    Scheduler.item<Step>(target, key)
 
 private fun runnable(target: AnyKClass, key: KeyType) =
-    Scheduler.unit<Runnable>(target, key)
+    Scheduler.item<Runnable>(target, key)
 
 fun schedule(step: Step) = Scheduler.postValue(step.markTagForSchPost())
 fun scheduleAhead(step: Step) { Scheduler.value = step.markTagForSchPost() }
@@ -2019,17 +2019,6 @@ fun <T, U, R> (suspend T.(U) -> R).block(scope: T, value: U) = runBlocking { inv
 fun <T, U, R> (suspend T.(U) -> R).block(scope: () -> T, value: U) = runBlocking { invoke(scope(), value) }
 fun <T, U, R> (suspend T.(U) -> R).block(scope: KCallable<T>, value: U) = runBlocking { invoke(scope.call(), value) }
 
-private typealias TransitType = Short
-private typealias Transit = TransitType?
-
-val Any?.transit: Transit
-    get() = when (this) {
-        is Relay -> transit
-        is Number -> toTransit()
-        else -> asNullable().event?.transit }
-
-fun Number?.toTransit() = this?.asType<TransitType>()
-
 @Retention(SOURCE)
 @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
 @Repeatable
@@ -2071,23 +2060,30 @@ annotation class Event(val transit: TransitType = 0) {
         val pathwise: SchedulerPath = [])
 }
 
-private typealias KeyType = Short
+private open class Item<T>(override val obj: T) : ObjectReference<T>, CharSequence {
+    companion object {
+        fun <T> reload(property: KMutableProperty<T>): Item<T> = TODO()
 
-fun Number?.toCoordinateTarget(): AnyKClass = Any::class
+        fun <T> reload(tag: String): Item<T> = TODO()
 
-fun Number?.toCoordinateKey() = this?.asType<KeyType>()
+        fun <T> reload(target: AnyKClass, key: KeyType): Item<T> = TODO()
+    }
+
+    private lateinit var tag: CharSequence
+
+    override fun get(index: Int) = tag[index]
+
+    override fun subSequence(startIndex: Int, endIndex: Int) = tag.subSequence(startIndex, endIndex)
+
+    override val length
+        get() = tag.length
+}
 
 @Retention(SOURCE)
 @Target(ANNOTATION_CLASS, CLASS, CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
 annotation class Coordinate(
     val target: AnyKClass = Any::class,
     val key: KeyType = 0)
-
-typealias ChannelType = Short
-
-fun Number?.toChannel() = this?.asType<ChannelType>()
-
-fun Array<out Tag>.mapToStringArray() = mapToTypedArray { it.string }
 
 @Retention(SOURCE)
 @Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
@@ -2098,8 +2094,6 @@ annotation class Tag(
 @Retention(SOURCE)
 @Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
 annotation class Keep
-
-fun Array<out Path>.mapToStringArray() = mapToTypedArray { it.name }
 
 @Retention(SOURCE)
 @Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
@@ -2141,13 +2135,9 @@ annotation class Path(
 
 open class SchedulerIntent : Throwable()
 
-abstract class FromLastCancellation : SchedulerIntent()
-
 open class Propagate : SchedulerIntent()
 
-typealias LevelType = UByte
-
-fun Number?.toLevel() = this?.toByte()?.toUByte()
+abstract class FromLastCancellation : SchedulerIntent()
 
 @Retention(SOURCE)
 @Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
@@ -2274,6 +2264,35 @@ fun <T> T?.asNullable(): KCallable<T?> = asNullRef()::obj
 
 fun trueWhenNull(it: Any?) = it === null
 
+private typealias TransitType = Short
+private typealias Transit = TransitType?
+
+val Any?.transit: Transit
+    get() = when (this) {
+        is Relay -> transit
+        is Number -> toTransit()
+        else -> asNullable().event?.transit }
+
+fun Number?.toTransit() = this?.asType<TransitType>()
+
+private typealias KeyType = Short
+
+fun Number?.toCoordinateTarget(): AnyKClass = Any::class
+
+fun Number?.toCoordinateKey() = this?.asType<KeyType>()
+
+typealias ChannelType = Short
+
+fun Number?.toChannel() = this?.asType<ChannelType>()
+
+fun Array<out Tag>.mapToStringArray() = mapToTypedArray { it.string }
+
+fun Array<out Path>.mapToStringArray() = mapToTypedArray { it.name }
+
+typealias LevelType = UByte
+
+fun Number?.toLevel() = this?.toByte()?.toUByte()
+
 fun Any?.asMessage() = asType<Message>()
 fun Any?.asRunnable() = asType<Runnable>()
 fun Any?.asLiveWork() = asType<LiveWork>()
@@ -2285,11 +2304,11 @@ private typealias SchedulerPath = Array<KClass<out Throwable>>
 private typealias SchedulerStep = suspend CoroutineScope.(Job, Any?) -> Unit
 typealias JobFunction = suspend (Any?) -> Unit
 private typealias JobFunctionSet = MutableSet<JobFunctionItem>
-private typealias JobFunctionItem = StringToAnyPair
+private typealias JobFunctionItem = CharsToAnyPair
 private typealias JobPredicate = (Job) -> Boolean
 typealias CoroutineFunction = (CoroutineStep) -> Any?
 private typealias CoroutinePointer = () -> CoroutineStep?
-private typealias StringToAnyPair = Pair<StringPointer, Any>
+private typealias CharsToAnyPair = Pair<CharsPointer, Any>
 
 private typealias SequencerScope = LiveDataScope<Step?>
 private typealias SequencerStep = suspend SequencerScope.(Any?) -> Unit
