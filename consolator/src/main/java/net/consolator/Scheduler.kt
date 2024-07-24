@@ -60,6 +60,15 @@ interface ResolverScope : CoroutineScope, Transactor<CoroutineStep, Any?> {
 
 sealed interface SchedulerScope : ResolverScope {
     override fun commit(step: CoroutineStep) = net.consolator.commit(step)
+
+    companion object {
+        private var current: SchedulerScope? = null
+
+        operator fun invoke(): SchedulerScope = current ?: Scheduler
+
+        fun change(scope: SchedulerScope.() -> SchedulerScope) {
+            current = scope(this()) }
+    }
 }
 
 fun commit(step: CoroutineStep) =
