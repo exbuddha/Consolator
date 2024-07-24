@@ -104,6 +104,8 @@ suspend fun buildNewSession() {
         session = getSession(
             newSession(foregroundContext.startTime())) } }
 
+fun Job.isSessionCreated() = sessionIsNotNull
+
 suspend fun updateNetworkState() {
     NetworkDao {
         updateNetworkState(
@@ -136,6 +138,8 @@ inline fun <reified D : RoomDatabase> Context.commitBuildDatabase(instance: KMut
 
 fun Context.buildAppDatabase() =
     commitBuildDatabase(::db)
+
+fun Job.isAppDbCreated() = appDbIsNotNull
 
 fun String.toLocalTime() = dateTimeFormat!!.parse(this)!!.time
 

@@ -1691,11 +1691,25 @@ infix fun Job?.onTimeoutJob(action: Job) = this
 // from this point on, job controller handles the execution of each step and
 // following a structured form that was built they react to any other continuation
 
-fun CoroutineScope.enact(job: Job) {}
+infix fun CoroutineScope.diverge(step: SchedulerStep): CoroutineStep? = TODO()
+
+infix fun CoroutineScope.diverge(job: Job): Job? = TODO()
+
+infix fun CoroutineStep?.onConverge(action: SchedulerStep): CoroutineStep? = this
+
+infix fun Job?.onConvergeJob(action: Job) = this
+
+fun CoroutineScope?.converge(job: Job, context: Any?) {}
+
+fun CoroutineScope.enact(job: Job, context: Any?) {}
 
 fun CoroutineScope.enact(job: Job, exit: ThrowableFunction? = null) {}
 
+fun CoroutineScope.error(job: Job, context: Any?) {}
+
 fun CoroutineScope.error(job: Job, exit: ThrowableFunction? = null) {}
+
+fun CoroutineScope.retry(job: Job, context: Any?) {}
 
 fun CoroutineScope.retry(job: Job, exit: ThrowableFunction? = null) {}
 

@@ -59,9 +59,9 @@ abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
         .onTimeout { job, _ ->
             State[1] = Unresolved
             error(job) }
-        .then { job, _ ->
-            enact(job)
-    } }
+        .then(
+            CoroutineScope::enact
+    ) }
 
     override fun onAttach(context: Context) {
         super.onAttach(context)
@@ -76,22 +76,22 @@ abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
             tryCancelingSuspended(::currentContext, Context::buildAppDatabase) }
         .then @Committing @Event(ACTION_MIGRATE_APP) { _, _ ->
             change(Context::stageAppDbCreated) }
-        .given { _ ->
-            appDbIsNotNull }
-        .otherwise { job, _ ->
-            retry(job) }
+        .given(
+            Job::isAppDbCreated)
+        .otherwise(
+            CoroutineScope::retry)
         .then @Path(STAGE_BUILD_SESSION) { _, _ ->
             tryCancelingSuspended(::buildSession) }
         .then @Committing @Event(ACTION_MIGRATE_APP) { _, _ ->
             change(Context::stageSessionCreated) }
-        .given { _ ->
-            sessionIsNotNull }
-        .otherwise { job, _ ->
-            retry(job) }
+        .given(
+            Job::isSessionCreated)
+        .otherwise(
+            CoroutineScope::retry)
         .onError { _, _ ->
             State[1] = Ambiguous }
-        .onCancel { job, _ ->
-            retry(job) }
+        .onCancel(
+            CoroutineScope::retry)
         .then { job, _ ->
             enact(job) { err ->
                 // catch cancellation and/or error
