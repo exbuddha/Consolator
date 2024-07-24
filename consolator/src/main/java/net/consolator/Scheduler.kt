@@ -61,8 +61,6 @@ interface ResolverScope : CoroutineScope, Transactor<CoroutineStep, Any?> {
 }
 
 sealed interface SchedulerScope : ResolverScope {
-    override fun commit(step: CoroutineStep) = net.consolator.commit(step)
-
     object HandlerScope : SchedulerScope {
         override fun commit(step: CoroutineStep) =
             Scheduler.attach(step, ::handle) }
@@ -86,7 +84,7 @@ fun commit(step: CoroutineStep) =
     (service ?:
     step.annotatedScope ?:
     foregroundLifecycleOwner?.lifecycleScope ?:
-    Scheduler).let { scope ->
+    SchedulerScope()).let { scope ->
         (scope::class.memberFunctions.find {
             it.name == "commit" &&
             it.parameters.size == 2 &&
