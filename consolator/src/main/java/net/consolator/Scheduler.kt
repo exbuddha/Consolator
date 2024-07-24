@@ -20,9 +20,11 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import net.consolator.BaseActivity.*
 import net.consolator.application.*
+import net.consolator.Scheduler.BaseServiceScope
 import net.consolator.Scheduler.EventBus
 import net.consolator.Scheduler.Lock
 import net.consolator.Scheduler.defer
+import net.consolator.SchedulerScope.HandlerScope
 import net.consolator.State.Resolved
 import android.app.Service.START_NOT_STICKY
 import kotlinx.coroutines.Dispatchers.Default
@@ -61,13 +63,22 @@ interface ResolverScope : CoroutineScope, Transactor<CoroutineStep, Any?> {
 sealed interface SchedulerScope : ResolverScope {
     override fun commit(step: CoroutineStep) = net.consolator.commit(step)
 
+    object HandlerScope : SchedulerScope {
+        override fun commit(step: CoroutineStep) =
+            Scheduler.attach(step, ::handle) }
+
     companion object {
         private var current: SchedulerScope? = null
 
-        operator fun invoke(): SchedulerScope = current ?: Scheduler
-
         fun change(scope: SchedulerScope.() -> SchedulerScope) {
-            current = scope(this()) }
+            current = scope(Companion())
+            if (current is HandlerScope)
+                with(BaseServiceScope) {
+                DEFAULT_OPERATOR = CLOCK_ATTACH }
+            else if (current is Scheduler)
+                BaseServiceScope.DEFAULT_OPERATOR = null }
+
+        operator fun invoke(): SchedulerScope = current ?: Scheduler
     }
 }
 
@@ -106,7 +117,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
     sealed interface BaseServiceScope : ResolverScope, IBinder, ReferredContext, UniqueContext {
         operator fun invoke(intent: Intent?): IBinder {
             mode = getModeExtra(intent)
-            if (preferredEnlistFunction === ::handleAhead)
+            if (DEFAULT_OPERATOR === CLOCK_ATTACH)
                 intent.makeClockStartSafely()
             if (State[2] !is Resolved)
                 commit @Synchronous @Tag(INIT) {
@@ -177,10 +188,16 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         private fun formAfterMarkingTagsForCtxReform(tag: String, stage: ContextStep?, form: AnyStep, job: Job) =
             (form after { markTagsForCtxReform(tag, stage, form, job) })!!
 
-        var preferredEnlistFunction: CoroutineFunction
+        companion object {
+            var DEFAULT_OPERATOR: CoroutineFunction? = null
+
+            val CLOCK_ATTACH: CoroutineFunction = { attach(it, ::handleAhead) }
+        }
 
         override fun commit(step: CoroutineStep) =
-            attach(step.markTagForSvcCommit(), preferredEnlistFunction)
+            step.markTagForSvcCommit().let { step ->
+            DEFAULT_OPERATOR?.invoke(step) ?:
+            attach(step, Scheduler::launch) }
 
         fun getStartTimeExtra(intent: Intent?) =
             intent?.getLongExtra(START_TIME_KEY, foregroundContext.asUniqueContext()?.startTime ?: now())
@@ -255,7 +272,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
     var applicationMemoryManager: MemoryManager? = null
 
     fun preferClock() {
-        preferredEnlistFunction = ::handle }
+        SchedulerScope.change { HandlerScope } }
 
     fun windDown() {
         Clock.apply {
@@ -283,10 +300,8 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
     override val coroutineContext
         get() = IO
 
-    private var preferredEnlistFunction: CoroutineFunction = Scheduler::launch
-
     override fun commit(step: CoroutineStep) =
-        attach(step.markTagForSchCommit(), preferredEnlistFunction)
+        attach(step.markTagForSchCommit(), Scheduler::launch)
 
     override fun attach(step: CoroutineStep, vararg args: Any?): Any? {
         val enlist: CoroutineFunction? = (args.firstOrNull()
