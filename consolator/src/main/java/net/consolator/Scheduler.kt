@@ -24,7 +24,6 @@ import net.consolator.Scheduler.BaseServiceScope
 import net.consolator.Scheduler.EventBus
 import net.consolator.Scheduler.Lock
 import net.consolator.Scheduler.defer
-import net.consolator.SchedulerScope.HandlerScope
 import net.consolator.State.Resolved
 import android.app.Service.START_NOT_STICKY
 import kotlinx.coroutines.Dispatchers.Default
@@ -60,25 +59,32 @@ interface ResolverScope : CoroutineScope, Transactor<CoroutineStep, Any?> {
         get() = Scheduler
 }
 
+private object HandlerScope : ResolverScope {
+    override fun commit(step: CoroutineStep) =
+        Scheduler.attach(step, ::handle) }
+
 sealed interface SchedulerScope : ResolverScope {
-    object HandlerScope : SchedulerScope {
-        override fun commit(step: CoroutineStep) =
-            Scheduler.attach(step, ::handle) }
-
     companion object {
-        private var current: SchedulerScope? = null
+        var DEFAULT: CoroutineScope? = null
+            set(value) {
+                // engine-wide reconfiguration
+                if (value is HandlerScope)
+                    with(BaseServiceScope) {
+                    DEFAULT_OPERATOR = CLOCK_ATTACH }
+                else
+                if (value is Scheduler)
+                    BaseServiceScope.DEFAULT_OPERATOR = null
+                field = value }
 
-        fun change(scope: SchedulerScope.() -> SchedulerScope) {
-            current = scope(Companion())
-            if (current is HandlerScope)
-                with(BaseServiceScope) {
-                DEFAULT_OPERATOR = CLOCK_ATTACH }
-            else if (current is Scheduler)
-                BaseServiceScope.DEFAULT_OPERATOR = null }
+        val isClockPreferred
+            get() = DEFAULT === HandlerScope
 
-        operator fun invoke(): SchedulerScope = current ?: Scheduler
+        operator fun invoke() = DEFAULT ?: Scheduler
     }
 }
+
+fun preferClock() {
+    SchedulerScope.DEFAULT = HandlerScope }
 
 fun commit(step: CoroutineStep) =
     (service ?:
@@ -89,19 +95,19 @@ fun commit(step: CoroutineStep) =
             it.name == "commit" &&
             it.parameters.size == 2 &&
             it.parameters[1].name == "step" }
-        ?: Scheduler::commit).call(scope, step) } // message queue reconfiguration
+        ?: Scheduler::commit).call(scope, step) }
 
 fun commit(vararg context: Any?): Any? =
     when (val task = context.firstOrNull()) {
         (task === START) -> {
-            Scheduler {
-                preferClock()
-                observe() }
-            clock = Clock(SVC, Thread.MAX_PRIORITY)
-            @Synchronous @Tag(CLOCK_INIT) {
-                // turn clock until scope is active
-                log(info, SVC_TAG, "Clock is detected.")
-            }.alsoStart()
+            SchedulerScope().asType<Scheduler>()?.observe()
+            preferClock()
+            if (SchedulerScope.isClockPreferred)
+                clock = Clock(SVC, Thread.MAX_PRIORITY)
+                @Synchronous @Tag(CLOCK_INIT) {
+                    // turn clock until scope is active
+                    log(info, SVC_TAG, "Clock is detected.") }
+                .alsoStart()
             with(foregroundContext) {
                 startService(
                 intendFor(BaseService::class)
@@ -115,7 +121,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
     sealed interface BaseServiceScope : ResolverScope, IBinder, ReferredContext, UniqueContext {
         operator fun invoke(intent: Intent?): IBinder {
             mode = getModeExtra(intent)
-            if (DEFAULT_OPERATOR === CLOCK_ATTACH)
+            if (SchedulerScope.isClockPreferred)
                 intent.makeClockStartSafely()
             if (State[2] !is Resolved)
                 commit @Synchronous @Tag(INIT) {
@@ -188,6 +194,9 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
 
         companion object {
             var DEFAULT_OPERATOR: CoroutineFunction? = null
+                set(value) {
+                    // message queue reconfiguration
+                    field = value }
 
             val CLOCK_ATTACH: CoroutineFunction = { attach(it, ::handleAhead) }
         }
@@ -269,9 +278,6 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
     var applicationMigrationManager: MigrationManager? = null
     var applicationMemoryManager: MemoryManager? = null
 
-    fun preferClock() {
-        SchedulerScope.change { HandlerScope } }
-
     fun windDown() {
         Clock.apply {
             Process.setThreadPriority(threadId, Process.THREAD_PRIORITY_DEFAULT) } }
@@ -290,8 +296,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         (Scheduler as CoroutineScope).cancel()
         ignore()
         Clock.quit()
-        Sequencer.destroy()
-        clearObjects() }
+        Sequencer.destroy() }
 
     private fun isActive() = (Scheduler as CoroutineScope).isActive
 
