@@ -2153,7 +2153,7 @@ annotation class JobTreeRoot
 @Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
 annotation class Scope(
     val type: KClass<out CoroutineScope> = Scheduler::class,
-    val provide: AnyKClass = Any::class)
+    val provider: AnyKClass = Any::class)
 
 @Retention(SOURCE)
 @Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
@@ -2188,7 +2188,7 @@ private val AnyKCallable.launchScope
 
 private val Any.annotatedScope
     get() = trySafelyForResult { asCallable().schedulerScope!!.let { annotation ->
-        when (annotation.provide) {
+        when (annotation.provider) {
             Any::class ->
                 annotation.type.reconstruct(this)
             Fragment::class,
