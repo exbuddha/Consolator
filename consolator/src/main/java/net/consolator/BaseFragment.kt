@@ -47,19 +47,19 @@ abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
         } } }
         launch(start = LAZY) @MainViewGroup @Listening
         @OnEvent(ACTION_MIGRATE_APP) {
-            defer<MigrationManager>(::onViewCreated)
-        } otherwise @OnEvent(COMMIT_NAV_MAIN_UI) { _, _ ->
+            defer<MigrationManager>(::onViewCreated) }
+        .otherwise @OnEvent(COMMIT_NAV_MAIN_UI) { _, _ ->
             transit(COMMIT_NAV_MAIN_UI)
             State[1] = Succeeded
-            close(MainViewGroup::class)
-        } onError { job, _ ->
+            close(MainViewGroup::class) }
+        .onError { job, _ ->
             transit(ABORT_NAV_MAIN_UI)
             State[1] = Failed
-            keepAliveOrClose(job)
-        } onTimeout { job, _ ->
+            keepAliveOrClose(job) }
+        .onTimeout { job, _ ->
             State[1] = Unresolved
-            error(job)
-        } then { job, _ ->
+            error(job) }
+        .then { job, _ ->
             enact(job)
     } }
 
@@ -71,28 +71,28 @@ abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
             delay = VIEW_MIN_DELAY,
             pathwise = [FromLastCancellation::class]
         ) @Tag(VIEW_ATTACH) {
-            registerContext(context)
-        } then @Parallel @Path(STAGE_BUILD_APP_DB) { _, _ ->
-            tryCancelingSuspended(::currentContext, Context::buildAppDatabase)
-        } then @Committing @Event(ACTION_MIGRATE_APP) { _, _ ->
-            change(Context::stageAppDbCreated)
-        } given { _ ->
-            appDbIsNotNull
-        } otherwise { job, _ ->
-            retry(job)
-        } then @Path(STAGE_BUILD_SESSION) { _, _ ->
-            tryCancelingSuspended(::buildSession)
-        } then @Committing @Event(ACTION_MIGRATE_APP) { _, _ ->
-            change(Context::stageSessionCreated)
-        } given { _ ->
-            sessionIsNotNull
-        } otherwise { job, _ ->
-            retry(job)
-        } onError { _, _ ->
-            State[1] = Ambiguous
-        } onCancel { job, _ ->
-            retry(job)
-        } then { job, _ ->
+            registerContext(context) }
+        .then @Parallel @Path(STAGE_BUILD_APP_DB) { _, _ ->
+            tryCancelingSuspended(::currentContext, Context::buildAppDatabase) }
+        .then @Committing @Event(ACTION_MIGRATE_APP) { _, _ ->
+            change(Context::stageAppDbCreated) }
+        .given { _ ->
+            appDbIsNotNull }
+        .otherwise { job, _ ->
+            retry(job) }
+        .then @Path(STAGE_BUILD_SESSION) { _, _ ->
+            tryCancelingSuspended(::buildSession) }
+        .then @Committing @Event(ACTION_MIGRATE_APP) { _, _ ->
+            change(Context::stageSessionCreated) }
+        .given { _ ->
+            sessionIsNotNull }
+        .otherwise { job, _ ->
+            retry(job) }
+        .onError { _, _ ->
+            State[1] = Ambiguous }
+        .onCancel { job, _ ->
+            retry(job) }
+        .then { job, _ ->
             enact(job) { err ->
                 // catch cancellation and/or error
                 when (err) {
@@ -100,10 +100,22 @@ abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
                 } }
     } }
 
+    override fun onStart() {
+        super.onStart()
+        if (foregroundLifecycleOwner === activity)
+            foregroundLifecycleOwner = this
+    }
+
     override fun onResume() {
         if (State[1] !is Resolved)
             reattach(MainViewGroup::class)
         super.onResume()
+    }
+
+    override fun onStop() {
+        if (foregroundLifecycleOwner === this)
+            foregroundLifecycleOwner = parentFragment ?: activity
+        super.onStop()
     }
 
     override fun onDestroyView() {

@@ -55,8 +55,7 @@ var contentLayoutId = R.layout.background
 val foregroundContext: Context
     get() = service ?: instance!!
 
-val foregroundLifecycleOwner: LifecycleOwner?
-    get() = null
+var foregroundLifecycleOwner: LifecycleOwner? = null
 
 const val VIEW_MIN_DELAY = 300L
 

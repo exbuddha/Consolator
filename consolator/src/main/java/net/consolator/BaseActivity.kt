@@ -23,11 +23,13 @@ abstract class BaseActivity : AppCompatActivity(), ReferredContext {
 
     override fun onStart() {
         super.onStart()
+        foregroundLifecycleOwner = this
         enableNetworkCallbacks?.invoke()
     }
 
     override fun onStop() {
         disableNetworkCallbacks?.invoke()
+        foregroundLifecycleOwner = null
         super.onStop()
     }
 
