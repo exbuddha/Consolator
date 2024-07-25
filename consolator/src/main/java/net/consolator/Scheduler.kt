@@ -125,18 +125,18 @@ sealed interface BaseServiceScope : ResolverScope, ReferredContext, UniqueContex
                     if (logDb === null)
                         unconfined(true)
                         @Tag(STAGE_BUILD_LOG_DB) { self ->
-                            coordinateBuildDatabase(self,
-                                ::logDb,
-                                stage = Context::stageLogDbCreated) }
+                        coordinateBuildDatabase(self,
+                            ::logDb,
+                            stage = Context::stageLogDbCreated) }
                     if (netDb === null)
                         unconfined(true)
                         @Tag(STAGE_BUILD_NET_DB) { self ->
-                            coordinateBuildDatabase(self,
-                                ::netDb,
-                                step = arrayOf(@Tag(STAGE_INIT_NET_DB) suspend {
-                                    updateNetworkCapabilities()
-                                    updateNetworkState() }),
-                                stage = Context::stageNetDbInitialized) }
+                        coordinateBuildDatabase(self,
+                            ::netDb,
+                            step = arrayOf(@Tag(STAGE_INIT_NET_DB) suspend {
+                                updateNetworkCapabilities()
+                                updateNetworkState() }),
+                            stage = Context::stageNetDbInitialized) }
                     resumeAsync()
     } } }
 
@@ -1195,18 +1195,6 @@ fun reinvokeAheadInterrupting(step: Step) = postAhead(interruptingRunnableOf(ste
 fun reinvokeSafelyInterrupting(step: Step) = post(safeInterruptingRunnableOf(step))
 fun reinvokeAheadSafelyInterrupting(step: Step) = postAhead(safeInterruptingRunnableOf(step))
 
-fun <T> blockOf(step: suspend CoroutineScope.() -> T): () -> T = { runBlocking(block = step) }
-fun <T> runnableOf(step: suspend CoroutineScope.() -> T) = Runnable { runBlocking(block = step) }
-fun <T> safeRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { trySafely(blockOf(step)) }
-fun <T> interruptingRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { tryInterrupting(step) }
-fun <T> safeInterruptingRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { trySafelyInterrupting(step) }
-
-fun <T> blockOf(step: suspend () -> T): () -> T = step::block
-fun <T> runnableOf(step: suspend () -> T) = Runnable { step.block() }
-fun <T> safeRunnableOf(step: suspend () -> T) = Runnable { trySafely(blockOf(step)) }
-fun <T> interruptingRunnableOf(step: suspend () -> T) = Runnable { tryInterrupting(blockOf(step)) }
-fun <T> safeInterruptingRunnableOf(step: suspend () -> T) = Runnable { trySafelyInterrupting(blockOf(step)) }
-
 fun Step.asCoroutine(): CoroutineStep = { this@asCoroutine() }
 
 private fun CoroutineStep.asStep() = suspend { invoke(annotatedScopeOrScheduler()) }
@@ -2011,6 +1999,18 @@ fun Any?.toJobId() = asJob().hashCode()
 
 suspend fun currentJob() = currentCoroutineContext().job
 fun currentThreadJob() = ::currentJob.block()
+
+fun <T> blockOf(step: suspend CoroutineScope.() -> T): () -> T = { runBlocking(block = step) }
+fun <T> runnableOf(step: suspend CoroutineScope.() -> T) = Runnable { runBlocking(block = step) }
+fun <T> safeRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { trySafely(blockOf(step)) }
+fun <T> interruptingRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { tryInterrupting(step) }
+fun <T> safeInterruptingRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { trySafelyInterrupting(step) }
+
+fun <T> blockOf(step: suspend () -> T): () -> T = step::block
+fun <T> runnableOf(step: suspend () -> T) = Runnable { step.block() }
+fun <T> safeRunnableOf(step: suspend () -> T) = Runnable { trySafely(blockOf(step)) }
+fun <T> interruptingRunnableOf(step: suspend () -> T) = Runnable { tryInterrupting(blockOf(step)) }
+fun <T> safeInterruptingRunnableOf(step: suspend () -> T) = Runnable { trySafelyInterrupting(blockOf(step)) }
 
 fun <R> (suspend () -> R).block() = runBlocking { invoke() }
 fun <T, R> (suspend T.() -> R).block(scope: T) = runBlocking { invoke(scope) }
