@@ -18,7 +18,6 @@ import kotlinx.coroutines.*
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import net.consolator.Path.Diverging
-import net.consolator.Scheduler.EventBus.commit
 import net.consolator.database.AppDatabase
 import net.consolator.database.LogDatabase
 import net.consolator.database.NetworkDatabase
@@ -28,8 +27,7 @@ import net.consolator.database.dao.NetworkDao
 import net.consolator.database.dao.RuntimeDao
 import android.Manifest.permission.ACCESS_NETWORK_STATE
 import android.Manifest.permission.INTERNET
-import androidx.core.content.ContextCompat.RECEIVER_EXPORTED
-import net.consolator.Scheduler.clock
+import net.consolator.EventBus.commit
 import net.consolator.database.AppDatabase.Companion.dateTimeFormat
 import net.consolator.database.AppDatabase.Companion.dbTimeDiff
 
@@ -173,11 +171,6 @@ fun clearAllDbObjects() {
     AppDatabase.clearObjects() }
 fun clearSessionObjects() {
     session = null }
-
-fun Context.registerReceiver(filter: IntentFilter) =
-    ContextCompat.registerReceiver(this, receiver, filter, null,
-        clock?.alsoStartAsync()?.handler,
-        RECEIVER_EXPORTED)
 
 val Context.isNetworkStateAccessPermitted
     get() = isPermissionGranted(ACCESS_NETWORK_STATE)

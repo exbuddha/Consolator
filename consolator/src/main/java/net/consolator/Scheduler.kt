@@ -20,18 +20,15 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import net.consolator.BaseActivity.*
 import net.consolator.application.*
-import net.consolator.Scheduler.BaseServiceScope
-import net.consolator.Scheduler.EventBus
-import net.consolator.Scheduler.Lock
 import net.consolator.Scheduler.defer
 import net.consolator.State.Resolved
 import android.app.Service.START_NOT_STICKY
+import androidx.core.content.ContextCompat.registerReceiver
+import androidx.core.content.ContextCompat.RECEIVER_EXPORTED
 import kotlinx.coroutines.Dispatchers.Default
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Dispatchers.Main
 import kotlinx.coroutines.Dispatchers.Unconfined
-import net.consolator.Scheduler.clock
-import net.consolator.Scheduler.sequencer
 
 private interface Synchronizer<L> {
     fun <R> synchronize(lock: L? = null, block: () -> R): R
@@ -56,7 +53,7 @@ interface Transactor<T, out R> {
 
 interface ResolverScope : CoroutineScope, Transactor<CoroutineStep, Any?> {
     override val coroutineContext: CoroutineContext
-        get() = Scheduler
+        get() = SchedulerContext
 }
 
 private object HandlerScope : ResolverScope {
@@ -69,8 +66,7 @@ sealed interface SchedulerScope : ResolverScope {
             set(value) {
                 // engine-wide reconfiguration
                 if (value is HandlerScope)
-                    with(BaseServiceScope) {
-                    DEFAULT_OPERATOR = CLOCK_ATTACH }
+                    BaseServiceScope.DEFAULT_OPERATOR = ::handleAhead
                 else
                 if (value is Scheduler)
                     BaseServiceScope.DEFAULT_OPERATOR = null
@@ -116,131 +112,110 @@ fun commit(vararg context: Any?): Any? =
         } }
         else -> Unit }
 
-@Coordinate
-object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), StepObserver, Synchronizer<Step>, AttachOperator<CoroutineStep> {
-    sealed interface BaseServiceScope : ResolverScope, IBinder, ReferredContext, UniqueContext {
-        operator fun invoke(intent: Intent?): IBinder {
-            mode = getModeExtra(intent)
-            if (SchedulerScope.isClockPreferred)
-                intent.makeClockStartSafely()
-            if (State[2] !is Resolved)
-                commit @Synchronous @Tag(INIT) {
-                    trySafelyForResult { getStartTimeExtra(intent) }
+sealed interface BaseServiceScope : ResolverScope, ReferredContext, UniqueContext {
+    operator fun invoke(intent: Intent?) {
+        mode = getModeExtra(intent)
+        if (SchedulerScope.isClockPreferred)
+            intent.makeClockStartSafely()
+        if (State[2] !is Resolved)
+            commit @Synchronous @Tag(INIT) {
+                trySafelyForResult { getStartTimeExtra(intent) }
                     ?.apply(::startTime::set)
-                    Sequencer {
-                        if (logDb === null)
-                            unconfined(true)
-                            @Tag(STAGE_BUILD_LOG_DB) { self ->
+                Sequencer {
+                    if (logDb === null)
+                        unconfined(true)
+                        @Tag(STAGE_BUILD_LOG_DB) { self ->
                             coordinateBuildDatabase(self,
                                 ::logDb,
                                 stage = Context::stageLogDbCreated) }
-                        if (netDb === null)
-                            unconfined(true)
-                            @Tag(STAGE_BUILD_NET_DB) { self ->
+                    if (netDb === null)
+                        unconfined(true)
+                        @Tag(STAGE_BUILD_NET_DB) { self ->
                             coordinateBuildDatabase(self,
                                 ::netDb,
                                 step = arrayOf(@Tag(STAGE_INIT_NET_DB) suspend {
                                     updateNetworkCapabilities()
                                     updateNetworkState() }),
                                 stage = Context::stageNetDbInitialized) }
-                        resumeAsync()
-            } }
-            return this }
+                    resumeAsync()
+    } } }
 
-        private suspend inline fun <reified D : RoomDatabase> SequencerScope.coordinateBuildDatabase(identifier: Any?, instance: KMutableProperty<out D?>, noinline stage: ContextStep?) =
-            buildDatabaseOrResetByTag(identifier, instance, stage, synchronize(identifier, stage))
+    private suspend inline fun <reified D : RoomDatabase> SequencerScope.coordinateBuildDatabase(identifier: Any?, instance: KMutableProperty<out D?>, noinline stage: ContextStep?) =
+        buildDatabaseOrResetByTag(identifier, instance, stage, synchronize(identifier, stage))
 
-        private suspend inline fun <reified D : RoomDatabase> SequencerScope.coordinateBuildDatabase(identifier: Any?, instance: KMutableProperty<out D?>, vararg step: AnyStep, noinline stage: ContextStep?) =
-            buildDatabaseOrResetByTag(identifier, instance, stage, synchronize(identifier, *step, stage = stage))
+    private suspend inline fun <reified D : RoomDatabase> SequencerScope.coordinateBuildDatabase(identifier: Any?, instance: KMutableProperty<out D?>, vararg step: AnyStep, noinline stage: ContextStep?) =
+        buildDatabaseOrResetByTag(identifier, instance, stage, synchronize(identifier, *step, stage = stage))
 
-        private suspend inline fun <reified D : RoomDatabase> SequencerScope.buildDatabaseOrResetByTag(identifier: Any?, instance: KMutableProperty<out D?>, noinline stage: ContextStep?, noinline post: AnyStep) =
-            buildDatabaseOrResetByTag(identifier, instance, stage, post, ::whenNotNullOrResetByTag)
+    private suspend inline fun <reified D : RoomDatabase> SequencerScope.buildDatabaseOrResetByTag(identifier: Any?, instance: KMutableProperty<out D?>, noinline stage: ContextStep?, noinline post: AnyStep) =
+        buildDatabaseOrResetByTag(identifier, instance, stage, post, ::whenNotNullOrResetByTag)
 
-        private suspend inline fun <reified D : RoomDatabase> SequencerScope.buildDatabaseOrResetByTag(identifier: Any?, instance: KMutableProperty<out D?>, noinline stage: ContextStep?, noinline post: AnyStep, condition: PropertyCondition) =
-            returnItsTag(identifier)?.let { tag ->
-                buildDatabaseOrResetByTag(instance, tag)
-                condition(instance, tag,
-                    formAfterMarkingTagsForCtxReform(tag, stage, post, currentJob())) }
+    private suspend inline fun <reified D : RoomDatabase> SequencerScope.buildDatabaseOrResetByTag(identifier: Any?, instance: KMutableProperty<out D?>, noinline stage: ContextStep?, noinline post: AnyStep, condition: PropertyCondition) =
+        returnItsTag(identifier)?.let { tag ->
+            buildDatabaseOrResetByTag(instance, tag)
+            condition(instance, tag,
+                formAfterMarkingTagsForCtxReform(tag, stage, post, currentJob())) }
 
-        private suspend inline fun <reified D : RoomDatabase> SequencerScope.buildDatabaseOrResetByTag(instance: KMutableProperty<out D?>, tag: String) {
-            ref?.get()?.run<Context, D?> {
-                sequencer { trySafelyCanceling {
-                    resetByTagOnError(tag) {
+    private suspend inline fun <reified D : RoomDatabase> SequencerScope.buildDatabaseOrResetByTag(instance: KMutableProperty<out D?>, tag: String) {
+        ref?.get()?.run<Context, D?> {
+            sequencer { trySafelyCanceling {
+                resetByTagOnError(tag) {
                     commitAsyncAndResetByTag(instance, tag, ::buildDatabase) } } }
-            }?.apply(instance::set) }
+        }?.apply(instance::set) }
 
-        private suspend inline fun <R> SequencerScope.commitAsyncAndResetByTag(lock: AnyKProperty, tag: String, block: () -> R) =
-            commitAsyncOrResetByTag(lock, tag) { block().also { resetByTag(tag) } }
+    private suspend inline fun <R> SequencerScope.commitAsyncAndResetByTag(lock: AnyKProperty, tag: String, block: () -> R) =
+        commitAsyncOrResetByTag(lock, tag) { block().also { resetByTag(tag) } }
 
-        private suspend inline fun <R> SequencerScope.commitAsyncOrResetByTag(lock: AnyKProperty, tag: String, block: () -> R) =
-            commitAsyncForResult(lock, lock::isNull, block) { resetByTag(tag); null }
+    private suspend inline fun <R> SequencerScope.commitAsyncOrResetByTag(lock: AnyKProperty, tag: String, block: () -> R) =
+        commitAsyncForResult(lock, lock::isNull, block) { resetByTag(tag); null }
 
-        private fun SequencerScope.synchronize(identifier: Any?, stage: ContextStep?) =
-            if (stage !== null) form(stage)
-            else ignore
+    private fun SequencerScope.synchronize(identifier: Any?, stage: ContextStep?) =
+        if (stage !== null) form(stage)
+        else ignore
 
-        private fun SequencerScope.synchronize(identifier: Any?, vararg step: AnyStep, stage: ContextStep?) =
-            if (stage !== null) form(stage, *step)!!
-            else ignore
+    private fun SequencerScope.synchronize(identifier: Any?, vararg step: AnyStep, stage: ContextStep?) =
+        if (stage !== null) form(stage, *step)!!
+        else ignore
 
-        private val ignore get() = @Tag(IGNORE) emptyStep
+    private val ignore get() = @Tag(IGNORE) emptyStep
 
-        private fun SequencerScope.form(stage: ContextStep) = suspend { change(stage) }
+    private fun SequencerScope.form(stage: ContextStep) = suspend { change(stage) }
 
-        private fun SequencerScope.form(stage: ContextStep, vararg step: AnyStep) = step.first() then form(stage)
+    private fun SequencerScope.form(stage: ContextStep, vararg step: AnyStep) = step.first() then form(stage)
 
-        private fun formAfterMarkingTagsForCtxReform(tag: String, stage: ContextStep?, form: AnyStep, job: Job) =
-            (form after { markTagsForCtxReform(tag, stage, form, job) })!!
+    private fun formAfterMarkingTagsForCtxReform(tag: String, stage: ContextStep?, form: AnyStep, job: Job) =
+        (form after { markTagsForCtxReform(tag, stage, form, job) })!!
 
-        companion object {
-            var DEFAULT_OPERATOR: CoroutineFunction? = null
-                set(value) {
-                    // message queue reconfiguration
-                    field = value }
-
-            val CLOCK_ATTACH: CoroutineFunction = { attach(it, ::handleAhead) }
-        }
-
-        override fun commit(step: CoroutineStep) =
-            step.markTagForSvcCommit().let { step ->
-            DEFAULT_OPERATOR?.invoke(step) ?:
-            attach(step, Scheduler::launch) }
-
-        fun getStartTimeExtra(intent: Intent?) =
-            intent?.getLongExtra(START_TIME_KEY, foregroundContext.asUniqueContext()?.startTime ?: now())
-
-        var mode: Int?
-        fun getModeExtra(intent: Intent?) =
-            intent?.getIntExtra(MODE_KEY, mode ?: START_NOT_STICKY)
-
-        fun clearObjects() {
-            mode = null }
-
-        override fun getInterfaceDescriptor(): String? {
-            return null }
-
-        override fun pingBinder(): Boolean {
-            return true }
-
-        override fun isBinderAlive(): Boolean {
-            return false }
-
-        override fun queryLocalInterface(descriptor: String): IInterface? {
-            return null }
-
-        override fun dump(fd: FileDescriptor, args: Array<out String>?) {}
-
-        override fun dumpAsync(fd: FileDescriptor, args: Array<out String>?) {}
-
-        override fun transact(code: Int, data: Parcel, reply: Parcel?, flags: Int): Boolean {
-            return true }
-
-        override fun linkToDeath(recipient: IBinder.DeathRecipient, flags: Int) {}
-
-        override fun unlinkToDeath(recipient: IBinder.DeathRecipient, flags: Int): Boolean {
-            return true }
+    companion object {
+        var DEFAULT_OPERATOR: CoroutineFunction? = null
+            set(value) {
+                // message queue reconfiguration
+                field = value }
     }
 
+    override fun commit(step: CoroutineStep) =
+        step.markTagForSvcCommit().let { step ->
+            DEFAULT_OPERATOR?.invoke(step) ?:
+            with(Scheduler) { attach(step, ::launch) } }
+
+    fun getStartTimeExtra(intent: Intent?) =
+        intent?.getLongExtra(START_TIME_KEY, foregroundContext.asUniqueContext()?.startTime ?: now())
+
+    var mode: Int?
+    fun getModeExtra(intent: Intent?) =
+        intent?.getIntExtra(MODE_KEY, mode ?: START_NOT_STICKY)
+
+    fun clearObjects() {
+        mode = null }
+}
+
+private var clock: Clock? = null
+    get() = field.singleton().also { field = it }
+
+private var sequencer: Sequencer? = null
+    get() = field.singleton().also { field = it }
+
+@Coordinate
+object Scheduler : SchedulerScope, MutableLiveData<Step?>(), StepObserver, Synchronizer<Step>, AttachOperator<CoroutineStep> {
     fun observe() = observeForever(this)
 
     fun observeAsync() = commitAsync(this, hasObservers()::not, ::observe)
@@ -248,12 +223,6 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
     fun observe(owner: LifecycleOwner) = observe(owner, this)
 
     fun ignore() = removeObserver(this)
-
-    var clock: Clock? = null
-        get() = (::isActive.then { field.singleton() } ?: field).also { field = it }
-
-    var sequencer: Sequencer? = null
-        get() = (::isActive.then { field.singleton() } ?: field).also { field = it }
 
     fun <T : Resolver> defer(resolver: KClass<out T>, provider: Any = resolver, vararg context: Any?): Unit? {
         fun ResolverKProperty.setResolverThenCommit() =
@@ -289,22 +258,13 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         applicationMigrationManager = null
         applicationMemoryManager = null }
     fun clearObjects() {
-        clock = null
         sequencer = null }
 
-    fun destroy() {
-        (Scheduler as CoroutineScope).cancel()
-        ignore()
-        Clock.quit()
-        Sequencer.destroy() }
-
-    private fun isActive() = (Scheduler as CoroutineScope).isActive
-
     override val coroutineContext
-        get() = IO
+        get() = Default
 
     override fun commit(step: CoroutineStep) =
-        attach(step.markTagForSchCommit(), Scheduler::launch)
+        attach(step.markTagForSchCommit(), ::launch)
 
     override fun attach(step: CoroutineStep, vararg args: Any?): Any? {
         val enlist: CoroutineFunction? = (args.firstOrNull()
@@ -321,7 +281,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             else
                 result } }
 
-    private fun reattach(step: CoroutineStep, handler: CoroutineFunction = Scheduler::launch) =
+    private fun reattach(step: CoroutineStep, handler: CoroutineFunction = ::launch) =
         try {
             if (step.isEnlisted)
                 trySafelyForResult { detach(step) }
@@ -338,53 +298,16 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
         ?: step
 
     private fun launch(it: CoroutineStep) =
-        launch(Scheduler, block = it
+        launch(SchedulerContext, block = it
             .markTagForSchLaunch()
             .afterMarkingTagsForJobLaunch())
         .apply { saveNewElement(it) }
-
-    override fun <R> fold(initial: R, operation: (R, CoroutineContext.Element) -> R): R {
-        // update continuation state
-        return operation(initial, SchedulerElement) }
-
-    override fun <E : CoroutineContext.Element> get(key: CoroutineContext.Key<E>): E? {
-        // notify element continuation
-        return null }
-
-    override fun minusKey(key: CoroutineContext.Key<*>): CoroutineContext {
-        // reimpose continuation rules
-        return this }
 
     override fun onChanged(value: Step?) {
         value.markTagForSchExec()
         ?.run { synchronize(this, ::block) } }
 
     override fun <R> synchronize(lock: Step?, block: () -> R) = block() // or apply (live step) capture function internally
-
-    object EventBus : Buffer(), Transactor<ContextStep, Boolean>, PriorityQueue<Any?> {
-        override suspend fun collectSafely(collector: AnyFlowCollector) {
-            queue.forEach { event ->
-                if (event.canBeCollectedBy(collector))
-                    collector.emit(event) } }
-
-        private fun Any?.canBeCollectedBy(collector: AnyFlowCollector) = true
-
-        override fun commit(step: ContextStep) =
-            queue.add(step)
-
-        fun commit(event: Transit) =
-            queue.add(event)
-
-        fun commit(vararg event: Event) =
-            event.forEach { commit(it.transit) }
-
-        override var queue: MutableList<Any?> = mutableListOf()
-
-        fun clear() {
-            queue.clear() }
-    }
-
-    enum class Lock : State { Closed, Open }
 
     operator fun <R> invoke(work: Scheduler.() -> R) = this.work()
 }
@@ -561,7 +484,7 @@ open class Clock(
 
         fun quit() = clock?.quit()
 
-        inline fun apply(block: Clock.() -> Unit) = clock?.apply(block)
+        fun apply(block: Clock.() -> Unit) = clock?.apply(block)
     }
 }
 
@@ -598,7 +521,7 @@ class Sequencer : Synchronizer<LiveWork>, Transactor<Int, Boolean?>, PriorityQue
     fun unconfinedAfter(async: Boolean = false, step: SequencerStep) = attachAfter(Unconfined, async, step)
     fun unconfinedBefore(async: Boolean = false, step: SequencerStep) = attachBefore(Unconfined, async, step)
 
-    constructor() : this(Scheduler)
+    constructor() : this(StepObserver { it?.block() })
 
     private constructor(observer: StepObserver) {
         this.observer = observer }
@@ -1230,7 +1153,7 @@ fun reattachAhead(step: CoroutineStep) =
     reattach({ it.asStep().postAhead() }, ::handleAhead, step)
 
 private inline fun reattach(post: CoroutineFunction, handle: CoroutineFunction, noinline step: CoroutineStep) =
-    if (Scheduler.hasObservers())
+    if (!SchedulerScope.isClockPreferred && Scheduler.hasObservers())
         post(step)
     else if (Clock.isRunning)
         handle(step)
@@ -1511,7 +1434,7 @@ private fun resetByTag(tag: String) { sequencer?.resetByTag(tag) }
 
 private fun getTag(stage: ContextStep): String = TODO()
 
-inline fun <R> sequencer(block: Sequencer.() -> R) = sequencer?.block()
+private inline fun <R> sequencer(block: Sequencer.() -> R) = sequencer?.block()
 
 private suspend inline fun whenNotNull(instance: AnyKProperty, stage: String, step: AnyStep) {
     if (instance.isNotNull())
@@ -1522,6 +1445,20 @@ private suspend inline fun whenNotNullOrResetByTag(instance: AnyKProperty, stage
         step()
     else resetByTag(stage)
 
+private object SchedulerContext : CoroutineContext {
+    override fun <R> fold(initial: R, operation: (R, CoroutineContext.Element) -> R): R {
+        // update continuation state
+        return operation(initial, SchedulerElement) }
+
+    override fun <E : CoroutineContext.Element> get(key: CoroutineContext.Key<E>): E? {
+        // notify element continuation
+        return null }
+
+    override fun minusKey(key: CoroutineContext.Key<*>): CoroutineContext {
+        // reimpose continuation rules
+        return this }
+}
+
 private interface SchedulerElement : CoroutineContext.Element {
     companion object : SchedulerElement {
         override val key
@@ -1530,10 +1467,10 @@ private interface SchedulerElement : CoroutineContext.Element {
 private interface SchedulerKey : CoroutineContext.Key<SchedulerElement> {
     companion object : SchedulerKey }
 
-fun CoroutineScope.relaunch(instance: JobKProperty, context: CoroutineContext = Scheduler, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep) =
+fun CoroutineScope.relaunch(instance: JobKProperty, context: CoroutineContext = SchedulerContext, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep) =
     relaunch(::launch, instance, context, start, step)
 
-fun LifecycleOwner.relaunch(instance: JobKProperty, context: CoroutineContext = Scheduler, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep) =
+fun LifecycleOwner.relaunch(instance: JobKProperty, context: CoroutineContext = SchedulerContext, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep) =
     relaunch(::launch, instance, context, start, step)
 
 private fun relaunch(launcher: JobKFunction, instance: JobKProperty, context: CoroutineContext, start: CoroutineStart, step: CoroutineStep) =
@@ -1543,14 +1480,14 @@ private fun relaunch(launcher: JobKFunction, instance: JobKProperty, context: Co
 
 fun launch(it: CoroutineStep) = launch(step = it)
 
-fun launch(context: CoroutineContext = Scheduler, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep) =
+fun launch(context: CoroutineContext = SchedulerContext, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep) =
     step.markTagForPloLaunch()
         .afterMarkingTagsForJobLaunch(context, start).let { step ->
     ProcessLifecycleOwner.get()
         .lifecycleScope.launch(context, start, step)
         .apply { saveNewElement(step) } }
 
-fun LifecycleOwner.launch(context: CoroutineContext = Scheduler, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep): Job {
+fun LifecycleOwner.launch(context: CoroutineContext = SchedulerContext, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep): Job {
     val (scope, task) = determineScopeAndCoroutine(context, start, step)
     step.markTagForFloLaunch()
         .afterMarkingTagsForJobLaunch(context, start).let { step ->
@@ -1569,12 +1506,12 @@ private fun CoroutineScope.determineCoroutine(context: CoroutineContext, start: 
     Triple(
         // context key <-> step
         if (context.isSchedulerContext()) context
-        else Scheduler + context,
+        else SchedulerContext + context,
         start,
         step)
 
 private fun CoroutineContext.isSchedulerContext() =
-    this is Scheduler || this[SchedulerKey] is SchedulerElement
+    this is SchedulerContext || this[SchedulerKey] is SchedulerElement
 
 private fun CoroutineStep.afterMarkingTagsForJobLaunch(context: CoroutineContext? = null, start: CoroutineStart? = null) =
     (after { job, _ -> markTagsForJobLaunch(context, start, this, job) })!!
@@ -2075,7 +2012,28 @@ fun <T, U, R> (suspend T.(U) -> R).block(scope: KCallable<T>, value: U) = runBlo
 private fun Step.post() = Scheduler.postValue(this)
 private fun Step.postAhead() { Scheduler.value = this }
 
-abstract class Buffer : AbstractFlow<Any?>()
+object EventBus : AbstractFlow<Any?>(), Transactor<ContextStep, Boolean>, PriorityQueue<Any?> {
+    override suspend fun collectSafely(collector: AnyFlowCollector) {
+        queue.forEach { event ->
+            if (event.canBeCollectedBy(collector))
+                collector.emit(event) } }
+
+    private fun Any?.canBeCollectedBy(collector: AnyFlowCollector) = true
+
+    override fun commit(step: ContextStep) =
+        queue.add(step)
+
+    fun commit(event: Transit) =
+        queue.add(event)
+
+    fun commit(vararg event: Event) =
+        event.forEach { commit(it.transit) }
+
+    override var queue: MutableList<Any?> = mutableListOf()
+
+    fun clear() {
+        queue.clear() }
+}
 
 fun Step.relay(transit: Transit = this.transit) =
     Relay(transit)
@@ -2423,6 +2381,11 @@ private fun newThread(group: ThreadGroup, name: String, priority: Int, target: R
 private fun newThread(name: String, priority: Int, target: Runnable) = Thread(target, name).also { it.priority = priority }
 private fun newThread(priority: Int, target: Runnable) = Thread(target).also { it.priority = priority }
 
+fun Context.registerReceiver(filter: IntentFilter) =
+    registerReceiver(this, receiver, filter, null,
+        clock?.alsoStartAsync()?.handler,
+        RECEIVER_EXPORTED)
+
 private typealias JobKFunction = KFunction<Job>
 private typealias JobKProperty = KMutableProperty<Job?>
 private typealias ResolverKClass = KClass<out Resolver>
@@ -2438,6 +2401,8 @@ typealias AnyKMutableProperty = KMutableProperty<*>
 private operator fun AnyKCallable.plus(lock: AnyKCallable) = this
 
 private fun <R> AnyKCallable.synchronize(block: () -> R) = synchronized(this, block)
+
+enum class Lock : State { Closed, Open }
 
 private typealias ID = Short
 

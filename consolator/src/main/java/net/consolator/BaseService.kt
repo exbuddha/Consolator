@@ -3,7 +3,7 @@ package net.consolator
 import android.app.*
 import android.content.*
 
-open class BaseService : Service(), Scheduler.BaseServiceScope {
+open class BaseService : Service(), BaseServiceScope {
     override var startTime = 0L
     override var mode: Int? = null
 
@@ -18,7 +18,7 @@ open class BaseService : Service(), Scheduler.BaseServiceScope {
         return mode ?: START_NOT_STICKY
     }
 
-    override fun onBind(intent: Intent?) = invoke(intent)
+    override fun onBind(intent: Intent?) = null
 
     override fun onDestroy() {
         service = null

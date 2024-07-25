@@ -1,9 +1,9 @@
 package net.consolator.application
 
 import net.consolator.BaseFragment
+import net.consolator.EventBus
 import net.consolator.JobTreeRoot
 import net.consolator.Resolver
-import net.consolator.Scheduler.EventBus
 import net.consolator.expire
 import net.consolator.BaseApplication.Companion.COMMIT_NAV_MAIN_UI
 import net.consolator.Scheduler.applicationMigrationManager
