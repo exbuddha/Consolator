@@ -268,7 +268,7 @@ object Scheduler : SchedulerScope, MutableLiveData<Step?>(), StepObserver, Synch
         value.markTagForSchExec()
         ?.run { synchronize(this, ::block) } }
 
-    override fun <R> synchronize(lock: Step?, block: () -> R) = block() // or apply (live step) capture function internally
+    override fun <R> synchronize(lock: Step?, block: () -> R) = block()
 
     operator fun <R> invoke(work: Scheduler.() -> R) = this.work()
 }
@@ -482,7 +482,7 @@ class Sequencer : Synchronizer<LiveWork>, Transactor<Int, Boolean?>, PriorityQue
     fun unconfinedAfter(async: Boolean = false, step: SequencerStep) = attachAfter(Unconfined, async, step)
     fun unconfinedBefore(async: Boolean = false, step: SequencerStep) = attachBefore(Unconfined, async, step)
 
-    constructor() : this(StepObserver { it?.block() })
+    constructor() : this(StepObserver { it?.block() /* or apply (live step) capture function internally */ })
 
     private constructor(observer: StepObserver) {
         this.observer = observer }
