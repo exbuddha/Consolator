@@ -205,7 +205,7 @@ interface UniqueContext { var startTime: Long }
 
 fun Context.startTime() = asUniqueContext()?.startTime ?: -1L
 
-fun now() = java.util.Calendar.getInstance().timeInMillis
+fun now() = Calendar.getInstance().timeInMillis
 
 fun getDelayTime(interval: Long, last: Long) =
     interval + last - now()
