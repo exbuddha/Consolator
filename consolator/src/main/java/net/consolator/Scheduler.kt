@@ -311,21 +311,24 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
             ?: ::handle).asType()
         val transfer: CoroutineFunction? = (args.secondOrNull()
             ?: ::reattach).asType()
-        return when (val result = enlist?.invoke(step)) {
+        return when (val result = trySafelyForResult { enlist?.invoke(step) }) {
             null, false ->
                 transfer?.invoke(@Unlisted step)
             true, is Job ->
                 result
-            else -> if (clock?.isRunning == false)
+            else -> if (!Clock.isRunning)
                 transfer?.invoke(@Enlisted step)
             else
                 result } }
 
     private fun reattach(step: CoroutineStep, handler: CoroutineFunction = Scheduler::launch) =
-        if (step.isEnlisted)
-            trySafelyForResult { detach(step) }
-            ?.run(handler)
-        else handler(step)
+        try {
+            if (step.isEnlisted)
+                trySafelyForResult { detach(step) }
+                ?.run(handler)
+            else handler(step) }
+        catch (_: Throwable) {
+            net.consolator.reattach(step) }
 
     private fun detach(step: CoroutineStep) =
         with(Clock) {
@@ -552,6 +555,9 @@ open class Clock(
 
         fun startSafely() = apply {
             if (isNotStarted) start() }
+
+        val isRunning
+            get() = clock?.isRunning == true
 
         fun quit() = clock?.quit()
 
@@ -1178,19 +1184,6 @@ inline fun implicit(noinline `super`: Work): Work {
     `super`()
     return emptyWork }
 
-abstract class Buffer : AbstractFlow<Any?>()
-
-fun Step.relay(transit: Transit = this.transit) =
-    Relay(transit)
-
-fun Step.reinvoke(transit: Transit = this.transit) =
-    object : Relay(transit) {
-        override suspend fun invoke() = this@reinvoke() }
-
-open class Relay(val transit: Transit = null) : Step {
-    override suspend fun invoke() {}
-}
-
 interface Resolver : ResolverScope {
     override fun commit(step: CoroutineStep) =
         commit(blockOf(step))
@@ -1222,11 +1215,27 @@ private fun step(target: AnyKClass, key: KeyType) =
 private fun runnable(target: AnyKClass, key: KeyType) =
     Scheduler.item<Runnable>(target, key)
 
-fun schedule(step: Step) = Scheduler.postValue(step.markTagForSchPost())
-fun scheduleAhead(step: Step) { Scheduler.value = step.markTagForSchPost() }
+fun schedule(step: Step) =
+    step.markTagForSchPost()
+        .post()
 
-fun reattach(step: CoroutineStep) = Scheduler.postValue(step.asStep())
-fun reattachAhead(step: CoroutineStep) { Scheduler.value = step.asStep() }
+fun scheduleAhead(step: Step) =
+    step.markTagForSchPost()
+        .postAhead()
+
+fun reattach(step: CoroutineStep) =
+    reattach({ it.asStep().post() }, ::handle, step)
+
+fun reattachAhead(step: CoroutineStep) =
+    reattach({ it.asStep().postAhead() }, ::handleAhead, step)
+
+private inline fun reattach(post: CoroutineFunction, handle: CoroutineFunction, noinline step: CoroutineStep) =
+    if (Scheduler.hasObservers())
+        post(step)
+    else if (Clock.isRunning)
+        handle(step)
+    else
+        currentThread.interrupt()
 
 // runnable <-> message
 fun post(callback: Runnable) = clock?.post?.invoke(callback)
@@ -1264,7 +1273,7 @@ fun <T> safeRunnableOf(step: suspend () -> T) = Runnable { trySafely(blockOf(ste
 fun <T> interruptingRunnableOf(step: suspend () -> T) = Runnable { tryInterrupting(blockOf(step)) }
 fun <T> safeInterruptingRunnableOf(step: suspend () -> T) = Runnable { trySafelyInterrupting(blockOf(step)) }
 
-private fun CoroutineStep.asStep() = suspend { invoke(annotatedOrCurrentScope()) }
+private fun CoroutineStep.asStep() = suspend { invoke(annotatedScopeOrScheduler()) }
 
 private fun Runnable.asStep() = suspend { run() }
 
@@ -1521,6 +1530,7 @@ private interface SchedulerKey : CoroutineContext.Key<SchedulerElement> {
 
 fun CoroutineScope.relaunch(instance: JobKProperty, context: CoroutineContext = Scheduler, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep) =
     relaunch(::launch, instance, context, start, step)
+
 fun LifecycleOwner.relaunch(instance: JobKProperty, context: CoroutineContext = Scheduler, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep) =
     relaunch(::launch, instance, context, start, step)
 
@@ -2059,6 +2069,22 @@ fun <T, R> (suspend T.() -> R).block(scope: T) = runBlocking { invoke(scope) }
 fun <T, U, R> (suspend T.(U) -> R).block(scope: T, value: U) = runBlocking { invoke(scope, value) }
 fun <T, U, R> (suspend T.(U) -> R).block(scope: () -> T, value: U) = runBlocking { invoke(scope(), value) }
 fun <T, U, R> (suspend T.(U) -> R).block(scope: KCallable<T>, value: U) = runBlocking { invoke(scope.call(), value) }
+
+private fun Step.post() = Scheduler.postValue(this)
+private fun Step.postAhead() { Scheduler.value = this }
+
+abstract class Buffer : AbstractFlow<Any?>()
+
+fun Step.relay(transit: Transit = this.transit) =
+    Relay(transit)
+
+fun Step.reinvoke(transit: Transit = this.transit) =
+    object : Relay(transit) {
+        override suspend fun invoke() = this@reinvoke() }
+
+open class Relay(val transit: Transit = null) : Step {
+    override suspend fun invoke() {}
+}
 
 @Retention(SOURCE)
 @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
