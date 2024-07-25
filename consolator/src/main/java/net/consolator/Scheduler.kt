@@ -120,7 +120,7 @@ sealed interface BaseServiceScope : ResolverScope, ReferredContext, UniqueContex
         if (State[2] !is Resolved)
             commit @Synchronous @Tag(INIT) {
                 trySafelyForResult { getStartTimeExtra(intent) }
-                    ?.apply(::startTime::set)
+                ?.apply(::startTime::set)
                 Sequencer {
                     if (logDb === null)
                         unconfined(true)
@@ -159,7 +159,7 @@ sealed interface BaseServiceScope : ResolverScope, ReferredContext, UniqueContex
         ref?.get()?.run<Context, D?> {
             sequencer { trySafelyCanceling {
                 resetByTagOnError(tag) {
-                    commitAsyncAndResetByTag(instance, tag, ::buildDatabase) } } }
+                commitAsyncAndResetByTag(instance, tag, ::buildDatabase) } } }
         }?.apply(instance::set) }
 
     private suspend inline fun <R> SequencerScope.commitAsyncAndResetByTag(lock: AnyKProperty, tag: String, block: () -> R) =
