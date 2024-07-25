@@ -243,7 +243,7 @@ object Scheduler : SchedulerScope, CoroutineContext, MutableLiveData<Step?>(), S
 
     fun observe() = observeForever(this)
 
-    fun observeAsync() = commitAsync(this, { !hasObservers() }, ::observe)
+    fun observeAsync() = commitAsync(this, hasObservers()::not, ::observe)
 
     fun observe(owner: LifecycleOwner) = observe(owner, this)
 
@@ -1216,12 +1216,12 @@ private fun runnable(target: AnyKClass, key: KeyType) =
     Scheduler.item<Runnable>(target, key)
 
 fun schedule(step: Step) =
-    step.markTagForSchPost()
-        .post()
+    reattach({ step.markTagForSchPost()
+        .post() }, ::handle, step.asCoroutine())
 
 fun scheduleAhead(step: Step) =
-    step.markTagForSchPost()
-        .postAhead()
+    reattach({ step.markTagForSchPost()
+        .postAhead() }, ::handleAhead, step.asCoroutine())
 
 fun reattach(step: CoroutineStep) =
     reattach({ it.asStep().post() }, ::handle, step)
@@ -1272,6 +1272,8 @@ fun <T> runnableOf(step: suspend () -> T) = Runnable { step.block() }
 fun <T> safeRunnableOf(step: suspend () -> T) = Runnable { trySafely(blockOf(step)) }
 fun <T> interruptingRunnableOf(step: suspend () -> T) = Runnable { tryInterrupting(blockOf(step)) }
 fun <T> safeInterruptingRunnableOf(step: suspend () -> T) = Runnable { trySafelyInterrupting(blockOf(step)) }
+
+fun Step.asCoroutine(): CoroutineStep = { this@asCoroutine() }
 
 private fun CoroutineStep.asStep() = suspend { invoke(annotatedScopeOrScheduler()) }
 
