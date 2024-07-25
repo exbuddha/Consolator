@@ -1103,9 +1103,11 @@ inline fun <reified T : Resolver> Context.defer(member: UnitKFunction, vararg co
 inline fun <reified T : Resolver> BaseActivity.defer(member: UnitKFunction, vararg context: Any?, noinline `super`: Work) =
     (this as Context).defer<T>(member, *context, `super` = `super`)
 
-inline fun implicit(noinline `super`: Work): Work {
-    `super`()
-    return emptyWork }
+inline fun implicit(noinline `super`: Work) = when {
+    `super`.isImplicit -> {
+        `super`()
+        emptyWork }
+    else -> `super` }
 
 interface Resolver : ResolverScope {
     override fun commit(step: CoroutineStep) =
@@ -1139,20 +1141,20 @@ private fun runnable(target: AnyKClass, key: KeyType) =
     Scheduler.item<Runnable>(target, key)
 
 fun schedule(step: Step) =
-    reattach({ step.markTagForSchPost()
-        .post() }, ::handle, step.asCoroutine())
+    reattach(step.asCoroutine(), { step.markTagForSchPost()
+        .post() }, ::handle)
 
 fun scheduleAhead(step: Step) =
-    reattach({ step.markTagForSchPost()
-        .postAhead() }, ::handleAhead, step.asCoroutine())
+    reattach(step.asCoroutine(), { step.markTagForSchPost()
+        .postAhead() }, ::handleAhead)
 
 fun reattach(step: CoroutineStep) =
-    reattach({ it.asStep().post() }, ::handle, step)
+    reattach(step, { it.asStep().post() }, ::handle)
 
 fun reattachAhead(step: CoroutineStep) =
-    reattach({ it.asStep().postAhead() }, ::handleAhead, step)
+    reattach(step, { it.asStep().postAhead() }, ::handleAhead)
 
-private inline fun reattach(post: CoroutineFunction, handle: CoroutineFunction, noinline step: CoroutineStep) =
+private inline fun reattach(noinline step: CoroutineStep, post: CoroutineFunction, handle: CoroutineFunction) =
     if (!SchedulerScope.isClockPreferred && Scheduler.hasObservers())
         post(step)
     else if (Clock.isRunning)
@@ -2192,6 +2194,10 @@ private annotation class Synchronous(val node: SchedulerNode = Annotation::class
 
 @Retention(SOURCE)
 @Target(EXPRESSION)
+annotation class Implicit
+
+@Retention(SOURCE)
+@Target(EXPRESSION)
 private annotation class Enlisted
 
 @Retention(SOURCE)
@@ -2234,6 +2240,9 @@ private val Any.annotatedScope
         } as CoroutineScope } }
 
 private fun Any.annotatedScopeOrScheduler() = annotatedScope ?: Scheduler
+
+val Any.isImplicit
+    get() = asCallable().annotations.find { it is Implicit } !== null
 
 private val Any.isEnlisted
     get() = asCallable().annotations.find { it is Enlisted } !== null

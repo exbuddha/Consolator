@@ -19,17 +19,20 @@ open class MainActivity : BaseActivity(), ObjectProvider {
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
-        defer<ConfigurationChangeManager>(::onConfigurationChanged, newConfig) {
+        defer<ConfigurationChangeManager>(::onConfigurationChanged, newConfig)
+        @Implicit {
             super.onConfigurationChanged(newConfig) }
     }
 
     override fun onNightModeChanged(mode: Int) {
-        defer<NightModeChangeManager>(::onNightModeChanged, mode) {
+        defer<NightModeChangeManager>(::onNightModeChanged, mode)
+        @Implicit {
             super.onNightModeChanged(mode) }
     }
 
     override fun onLocalesChanged(locales: LocaleListCompat) {
-        defer<LocalesChangeManager>(::onLocalesChanged, locales) {
+        defer<LocalesChangeManager>(::onLocalesChanged, locales)
+        @Implicit {
             super.onLocalesChanged(locales) }
     }
 
