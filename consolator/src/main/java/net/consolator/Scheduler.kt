@@ -58,7 +58,7 @@ interface ResolverScope : CoroutineScope, Transactor<CoroutineStep, Any?> {
 
 private object HandlerScope : ResolverScope {
     override fun commit(step: CoroutineStep) =
-        Scheduler.attach(step, ::handle) }
+        attach(step, ::handle) }
 
 sealed interface SchedulerScope : ResolverScope {
     companion object {
@@ -195,7 +195,7 @@ sealed interface BaseServiceScope : ResolverScope, ReferredContext, UniqueContex
     override fun commit(step: CoroutineStep) =
         step.markTagForSvcCommit().let { step ->
             DEFAULT_OPERATOR?.invoke(step) ?:
-            with(Scheduler) { attach(step, ::launch) } }
+            attach(step, { launch(step) }) }
 
     fun getStartTimeExtra(intent: Intent?) =
         intent?.getLongExtra(START_TIME_KEY, foregroundContext.asUniqueContext()?.startTime ?: now())
@@ -215,7 +215,7 @@ private var sequencer: Sequencer? = null
     get() = field.singleton().also { field = it }
 
 @Coordinate
-object Scheduler : SchedulerScope, MutableLiveData<Step?>(), StepObserver, Synchronizer<Step>, AttachOperator<CoroutineStep> {
+object Scheduler : SchedulerScope, MutableLiveData<Step?>(), StepObserver, Synchronizer<Step> {
     fun observe() = observeForever(this)
 
     fun observeAsync() = commitAsync(this, hasObservers()::not, ::observe)
@@ -257,51 +257,12 @@ object Scheduler : SchedulerScope, MutableLiveData<Step?>(), StepObserver, Synch
         activityLocalesChangeManager = null
         applicationMigrationManager = null
         applicationMemoryManager = null }
-    fun clearObjects() {
-        sequencer = null }
 
     override val coroutineContext
         get() = Default
 
     override fun commit(step: CoroutineStep) =
         attach(step.markTagForSchCommit(), ::launch)
-
-    override fun attach(step: CoroutineStep, vararg args: Any?): Any? {
-        val enlist: CoroutineFunction? = (args.firstOrNull()
-            ?: ::handle).asType()
-        val transfer: CoroutineFunction? = (args.secondOrNull()
-            ?: ::reattach).asType()
-        return when (val result = trySafelyForResult { enlist?.invoke(step) }) {
-            null, false ->
-                transfer?.invoke(@Unlisted step)
-            true, is Job ->
-                result
-            else -> if (!Clock.isRunning)
-                transfer?.invoke(@Enlisted step)
-            else
-                result } }
-
-    private fun reattach(step: CoroutineStep, handler: CoroutineFunction = ::launch) =
-        try {
-            if (step.isEnlisted)
-                trySafelyForResult { detach(step) }
-                ?.run(handler)
-            else handler(step) }
-        catch (_: Throwable) {
-            net.consolator.reattach(step) }
-
-    private fun detach(step: CoroutineStep) =
-        with(Clock) {
-            getRunnable(step)?.detach() ?:
-            getMessage(step)?.detach()?.asRunnable() }
-        ?.asCoroutine()
-        ?: step
-
-    private fun launch(it: CoroutineStep) =
-        launch(SchedulerContext, block = it
-            .markTagForSchLaunch()
-            .afterMarkingTagsForJobLaunch())
-        .apply { saveNewElement(it) }
 
     override fun onChanged(value: Step?) {
         value.markTagForSchExec()
@@ -1140,25 +1101,73 @@ private fun step(target: AnyKClass, key: KeyType) =
 private fun runnable(target: AnyKClass, key: KeyType) =
     Scheduler.item<Runnable>(target, key)
 
+fun attach(step: CoroutineStep, vararg args: Any?): Any? {
+    val enlist: CoroutineFunction? = (
+        args.firstOrNull()
+        ?: if (SchedulerScope.isClockPreferred)
+            ::handle else ::launch)
+        .asType()
+    val transfer: CoroutineFunction? = (
+        args.secondOrNull()
+        ?: ::reattach)
+        .asType()
+    return when (val result = trySafelyForResult { enlist?.invoke(step) }) {
+        null, false ->
+            transfer?.invoke(@Unlisted step)
+        true, is Job ->
+            result
+        else -> if (!Clock.isRunning)
+            transfer?.invoke(@Enlisted step)
+        else
+            result } }
+
+private fun reattach(step: CoroutineStep, handler: CoroutineFunction = ::launch) =
+    try {
+        if (step.isEnlisted)
+            trySafelyForResult { detach(step) }
+            ?.run(handler)
+        else handler(step) }
+    catch (_: Throwable) {
+        repost(step) }
+
+private fun detach(step: CoroutineStep) =
+    with(Clock) {
+        getRunnable(step)?.detach() ?:
+        getMessage(step)?.detach()?.asRunnable() }
+    ?.asCoroutine()
+    ?: step
+
+private fun launch(it: CoroutineStep) =
+    launch(SchedulerContext, step = it
+        .markTagForSchLaunch()
+        .afterMarkingTagsForJobLaunch())
+    .apply { saveNewElement(it) }
+
+fun repost(step: CoroutineStep) =
+    repost(step, { it.asStep().post() }, ::handle)
+
+fun repostAhead(step: CoroutineStep) =
+    repost(step, { it.asStep().postAhead() }, ::handleAhead)
+
 fun schedule(step: Step) =
-    reattach(step.asCoroutine(), { step.markTagForSchPost()
+    repost(step, { it.markTagForSchPost()
         .post() }, ::handle)
 
 fun scheduleAhead(step: Step) =
-    reattach(step.asCoroutine(), { step.markTagForSchPost()
+    repost(step, { it.markTagForSchPost()
         .postAhead() }, ::handleAhead)
 
-fun reattach(step: CoroutineStep) =
-    reattach(step, { it.asStep().post() }, ::handle)
+private inline fun repost(noinline step: CoroutineStep, post: CoroutineFunction, handle: CoroutineFunction) =
+    repost({ post(step) }, { handle(step) })
 
-fun reattachAhead(step: CoroutineStep) =
-    reattach(step, { it.asStep().postAhead() }, ::handleAhead)
+private inline fun repost(noinline step: Step, post: StepFunction, handle: CoroutineFunction) =
+    repost({ post(step) }, { handle(step.asCoroutine()) })
 
-private inline fun reattach(noinline step: CoroutineStep, post: CoroutineFunction, handle: CoroutineFunction) =
+private inline fun repost(post: Work, handle: Work) =
     if (!SchedulerScope.isClockPreferred && Scheduler.hasObservers())
-        post(step)
+        post()
     else if (Clock.isRunning)
-        handle(step)
+        handle()
     else
         currentThread.interrupt()
 
@@ -1479,8 +1488,6 @@ private fun relaunch(launcher: JobKFunction, instance: JobKProperty, context: Co
     instance.require({ !it.isActive }) {
         launcher.call(context, start, step) }
     .also { instance.markTag() }
-
-fun launch(it: CoroutineStep) = launch(step = it)
 
 fun launch(context: CoroutineContext = SchedulerContext, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep) =
     step.markTagForPloLaunch()
@@ -2356,6 +2363,7 @@ private typealias LiveWork = Triple<LiveStepPointer, CaptureFunction?, Boolean>
 private typealias LiveSequence = MutableList<LiveWork>
 private typealias LiveWorkFunction = (LiveWork) -> Any?
 private typealias LiveWorkPredicate = (LiveWork) -> Boolean
+private typealias StepFunction = (Step) -> Any?
 
 private typealias HandlerFunction = Clock.(Message) -> Unit
 private typealias MessageFunction = (Message) -> Any?
