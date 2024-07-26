@@ -23,7 +23,6 @@ import net.consolator.application.*
 import net.consolator.BaseActivity.*
 import net.consolator.Scheduler.defer
 import net.consolator.State.Resolved
-import android.app.Service.START_NOT_STICKY
 import androidx.core.content.ContextCompat.RECEIVER_EXPORTED
 import kotlinx.coroutines.Dispatchers.Default
 import kotlinx.coroutines.Dispatchers.IO
@@ -211,7 +210,7 @@ private var sequencer: Sequencer? = null
     get() = field.singleton().also { field = it }
 
 @Coordinate
-object Scheduler : SchedulerScope, MutableLiveData<Step?>(), StepObserver, Synchronizer<Step> {
+object Scheduler : SchedulerScope, MutableLiveData<Step?>(), StepObserver, Synchronizer<Step>, PriorityQueue<AnyFunction> {
     fun observe() = observeForever(this)
 
     fun observeAsync() = commitAsync(this, hasObservers()::not, ::observe)
@@ -264,7 +263,19 @@ object Scheduler : SchedulerScope, MutableLiveData<Step?>(), StepObserver, Synch
         value.markTagForSchExec()
         ?.run { synchronize(this, ::block) } }
 
-    override fun <R> synchronize(lock: Step?, block: () -> R) = block()
+    override fun <R> synchronize(lock: Step?, block: () -> R) =
+        if (lock !== null) {
+            if (lock.isScheduledAhead) {
+                with(queue) { map {
+                    remove(it)
+                    it() } }
+                block() }
+            else {
+                queue.add(block)
+                Unit.type() } }
+        else Unit.type()
+
+    override var queue: MutableList<AnyFunction> = mutableListOf()
 
     operator fun <R> invoke(work: Scheduler.() -> R) = this.work()
 }
@@ -2197,6 +2208,10 @@ private annotation class Synchronous(val node: SchedulerNode = Annotation::class
 
 @Retention(SOURCE)
 @Target(EXPRESSION)
+annotation class Ahead
+
+@Retention(SOURCE)
+@Target(EXPRESSION)
 annotation class Implicit
 
 @Retention(SOURCE)
@@ -2243,6 +2258,9 @@ private val Any.annotatedScope
         } as CoroutineScope } }
 
 private fun Any.annotatedScopeOrScheduler() = annotatedScope ?: Scheduler
+
+val Step.isScheduledAhead
+    get() = asCallable().annotations.find { it is Ahead } !== null
 
 val Any.isImplicit
     get() = asCallable().annotations.find { it is Implicit } !== null

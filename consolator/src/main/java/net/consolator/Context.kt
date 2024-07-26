@@ -225,6 +225,8 @@ inline fun <R> Predicate.then(block: () -> R) =
 inline fun <R> Predicate.otherwise(block: () -> R) =
     this().not().then(block)
 
+fun <R> Unit.type() = this as R
+
 inline fun <reified T : Throwable, R> tryCatching(block: () -> R, predicate: ThrowablePredicate = { it is T }, exit: ThrowableNothing = { throw it }) =
     try { block() }
     catch (ex: Throwable) {
