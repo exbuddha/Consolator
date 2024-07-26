@@ -1,19 +1,12 @@
 package net.consolator
 
-import android.content.*
-import android.os.*
 import android.view.*
 import android.view.GestureDetector.*
 import androidx.fragment.app.*
-import androidx.lifecycle.*
 import kotlin.reflect.*
 import kotlin.reflect.jvm.*
 
-var UI = fun(context: Context, _: ViewModelStoreOwner, _: Bundle?, _: Short, interceptor: InterceptFunction?): Transition =
-    OverlayFragment(context.asWeakReference(), interceptor) to null
-
-private open class OverlayFragment(
-    private var context: WeakContext,
+open class OverlayFragment(
     private var interceptor: InterceptFunction?
 ) : Fragment(), OnContextClickListener {
     override fun onContextClick(event: MotionEvent) =

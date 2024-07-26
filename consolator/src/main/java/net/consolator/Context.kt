@@ -17,6 +17,7 @@ import kotlin.reflect.*
 import kotlinx.coroutines.*
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import net.consolator.EventBus.commit
 import net.consolator.Path.Diverging
 import net.consolator.database.AppDatabase
 import net.consolator.database.LogDatabase
@@ -27,7 +28,6 @@ import net.consolator.database.dao.NetworkDao
 import net.consolator.database.dao.RuntimeDao
 import android.Manifest.permission.ACCESS_NETWORK_STATE
 import android.Manifest.permission.INTERNET
-import net.consolator.EventBus.commit
 import net.consolator.database.AppDatabase.Companion.dateTimeFormat
 import net.consolator.database.AppDatabase.Companion.dbTimeDiff
 

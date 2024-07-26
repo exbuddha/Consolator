@@ -5,6 +5,7 @@ package net.consolator
 import android.app.*
 import android.content.*
 import android.os.*
+import androidx.core.content.ContextCompat.registerReceiver
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.*
 import androidx.room.*
@@ -18,12 +19,11 @@ import kotlin.reflect.*
 import kotlin.reflect.full.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
-import net.consolator.BaseActivity.*
 import net.consolator.application.*
+import net.consolator.BaseActivity.*
 import net.consolator.Scheduler.defer
 import net.consolator.State.Resolved
 import android.app.Service.START_NOT_STICKY
-import androidx.core.content.ContextCompat.registerReceiver
 import androidx.core.content.ContextCompat.RECEIVER_EXPORTED
 import kotlinx.coroutines.Dispatchers.Default
 import kotlinx.coroutines.Dispatchers.IO
@@ -113,13 +113,12 @@ fun commit(vararg context: Any?): Any? =
         else -> Unit }
 
 sealed interface BaseServiceScope : ResolverScope, ReferredContext, UniqueContext {
-    operator fun invoke(intent: Intent?) {
-        mode = getModeExtra(intent)
+    fun Intent?.invoke(flags: Int, startId: Int, mode: Int): Int? {
         if (SchedulerScope.isClockPreferred)
-            intent.makeClockStartSafely()
+            this@invoke.makeClockStartSafely()
         if (State[2] !is Resolved)
             commit @Synchronous @Tag(INIT) {
-                trySafelyForResult { getStartTimeExtra(intent) }
+                trySafelyForResult { getStartTimeExtra(this@invoke) }
                 ?.apply(::startTime::set)
                 Sequencer {
                     if (logDb === null)
@@ -138,7 +137,8 @@ sealed interface BaseServiceScope : ResolverScope, ReferredContext, UniqueContex
                                 updateNetworkState() }),
                             stage = Context::stageNetDbInitialized) }
                     resumeAsync()
-    } } }
+    } }
+    return mode }
 
     private suspend inline fun <reified D : RoomDatabase> SequencerScope.coordinateBuildDatabase(identifier: Any?, instance: KMutableProperty<out D?>, noinline stage: ContextStep?) =
         buildDatabaseOrResetByTag(identifier, instance, stage, synchronize(identifier, stage))
@@ -185,6 +185,11 @@ sealed interface BaseServiceScope : ResolverScope, ReferredContext, UniqueContex
     private fun formAfterMarkingTagsForCtxReform(tag: String, stage: ContextStep?, form: AnyStep, job: Job) =
         (form after { markTagsForCtxReform(tag, stage, form, job) })!!
 
+    override fun commit(step: CoroutineStep) =
+        step.markTagForSvcCommit().let { step ->
+            DEFAULT_OPERATOR?.invoke(step) ?:
+            attach(step, { launch(step) }) }
+
     companion object {
         var DEFAULT_OPERATOR: CoroutineFunction? = null
             set(value) {
@@ -192,20 +197,11 @@ sealed interface BaseServiceScope : ResolverScope, ReferredContext, UniqueContex
                 field = value }
     }
 
-    override fun commit(step: CoroutineStep) =
-        step.markTagForSvcCommit().let { step ->
-            DEFAULT_OPERATOR?.invoke(step) ?:
-            attach(step, { launch(step) }) }
-
     fun getStartTimeExtra(intent: Intent?) =
-        intent?.getLongExtra(START_TIME_KEY, foregroundContext.asUniqueContext()?.startTime ?: now())
-
-    var mode: Int?
-    fun getModeExtra(intent: Intent?) =
-        intent?.getIntExtra(MODE_KEY, mode ?: START_NOT_STICKY)
-
-    fun clearObjects() {
-        mode = null }
+        intent?.getLongExtra(
+            START_TIME_KEY,
+            foregroundContext.asUniqueContext()?.startTime
+            ?: now())
 }
 
 private var clock: Clock? = null
@@ -2098,7 +2094,7 @@ annotation class Event(val transit: TransitType = 0) {
 
 private open class Item<T>(override val obj: T) : ObjectReference<T>, CharSequence {
     companion object {
-        fun <T> reload(property: KMutableProperty<T>): Item<T> = TODO()
+        fun <T> reload(property: KProperty<T>): Item<T> = TODO()
 
         fun <T> reload(tag: String): Item<T> = TODO()
 

@@ -5,18 +5,16 @@ import android.content.*
 
 open class BaseService : Service(), BaseServiceScope {
     override var startTime = 0L
-    override var mode: Int? = null
 
     override fun onCreate() {
         super.onCreate()
         service = this
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        mode = super.onStartCommand(intent, flags, startId)
-        invoke(intent)
-        return mode ?: START_NOT_STICKY
-    }
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int) =
+        intent.invoke(flags, startId,
+            super.onStartCommand(intent, flags, startId))
+        ?: START_NOT_STICKY
 
     override fun onBind(intent: Intent?) = null
 

@@ -4,8 +4,6 @@ import android.content.*
 import android.os.*
 import android.view.*
 import androidx.fragment.app.*
-import androidx.fragment.app.FragmentTransaction.*
-import androidx.lifecycle.*
 import kotlin.annotation.AnnotationRetention.*
 import kotlin.annotation.AnnotationTarget.*
 import kotlinx.coroutines.*
@@ -29,22 +27,11 @@ import net.consolator.Scheduler.applicationMemoryManager
 import net.consolator.Scheduler.applicationMigrationManager
 
 abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
-    protected abstract var overlay: (ViewModelStoreOwner, Bundle?, Short) -> Transition
+    protected lateinit var transit: (Short) -> Unit
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         if (State[1] is Resolved) return
-        fun transit(action: Short) {
-            val (overlay, transition) =
-                overlay(this, savedInstanceState, action)
-            if (overlay !== null)
-                schedule {
-                    parentFragmentManager.commit {
-                        setTransition(transition ?: TRANSIT_FRAGMENT_OPEN)
-                        replace(
-                            this@BaseFragment.id,
-                            overlay)
-        } } }
         launch(start = LAZY) @MainViewGroup @Listening
         @OnEvent(ACTION_MIGRATE_APP) {
             defer<MigrationManager>(::onViewCreated) }
@@ -145,5 +132,3 @@ abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
         const val UI_TAG = "FRAGMENT"
     }
 }
-
-typealias Transition = Pair<Fragment?, Int?>
