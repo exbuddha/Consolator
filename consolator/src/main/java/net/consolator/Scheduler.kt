@@ -1491,7 +1491,7 @@ fun launch(context: CoroutineContext = SchedulerContext, start: CoroutineStart =
         .lifecycleScope.launch(context, start, step)
         .apply { saveNewElement(step) } }
 
-fun LifecycleOwner.launch(context: CoroutineContext = SchedulerContext, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep): Job {
+fun LifecycleOwner.launch(context: CoroutineContext = SchedulerContext, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep): Job? {
     val (scope, task) = determineScopeAndCoroutine(context, start, step)
     step.markTagForFloLaunch()
         .afterMarkingTagsForJobLaunch(context, start).let { step ->
@@ -2417,7 +2417,7 @@ fun Context.registerReceiver(filter: IntentFilter) =
         clock?.alsoStartAsync()?.handler,
         RECEIVER_EXPORTED)
 
-private typealias JobKFunction = KFunction<Job>
+private typealias JobKFunction = KFunction<Job?>
 private typealias JobKProperty = KMutableProperty<Job?>
 private typealias ResolverKClass = KClass<out Resolver>
 private typealias ResolverKProperty = KMutableProperty<out Resolver?>
