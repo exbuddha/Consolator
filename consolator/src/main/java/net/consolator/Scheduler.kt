@@ -78,6 +78,8 @@ sealed interface SchedulerScope : ResolverScope {
                     BaseServiceScope.DEFAULT_OPERATOR = null
                 field = value }
 
+        var FALLBACK: StepFunction? = null
+
         val isClockPreferred
             get() = DEFAULT === HandlerScope
 
@@ -87,6 +89,14 @@ sealed interface SchedulerScope : ResolverScope {
 
 fun preferClock() {
     SchedulerScope.DEFAULT = HandlerScope }
+
+fun preferScheduler() {
+    with(SchedulerScope) {
+    FALLBACK = Scheduler::postValue
+    if (DEFAULT === null)
+        DEFAULT = Scheduler
+    processLifecycleScope.launch(Main) {
+        Scheduler.observeAsync() } } }
 
 fun commit(step: CoroutineStep) =
     (service ?:
@@ -102,8 +112,9 @@ fun commit(step: CoroutineStep) =
 fun commit(vararg context: Any?): Any? =
     when (val task = context.firstOrNull()) {
         (task === START) -> {
-            SchedulerScope().asType<Scheduler>()?.observe()
+            SchedulerScope().asType<Scheduler>()?.observeAsync()
             preferClock()
+            preferScheduler()
             if (SchedulerScope.isClockPreferred)
                 clock = Clock(SVC, Thread.MAX_PRIORITY)
                 @Synchronous @Tag(CLOCK_INIT) {
@@ -123,18 +134,18 @@ sealed interface BaseServiceScope : ResolverScope, ReferredContext, UniqueContex
         if (SchedulerScope.isClockPreferred)
             this@invoke.makeClockStartSafely()
         if (State[2] !is Resolved)
-            commit @Synchronous @Tag(INIT) {
+            commit @Synchronous @Tag(SERVICE_INIT) {
                 trySafelyForResult { getStartTimeExtra(this@invoke) }
                 ?.apply(::startTime::set)
                 Sequencer {
                     if (logDb === null)
-                        unconfined(true)
+                        io(true)
                         @Tag(STAGE_BUILD_LOG_DB) { self ->
                         coordinateBuildDatabase(self,
                             ::logDb,
                             stage = Context::stageLogDbCreated) }
                     if (netDb === null)
-                        unconfined(true)
+                        io(true)
                         @Tag(STAGE_BUILD_NET_DB) { self ->
                         coordinateBuildDatabase(self,
                             ::netDb,
@@ -1154,32 +1165,45 @@ private fun launch(it: CoroutineStep) =
     .apply { saveNewElement(it) }
 
 fun repost(step: CoroutineStep) =
-    repost(step, { it.asStep().post() }, ::handle)
+    repost({
+        step.markTagForSchPost()
+        .asStep() },
+        Step::post,
+        ::handle)
 
 fun repostAhead(step: CoroutineStep) =
-    repost(step, { it.asStep().postAhead() }, ::handleAhead)
+    repost({
+        step.markTagForSchPost()
+        .asStep() },
+        Step::postAhead,
+        ::handleAhead)
 
 fun schedule(step: Step) =
-    repost(step, { it.markTagForSchPost()
-        .post() }, ::handle)
+    repost({
+        step.markTagForSchPost() },
+        Step::post,
+        ::handle)
 
 fun scheduleAhead(step: Step) =
-    repost(step, { it.markTagForSchPost()
-        .postAhead() }, ::handleAhead)
-
-private inline fun repost(noinline step: CoroutineStep, post: CoroutineFunction, handle: CoroutineFunction) =
-    repost({ post(step) }, { handle(step) })
+    repost({
+        step.markTagForSchPost() },
+        Step::postAhead,
+        ::handleAhead)
 
 private inline fun repost(noinline step: Step, post: StepFunction, handle: CoroutineFunction) =
-    repost({ post(step) }, { handle(step.asCoroutine()) })
+    repost(
+        { post(step) },
+        { handle(step.asCoroutine()) },
+        exit = { SchedulerScope.FALLBACK?.invoke(step) })
 
-private inline fun repost(post: Work, handle: Work) =
+private inline fun repost(post: Work, handle: Work, exit: AnyFunction) =
     if (!SchedulerScope.isClockPreferred && Scheduler.hasObservers())
         post()
     else if (Clock.isRunning)
         handle()
     else
-        currentThread.interrupt()
+        exit()
+        ?: currentThread.interrupt()
 
 // runnable <-> message
 fun post(callback: Runnable) = clock?.post?.invoke(callback)
@@ -1807,6 +1831,7 @@ private fun CoroutineStep.markTagForFloLaunch() = applyMarkTag(FLO_LAUNCH)
 private fun CoroutineStep.markTagForPloLaunch() = applyMarkTag(PLO_LAUNCH)
 private fun CoroutineStep.markTagForSchCommit() = applyMarkTag(SCH_COMMIT)
 private fun CoroutineStep.markTagForSchLaunch() = applyMarkTag(SCH_LAUNCH)
+private fun CoroutineStep.markTagForSchPost() = applyMarkTag(SCH_POST)
 private fun CoroutineStep.markTagForSvcCommit() = applyMarkTag(SVC_COMMIT)
 
 private fun SequencerStep.setTagTo(step: Step) = this
