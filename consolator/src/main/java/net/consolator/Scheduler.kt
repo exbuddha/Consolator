@@ -785,107 +785,107 @@ class Sequencer : Synchronizer<LiveWork>, Transactor<Int, Boolean?>, PriorityQue
 
     fun attachOnceBefore(work: LiveWork, tag: String? = null): Int = TODO()
 
-    private fun stepAfterMarkingTagsForSeqLaunch(step: SequencerStep, index: IntFunction, context: CoroutineContext? = null) =
+    private fun stepAfterTrackingTagsForSeqLaunch(step: SequencerStep, index: IntFunction, context: CoroutineContext? = null) =
         (step after { currentJob().let { job ->
             synchronize { markTagsForSeqLaunch(step, adjust(index()), context, job) } } })!!
 
     fun attach(async: Boolean = false, step: SequencerStep): LiveWork {
         var index = -1
         return stepToNull(async) { liveData(block = {
-            stepAfterMarkingTagsForSeqLaunch(step, { index })(step) }) }
+            stepAfterTrackingTagsForSeqLaunch(step, { index })(step) }) }
             .also { index = attach(it, returnItsTag(step)) } }
 
     fun attach(async: Boolean = false, step: SequencerStep, capture: CaptureFunction): LiveWork {
         var index = -1
         return Triple({ liveData(block = {
-            stepAfterMarkingTagsForSeqLaunch(step, { index })(step) }) },
+            stepAfterTrackingTagsForSeqLaunch(step, { index })(step) }) },
             capture, async)
             .also { index = attach(it, returnItsTag(step)) } }
 
     fun attach(context: CoroutineContext, async: Boolean = false, step: SequencerStep): LiveWork {
         var index = -1
         return stepToNull(async) { liveData(context, block = {
-            stepAfterMarkingTagsForSeqLaunch(step, { index }, context)(step) }) }
+            stepAfterTrackingTagsForSeqLaunch(step, { index }, context)(step) }) }
             .also { index = attach(it, returnItsTag(step)) } }
 
     fun attach(context: CoroutineContext, async: Boolean = false, step: SequencerStep, capture: CaptureFunction): LiveWork {
         var index = -1
         return Triple({ liveData(context, block = {
-            stepAfterMarkingTagsForSeqLaunch(step, { index }, context)(step) }) },
+            stepAfterTrackingTagsForSeqLaunch(step, { index }, context)(step) }) },
             capture, async)
             .also { index = attach(it, returnItsTag(step)) } }
 
     fun attach(index: Int, async: Boolean = false, step: SequencerStep) =
         stepToNull(async) { liveData(block = {
-            stepAfterMarkingTagsForSeqLaunch(step, { index })(step) }) }
+            stepAfterTrackingTagsForSeqLaunch(step, { index })(step) }) }
             .also { attach(index, it, returnItsTag(step)) }
 
     fun attach(index: Int, async: Boolean = false, step: SequencerStep, capture: CaptureFunction) =
         Triple({ liveData(block = {
-            stepAfterMarkingTagsForSeqLaunch(step, { index })(step) }) },
+            stepAfterTrackingTagsForSeqLaunch(step, { index })(step) }) },
             capture, async)
             .also { attach(index, it, returnItsTag(step)) }
 
     fun attach(index: Int, context: CoroutineContext, async: Boolean = false, step: SequencerStep) =
         stepToNull(async) { liveData(context, block = {
-            stepAfterMarkingTagsForSeqLaunch(step, { index }, context)(step) }) }
+            stepAfterTrackingTagsForSeqLaunch(step, { index }, context)(step) }) }
             .also { attach(index, it, returnItsTag(step)) }
 
     fun attach(index: Int, context: CoroutineContext, async: Boolean = false, step: SequencerStep, capture: CaptureFunction) =
         Triple({ liveData(context, block = {
-            stepAfterMarkingTagsForSeqLaunch(step, { index }, context)(step) }) },
+            stepAfterTrackingTagsForSeqLaunch(step, { index }, context)(step) }) },
             capture, async)
             .also { attach(index, it, returnItsTag(step)) }
 
     fun attachAfter(async: Boolean = false, step: SequencerStep): LiveWork {
         var index = -1
         return stepToNull(async) { liveData(block = {
-            stepAfterMarkingTagsForSeqLaunch(step, { index })(step) }) }
+            stepAfterTrackingTagsForSeqLaunch(step, { index })(step) }) }
             .also { index = attachAfter(it, returnItsTag(step)) } }
 
     fun attachAfter(async: Boolean = false, step: SequencerStep, capture: CaptureFunction): LiveWork {
         var index = -1
         return Triple({ liveData(block = {
-            stepAfterMarkingTagsForSeqLaunch(step, { index })(step) }) },
+            stepAfterTrackingTagsForSeqLaunch(step, { index })(step) }) },
             capture, async)
             .also { index = attachAfter(it, returnItsTag(step)) } }
 
     fun attachAfter(context: CoroutineContext, async: Boolean = false, step: SequencerStep): LiveWork {
         var index = -1
         return stepToNull(async) { liveData(context, block = {
-            stepAfterMarkingTagsForSeqLaunch(step, { index }, context)(step) }) }
+            stepAfterTrackingTagsForSeqLaunch(step, { index }, context)(step) }) }
             .also { index = attachAfter(it, returnItsTag(step)) } }
 
     fun attachAfter(context: CoroutineContext, async: Boolean = false, step: SequencerStep, capture: CaptureFunction): LiveWork {
         var index = -1
         return Triple({ liveData(context, block = {
-            stepAfterMarkingTagsForSeqLaunch(step, { index }, context)(step) }) },
+            stepAfterTrackingTagsForSeqLaunch(step, { index }, context)(step) }) },
             capture, async)
             .also { index = attachAfter(it, returnItsTag(step)) } }
 
     fun attachBefore(async: Boolean = false, step: SequencerStep): LiveWork {
         var index = -1
         return stepToNull(async) { liveData(block = {
-            stepAfterMarkingTagsForSeqLaunch(step, { index })(step) }) }
+            stepAfterTrackingTagsForSeqLaunch(step, { index })(step) }) }
             .also { index = attachBefore(it, returnItsTag(step)) } }
 
     fun attachBefore(async: Boolean = false, step: SequencerStep, capture: CaptureFunction): LiveWork {
         var index = -1
         return Triple({ liveData(block = {
-            stepAfterMarkingTagsForSeqLaunch(step, { index })(step) }) },
+            stepAfterTrackingTagsForSeqLaunch(step, { index })(step) }) },
             capture, async)
             .also { index = attachBefore(it, returnItsTag(step)) } }
 
     fun attachBefore(context: CoroutineContext, async: Boolean = false, step: SequencerStep): LiveWork {
         var index = -1
         return stepToNull(async) { liveData(context, block = {
-            stepAfterMarkingTagsForSeqLaunch(step, { index }, context)(step) }) }
+            stepAfterTrackingTagsForSeqLaunch(step, { index }, context)(step) }) }
             .also { index = attachBefore(it, returnItsTag(step)) } }
 
     fun attachBefore(context: CoroutineContext, async: Boolean = false, step: SequencerStep, capture: CaptureFunction): LiveWork {
         var index = -1
         return Triple({ liveData(context, block = {
-            stepAfterMarkingTagsForSeqLaunch(step, { index }, context)(step) }) },
+            stepAfterTrackingTagsForSeqLaunch(step, { index }, context)(step) }) },
             capture, async)
             .also { index = attachBefore(it, returnItsTag(step)) } }
 
@@ -1145,9 +1145,9 @@ private fun detach(step: CoroutineStep) =
     ?: step
 
 private fun launch(it: CoroutineStep) =
-    launch(SchedulerContext, step = it
-        .markTagForSchLaunch()
-        .afterMarkingTagsForJobLaunch())
+    processLifecycleScope.launch(SchedulerContext, block = it
+    .markTagForSchLaunch()
+    .afterTrackingTagsForJobLaunch())
     .apply { saveNewElement(it) }
 
 fun repost(step: CoroutineStep) =
@@ -1486,15 +1486,14 @@ private fun relaunch(launcher: JobKFunction, instance: JobKProperty, context: Co
 
 fun launch(context: CoroutineContext = SchedulerContext, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep) =
     step.markTagForPloLaunch()
-        .afterMarkingTagsForJobLaunch(context, start).let { step ->
-    ProcessLifecycleOwner.get()
-        .lifecycleScope.launch(context, start, step)
+        .afterTrackingTagsForJobLaunch(context, start).let { step ->
+        processLifecycleScope.launch(context, start, step)
         .apply { saveNewElement(step) } }
 
 fun LifecycleOwner.launch(context: CoroutineContext = SchedulerContext, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep): Job? {
     val (scope, task) = determineScopeAndCoroutine(context, start, step)
     step.markTagForFloLaunch()
-        .afterMarkingTagsForJobLaunch(context, start).let { step ->
+        .afterTrackingTagsForJobLaunch(context, start).let { step ->
     val (context, start, step) = task
     return scope.launch(context, start, step)
         .apply { saveNewElement(step) } } }
@@ -1517,7 +1516,7 @@ private fun CoroutineScope.determineCoroutine(context: CoroutineContext, start: 
 private fun CoroutineContext.isSchedulerContext() =
     this is SchedulerContext || this[SchedulerKey] is SchedulerElement
 
-private fun CoroutineStep.afterMarkingTagsForJobLaunch(context: CoroutineContext? = null, start: CoroutineStart? = null) =
+private fun CoroutineStep.afterTrackingTagsForJobLaunch(context: CoroutineContext? = null, start: CoroutineStart? = null) =
     (after { job, _ -> markTagsForJobLaunch(context, start, this, job) })!!
 
 private fun Job.saveNewElement(step: CoroutineStep) {}
@@ -2403,10 +2402,13 @@ typealias Process = android.os.Process
 val emptyWork = {}
 val emptyStep = suspend {}
 
+val processLifecycleScope
+    get() = ProcessLifecycleOwner.get().lifecycleScope
+
 val currentThread get() = Thread.currentThread()
 val mainThread = currentThread
+val onMainThread get() = currentThread.isMainThread()
 fun Thread.isMainThread() = this === mainThread
-fun onMainThread() = currentThread.isMainThread()
 
 private fun newThread(group: ThreadGroup, name: String, priority: Int, target: Runnable) = Thread(group, target, name).also { it.priority = priority }
 private fun newThread(name: String, priority: Int, target: Runnable) = Thread(target, name).also { it.priority = priority }
@@ -2512,4 +2514,4 @@ sealed interface State {
     operator fun compareTo(state: Any) = 0
 }
 
-val SVC_TAG get() = if (onMainThread()) "SERVICE" else "CLOCK"
+val SVC_TAG get() = if (onMainThread) "SERVICE" else "CLOCK"
