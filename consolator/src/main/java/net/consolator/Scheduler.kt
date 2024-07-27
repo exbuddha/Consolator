@@ -2307,19 +2307,24 @@ typealias Lifetime = (AnyKMutableProperty) -> Boolean?
 
 fun AnyKMutableProperty.expire() = set(null)
 
+fun <T> T.asCallable(): KCallable<T> = asObjRef()::obj
+fun <T> T?.asNullable(): KCallable<T?> = asNullRef()::obj
+
 private interface ObjectReference<T> { val obj: T }
 private interface NullReference<T> : ObjectReference<T?>
 
 private fun <T> T.asObjRef() =
-    object : ObjectReference<T> {
-        override val obj get() = this@asObjRef }
+    asUniqueRef { object : ObjectReference<T> {
+        override val obj get() = this@asObjRef } }
 
 private fun <T> T?.asNullRef() =
-    object : NullReference<T> {
-        override val obj get() = this@asNullRef }
+    asUniqueRef { object : NullReference<T> {
+        override val obj get() = this@asNullRef } }
 
-fun <T> T.asCallable(): KCallable<T> = asObjRef()::obj
-fun <T> T?.asNullable(): KCallable<T?> = asNullRef()::obj
+private inline fun <T> T.asUniqueRef(block: () -> ObjectReference<T>) =
+    if (this is ObjectReference<*>)
+        this::obj.asType()!!
+    else block()
 
 fun trueWhenNull(it: Any?) = it === null
 
