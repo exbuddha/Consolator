@@ -53,15 +53,22 @@ interface Transactor<T, out R> {
 interface ResolverScope : CoroutineScope, Transactor<CoroutineStep, Any?> {
     override val coroutineContext: CoroutineContext
         get() = SchedulerContext
+
+    fun windDown() {}
 }
 
 private object HandlerScope : ResolverScope {
     override fun commit(step: CoroutineStep) =
-        attach(step, ::handle) }
+        attach(step, ::handle)
+
+    override fun windDown() {
+        Clock.apply {
+            Process.setThreadPriority(threadId, Process.THREAD_PRIORITY_DEFAULT) } }
+}
 
 sealed interface SchedulerScope : ResolverScope {
     companion object {
-        var DEFAULT: CoroutineScope? = null
+        var DEFAULT: ResolverScope? = null
             set(value) {
                 // engine-wide reconfiguration
                 if (value is HandlerScope)
@@ -241,10 +248,6 @@ object Scheduler : SchedulerScope, MutableLiveData<Step?>(), StepObserver, Synch
     private var activityLocalesChangeManager: LocalesChangeManager? = null
     var applicationMigrationManager: MigrationManager? = null
     var applicationMemoryManager: MemoryManager? = null
-
-    fun windDown() {
-        Clock.apply {
-            Process.setThreadPriority(threadId, Process.THREAD_PRIORITY_DEFAULT) } }
 
     fun clearResolverObjects() {
         activityConfigurationChangeManager = null
@@ -1097,16 +1100,16 @@ fun <T> ResolverScope.item(ref: Coordinate) =
 private fun <T> ResolverScope.item(target: AnyKClass = Any::class, key: KeyType): T = TODO()
 
 private fun liveStep(target: AnyKClass, key: KeyType) =
-    Scheduler.item<SequencerStep>(target, key)
+    SchedulerScope().item<SequencerStep>(target, key)
 
 private fun coroutineStep(target: AnyKClass, key: KeyType) =
-    Scheduler.item<CoroutineStep>(target, key)
+    SchedulerScope().item<CoroutineStep>(target, key)
 
 private fun step(target: AnyKClass, key: KeyType) =
-    Scheduler.item<Step>(target, key)
+    SchedulerScope().item<Step>(target, key)
 
 private fun runnable(target: AnyKClass, key: KeyType) =
-    Scheduler.item<Runnable>(target, key)
+    SchedulerScope().item<Runnable>(target, key)
 
 fun attach(step: CoroutineStep, vararg args: Any?): Any? {
     val enlist: CoroutineFunction? = (
@@ -1204,7 +1207,7 @@ fun reinvokeAheadSafelyInterrupting(step: Step) = postAhead(safeInterruptingRunn
 
 fun Step.asCoroutine(): CoroutineStep = { this@asCoroutine() }
 
-private fun CoroutineStep.asStep() = suspend { invoke(annotatedScopeOrScheduler()) }
+private fun CoroutineStep.asStep() = suspend { invoke(annotatedOrSchedulerScope()) }
 
 private fun Runnable.asStep() = suspend { run() }
 
@@ -2256,7 +2259,7 @@ private val Any.annotatedScope
                 throw BaseImplementationRestriction()
         } as CoroutineScope } }
 
-private fun Any.annotatedScopeOrScheduler() = annotatedScope ?: Scheduler
+private fun Any.annotatedOrSchedulerScope() = annotatedScope ?: SchedulerScope()
 
 val Step.isScheduledAhead
     get() = asCallable().annotations.find { it is Ahead } !== null
@@ -2475,7 +2478,7 @@ sealed interface State {
                 Lock.Open
         }
         operator fun set(id: ID, lock: Any) { when (id.toInt()) {
-            1 -> if (lock is Resolved) Scheduler.windDown()
+            1 -> if (lock is Resolved) SchedulerScope().windDown()
         } }
 
         operator fun plus(lock: Any): State = Ambiguous

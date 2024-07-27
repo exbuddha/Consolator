@@ -58,7 +58,7 @@ fun LifecycleOwner.registerInternetCallback() {
 
 @Coordinate @Tag(INET_REGISTER)
 fun registerInternetCallback() {
-    Scheduler.relaunch(::networkCaller, IO, step = ::repeatNetworkCallFunction) }
+    SchedulerScope().relaunch(::networkCaller, IO, step = ::repeatNetworkCallFunction) }
 
 fun pauseInternetCallback() {
     isNetCallbackResumed = false }
