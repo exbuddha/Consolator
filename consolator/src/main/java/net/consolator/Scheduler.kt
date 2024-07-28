@@ -1085,7 +1085,7 @@ inline fun <reified T : Resolver> Context.defer(member: UnitKFunction, vararg co
 inline fun <reified T : Resolver> BaseActivity.defer(member: UnitKFunction, vararg context: Any?, noinline `super`: Work) =
     (this as Context).defer<T>(member, *context, `super` = `super`)
 
-inline fun implicit(noinline `super`: Work) = when {
+fun implicit(`super`: Work) = when {
     `super`.isImplicit -> {
         `super`()
         emptyWork }
@@ -2139,7 +2139,13 @@ private open class Item<T>(override val obj: T) : ObjectReference<T>, CharSequen
         fun <T> reload(target: AnyKClass, key: KeyType): Item<T> = TODO()
     }
 
-    private lateinit var tag: CharSequence
+    private var tag: CharSequence = ::obj.tag?.string ?: ""
+
+    lateinit var type: Type
+
+    enum class Type { Coroutine, JobFunction, LiveStep, SchedulerStep, Step, Work, Runnable, Message, Lock, State }
+
+    private var annotations = ::obj.annotations
 
     override fun get(index: Int) = tag[index]
 
