@@ -153,13 +153,13 @@ sealed interface BaseServiceScope : ResolverScope, ReferredContext, UniqueContex
                 ?.apply(::startTime::set)
                 Sequencer {
                     if (logDb === null)
-                        io(true)
+                        attach(IO, true)
                         @Tag(STAGE_BUILD_LOG_DB) { self ->
                         coordinateBuildDatabase(self,
                             ::logDb,
                             stage = Context::stageLogDbCreated) }
                     if (netDb === null)
-                        io(true)
+                        attach(IO, true)
                         @Tag(STAGE_BUILD_NET_DB) { self ->
                         coordinateBuildDatabase(self,
                             ::netDb,
@@ -358,7 +358,7 @@ open class Clock(
         handler = object : Handler(looper) {
             override fun handleMessage(msg: Message) {
                 super.handleMessage(msg)
-                DEFAULT_HANDLE(msg) } }
+                DEFAULT_HANDLER(msg) } }
         isRunning = true
         queue.run() }
 
@@ -443,7 +443,7 @@ open class Clock(
         queue.clear() }
 
     companion object : RunnableGrid by mutableListOf() {
-        private var DEFAULT_HANDLE: HandlerFunction = { commit(it) }
+        private var DEFAULT_HANDLER: HandlerFunction = { commit(it) }
 
         private fun Clock.register() {
             queue = mutableListOf()
@@ -488,40 +488,8 @@ open class Clock(
     }
 }
 
-class Sequencer : Synchronizer<LiveWork>, Transactor<Int, Boolean?>, PriorityQueue<Int>, AdjustOperator<LiveWork, Int> {
-    fun default(async: Boolean = false, step: SequencerStep) = attach(Default, async, step)
-    fun default(index: Int, async: Boolean = false, step: SequencerStep) = attach(index, Default, async, step)
-    fun defaultStart(step: SequencerStep) = default(false, step).also { start() }
-    fun defaultResume(async: Boolean = false, step: SequencerStep) = default(async, step).also { resume() }
-    fun defaultResumeAsync(async: Boolean = false, step: SequencerStep) = default(async, step).also { resumeAsync() }
-    fun defaultAfter(async: Boolean = false, step: SequencerStep) = attachAfter(Default, async, step)
-    fun defaultBefore(async: Boolean = false, step: SequencerStep) = attachBefore(Default, async, step)
-
-    fun io(async: Boolean = false, step: SequencerStep) = attach(IO, async, step)
-    fun io(index: Int, async: Boolean = false, step: SequencerStep) = attach(index, IO, async, step)
-    fun ioStart(step: SequencerStep) = io(false, step).also { start() }
-    fun ioResume(async: Boolean = false, step: SequencerStep) = io(async, step).also { resume() }
-    fun ioResumeAsync(async: Boolean = false, step: SequencerStep) = io(async, step).also { resumeAsync() }
-    fun ioAfter(async: Boolean = false, step: SequencerStep) = attachAfter(IO, async, step)
-    fun ioBefore(async: Boolean = false, step: SequencerStep) = attachBefore(IO, async, step)
-
-    fun main(async: Boolean = false, step: SequencerStep) = attach(Main, async, step)
-    fun main(index: Int, async: Boolean = false, step: SequencerStep) = attach(index, Main, async, step)
-    fun mainStart(step: SequencerStep) = main(false, step).also { start() }
-    fun mainResume(async: Boolean = false, step: SequencerStep) = main(async, step).also { resume() }
-    fun mainResumeAsync(async: Boolean = false, step: SequencerStep) = main(async, step).also { resumeAsync() }
-    fun mainAfter(async: Boolean = false, step: SequencerStep) = attachAfter(Main, async, step)
-    fun mainBefore(async: Boolean = false, step: SequencerStep) = attachBefore(Main, async, step)
-
-    fun unconfined(async: Boolean = false, step: SequencerStep) = attach(Unconfined, async, step)
-    fun unconfined(index: Int, async: Boolean = false, step: SequencerStep) = attach(index, Unconfined, async, step)
-    fun unconfinedStart(step: SequencerStep) = unconfined(false, step).also { start() }
-    fun unconfinedResume(async: Boolean = false, step: SequencerStep) = unconfined(async, step).also { resume() }
-    fun unconfinedResumeAsync(async: Boolean = false, step: SequencerStep) = unconfined(async, step).also { resumeAsync() }
-    fun unconfinedAfter(async: Boolean = false, step: SequencerStep) = attachAfter(Unconfined, async, step)
-    fun unconfinedBefore(async: Boolean = false, step: SequencerStep) = attachBefore(Unconfined, async, step)
-
-    constructor() : this(StepObserver { it?.block() /* or apply (live step) capture function internally */ })
+private class Sequencer : Synchronizer<LiveWork>, Transactor<Int, Boolean?>, PriorityQueue<Int>, AdjustOperator<LiveWork, Int> {
+    constructor() : this(DEFAULT_OBSERVER)
 
     private constructor(observer: StepObserver) {
         this.observer = observer }
@@ -720,6 +688,9 @@ class Sequencer : Synchronizer<LiveWork>, Transactor<Int, Boolean?>, PriorityQue
         clearLatestObjects() }
 
     companion object {
+        var DEFAULT_OBSERVER = StepObserver {
+            it?.block() /* or apply (live step) capture function internally */ }
+
         const val ATTACHED_ALREADY = -1
 
         fun attach(step: LiveWork, tag: String? = null) = invoke { attach(step, tag) }
@@ -735,7 +706,7 @@ class Sequencer : Synchronizer<LiveWork>, Transactor<Int, Boolean?>, PriorityQue
         fun resume() = invoke { resume() }
         fun resumeAsync() = invoke { resumeAsync() }
 
-        fun destroy() = invoke { isCancelled = true }
+        fun cancel() = invoke { isCancelled = true }
 
         operator fun <R> invoke(work: Sequencer.() -> R) = sequencer?.work()
     }
@@ -1072,10 +1043,10 @@ class Sequencer : Synchronizer<LiveWork>, Transactor<Int, Boolean?>, PriorityQue
                 return false }
         return true }
 
-    val leading
+    private val leading
         get() = 0 until with(seq) { if (ln < size) ln else size }
 
-    val trailing
+    private val trailing
         get() = (if (ln < 0) 0 else ln + 1) until seq.size
 
     private val before
@@ -1378,18 +1349,6 @@ fun <T, R> Pair<LiveData<T>, (T) -> R>.toLiveWork(async: Boolean = false) =
 
 fun <T, R> capture(context: CoroutineContext, step: suspend LiveDataScope<T>.() -> Unit, capture: (T) -> R) =
     liveData(context, block = step) to capture
-
-fun <T, R> defaultCapture(step: suspend LiveDataScope<T>.() -> Unit, capture: (T) -> R) =
-    capture(Default, step, capture)
-
-fun <T, R> ioCapture(step: suspend LiveDataScope<T>.() -> Unit, capture: (T) -> R) =
-    capture(IO, step, capture)
-
-fun <T, R> mainCapture(step: suspend LiveDataScope<T>.() -> Unit, capture: (T) -> R) =
-    capture(Main, step, capture)
-
-fun <T, R> unconfinedCapture(step: suspend LiveDataScope<T>.() -> Unit, capture: (T) -> R) =
-    capture(Unconfined, step, capture)
 
 fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(owner: LifecycleOwner, observer: Observer<T> = disposerOf(this)): Observer<T> {
     first.observe(owner, observer)
