@@ -53,12 +53,12 @@ var reactToNetworkCapabilitiesChanged: (Network, NetworkCapabilities) -> Unit = 
         updateNetworkCapabilities(network, networkCapabilities) } }
 
 @Coordinate @Tag(INET_REGISTER)
-fun LifecycleOwner.registerInternetCallback() {
+fun CoroutineScope.registerInternetCallback() {
     relaunch(::networkCaller, IO, step = ::repeatNetworkCallFunction) }
 
 @Coordinate @Tag(INET_REGISTER)
-fun registerInternetCallback() {
-    SchedulerScope().relaunch(::networkCaller, IO, step = ::repeatNetworkCallFunction) }
+fun LifecycleOwner.registerInternetCallback() {
+    relaunch(::networkCaller, IO, step = ::repeatNetworkCallFunction) }
 
 fun pauseInternetCallback() {
     isNetCallbackResumed = false }
