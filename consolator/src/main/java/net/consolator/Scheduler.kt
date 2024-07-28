@@ -71,10 +71,29 @@ sealed interface SchedulerScope : ResolverScope {
         fun preferClock() {
             DEFAULT = HandlerScope }
 
-        fun preferScheduler() {
-            FALLBACK = true
+        fun preferScheduler(callback: AnyFunction? = null) {
             if (DEFAULT === null)
-                DEFAULT = Scheduler }
+                DEFAULT = Scheduler
+            if (!isSchedulerObserved)
+                processLifecycleScope.launch(Main) {
+                    Scheduler.observeAsync()
+                    callback?.invoke() } }
+
+        fun avoidClock() {
+            if (isClockPreferred)
+                DEFAULT = null }
+
+        fun avoidScheduler() {
+            if (isSchedulerPreferred)
+                preferClock() }
+
+        val isClockPreferred
+            get() = DEFAULT === HandlerScope
+
+        val isSchedulerPreferred
+            get() = DEFAULT !== HandlerScope
+
+        var isSchedulerObserved = false
 
         private var DEFAULT: ResolverScope? = null
             set(value) {
@@ -85,22 +104,6 @@ sealed interface SchedulerScope : ResolverScope {
                 if (value is Scheduler)
                     BaseServiceScope.DEFAULT_OPERATOR = null
                 field = value }
-
-        private var FALLBACK = false
-            set(value) {
-                if (value)
-                    processLifecycleScope.launch(Main) {
-                        Scheduler.observeAsync() }
-                field = value }
-
-        fun exit(fallback: StepFunction, step: StepPointer) =
-            if (FALLBACK) fallback(step) else null
-
-        val isClockPreferred
-            get() = DEFAULT === HandlerScope
-
-        val isSchedulerPreferred
-            get() = FALLBACK || !isClockPreferred
 
         operator fun invoke() = DEFAULT ?: Scheduler
 
@@ -216,8 +219,8 @@ sealed interface BaseServiceScope : ResolverScope, ReferredContext, UniqueContex
 
     override fun commit(step: CoroutineStep) =
         step.markTagForSvcCommit().let { step ->
-            DEFAULT_OPERATOR?.invoke(step) ?:
-            attach(step, { launch(step) }) }
+        DEFAULT_OPERATOR?.invoke(step)
+        ?: attach(step, { launch(step) }) }
 
     companion object {
         var DEFAULT_OPERATOR: CoroutineFunction? = null
@@ -241,13 +244,17 @@ private var sequencer: Sequencer? = null
 
 @Coordinate
 object Scheduler : SchedulerScope, MutableLiveData<Step?>(), StepObserver, Synchronizer<Step>, PriorityQueue<AnyFunction> {
-    fun observe() = observeForever(this)
+    fun observe() {
+        observeForever(this)
+        SchedulerScope.isSchedulerObserved = true }
 
     fun observeAsync() = commitAsync(this, hasObservers()::not, ::observe)
 
     fun observe(owner: LifecycleOwner) = observe(owner, this)
 
-    fun ignore() = removeObserver(this)
+    fun ignore() {
+        removeObserver(this)
+        SchedulerScope.isSchedulerObserved = false  }
 
     fun <T : Resolver> defer(resolver: KClass<out T>, provider: Any = resolver, vararg context: Any?): Unit? {
         fun ResolverKProperty.setResolverThenCommit() =
@@ -1192,26 +1199,24 @@ private fun repostByPreference(step: CoroutineStep, post: StepFunction, handle: 
     fun markedStep() = step.markTagForSchPost().asStep()
     return repostByPreference(
         { post(markedStep()) },
-        { handle(step) },
-        exit = { SchedulerScope.exit(post, ::markedStep) })
-}
+        { handle(step) }) }
 
 private fun repostByPreference(step: Step, post: StepFunction, handle: CoroutineFunction): Any {
     fun markedStep() = step.markTagForSchPost()
     return repostByPreference(
         { post(markedStep()) },
-        { handle(step.asCoroutine()) },
-        exit = { SchedulerScope.exit(post, ::markedStep) })
-}
+        { handle(step.asCoroutine()) }) }
 
-private inline fun repostByPreference(post: Work, handle: Work, noinline exit: AnyFunction) =
-    if (!SchedulerScope.isClockPreferred && Scheduler.hasObservers())
+private inline fun repostByPreference(post: Work, handle: Work) =
+    if (!SchedulerScope.isClockPreferred &&
+        SchedulerScope.isSchedulerObserved)
         post()
     else if (Clock.isRunning)
         handle()
+    else if (SchedulerScope.isSchedulerObserved)
+        post()
     else
-        exit()
-        ?: currentThread.interrupt()
+        currentThread.interrupt()
 
 // step <-> runnable
 fun handle(step: CoroutineStep) = post(runnableOf(step))
