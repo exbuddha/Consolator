@@ -101,7 +101,6 @@ sealed interface SchedulerScope : ResolverScope {
                 if (value is HandlerScope)
                     BaseServiceScope.DEFAULT_OPERATOR = ::handleAhead
                 else
-                if (value is Scheduler)
                     BaseServiceScope.DEFAULT_OPERATOR = null
                 field = value }
 
@@ -1196,7 +1195,7 @@ fun scheduleAhead(step: Step) =
     repostByPreference(step, Step::postAhead, ::handleAhead)
 
 private fun repostByPreference(step: CoroutineStep, post: StepFunction, handle: CoroutineFunction): Any {
-    fun markedStep() = step.markTagForSchPost().asStep()
+    fun markedStep() = step.markTagForSchPost().toStep()
     return repostByPreference(
         { post(markedStep()) },
         { handle(step) }) }
@@ -1205,18 +1204,18 @@ private fun repostByPreference(step: Step, post: StepFunction, handle: Coroutine
     fun markedStep() = step.markTagForSchPost()
     return repostByPreference(
         { post(markedStep()) },
-        { handle(step.asCoroutine()) }) }
+        { handle(step.toCoroutine()) }) }
 
-private inline fun repostByPreference(post: Work, handle: Work) =
-    if (!SchedulerScope.isClockPreferred &&
-        SchedulerScope.isSchedulerObserved)
+private inline fun repostByPreference(post: Work, handle: Work) = when {
+    !SchedulerScope.isClockPreferred &&
+    SchedulerScope.isSchedulerObserved ->
         post()
-    else if (Clock.isRunning)
+    Clock.isRunning ->
         handle()
-    else if (SchedulerScope.isSchedulerObserved)
+    SchedulerScope.isSchedulerObserved ->
         post()
-    else
-        currentThread.interrupt()
+    else ->
+        currentThread.interrupt() }
 
 // step <-> runnable
 fun handle(step: CoroutineStep) = post(runnableOf(step))
@@ -1242,9 +1241,9 @@ fun reinvokeAheadSafelyInterrupting(step: Step) = postAhead(safeInterruptingRunn
 fun post(callback: Runnable) = clock?.post?.invoke(callback)
 fun postAhead(callback: Runnable) = clock?.postAhead?.invoke(callback)
 
-private fun Step.asCoroutine(): CoroutineStep = { this@asCoroutine() }
+private fun Step.toCoroutine(): CoroutineStep = { this@toCoroutine() }
 
-private fun CoroutineStep.asStep() = suspend { invoke(annotatedOrSchedulerScope()) }
+private fun CoroutineStep.toStep() = suspend { invoke(annotatedOrSchedulerScope()) }
 
 private fun Runnable.asStep() =
     Clock.getStep(this) ?: toStep()
@@ -1341,7 +1340,7 @@ infix fun Message.then(next: MessageFunction): Message = this
 
 infix fun Message.otherwise(next: MessageFunction): Message = this
 
-private fun Step.asLiveStep(): SequencerStep = { invoke() }
+private fun Step.toLiveStep(): SequencerStep = { invoke() }
 
 val SequencerScope.isActive
     get() = Sequencer { isCancelled } == false
