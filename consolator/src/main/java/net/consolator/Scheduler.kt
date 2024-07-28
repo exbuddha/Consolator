@@ -68,7 +68,15 @@ private object HandlerScope : ResolverScope {
 
 sealed interface SchedulerScope : ResolverScope {
     companion object {
-        var DEFAULT: ResolverScope? = null
+        fun preferClock() {
+            DEFAULT = HandlerScope }
+
+        fun preferScheduler() {
+            FALLBACK = true
+            if (DEFAULT === null)
+                DEFAULT = Scheduler }
+
+        private var DEFAULT: ResolverScope? = null
             set(value) {
                 // engine-wide reconfiguration
                 if (value is HandlerScope)
@@ -78,25 +86,27 @@ sealed interface SchedulerScope : ResolverScope {
                     BaseServiceScope.DEFAULT_OPERATOR = null
                 field = value }
 
-        var FALLBACK: StepFunction? = null
+        private var FALLBACK = false
+            set(value) {
+                if (value)
+                    processLifecycleScope.launch(Main) {
+                        Scheduler.observeAsync() }
+                field = value }
+
+        fun exit(fallback: StepFunction, step: StepPointer) =
+            if (FALLBACK) fallback(step) else null
 
         val isClockPreferred
             get() = DEFAULT === HandlerScope
 
+        val isSchedulerPreferred
+            get() = FALLBACK || !isClockPreferred
+
         operator fun invoke() = DEFAULT ?: Scheduler
+
+        operator fun <R> invoke(block: Companion.() -> R) = this.block()
     }
 }
-
-fun preferClock() {
-    SchedulerScope.DEFAULT = HandlerScope }
-
-fun preferScheduler() {
-    with(SchedulerScope) {
-    FALLBACK = Scheduler::postValue
-    if (DEFAULT === null)
-        DEFAULT = Scheduler
-    processLifecycleScope.launch(Main) {
-        Scheduler.observeAsync() } } }
 
 fun commit(step: CoroutineStep) =
     (service ?:
@@ -112,9 +122,11 @@ fun commit(step: CoroutineStep) =
 fun commit(vararg context: Any?): Any? =
     when (val task = context.firstOrNull()) {
         (task === START) -> {
-            SchedulerScope().asType<Scheduler>()?.observeAsync()
-            preferClock()
-            preferScheduler()
+            SchedulerScope {
+                invoke().asType<Scheduler>()
+                ?.observeAsync()
+                preferClock()
+                preferScheduler() }
             if (SchedulerScope.isClockPreferred)
                 clock = Clock(SVC, Thread.MAX_PRIORITY)
                 @Synchronous @Tag(CLOCK_INIT) {
@@ -1165,38 +1177,44 @@ private fun launch(it: CoroutineStep) =
     .apply { saveNewElement(it) }
 
 fun repost(step: CoroutineStep) =
-    repost({
-        step.markTagForSchPost()
-        .asStep() },
-        Step::post,
-        ::handle)
+    repostByPreference(step)
 
 fun repostAhead(step: CoroutineStep) =
-    repost({
-        step.markTagForSchPost()
-        .asStep() },
-        Step::postAhead,
-        ::handleAhead)
+    repostAheadByPreference(step)
 
 fun schedule(step: Step) =
-    repost({
-        step.markTagForSchPost() },
-        Step::post,
-        ::handle)
+    repostByPreference(step)
 
 fun scheduleAhead(step: Step) =
-    repost({
-        step.markTagForSchPost() },
-        Step::postAhead,
-        ::handleAhead)
+    repostAheadByPreference(step)
 
-private inline fun repost(noinline step: Step, post: StepFunction, handle: CoroutineFunction) =
-    repost(
-        { post(step) },
+private fun repostByPreference(step: CoroutineStep) =
+    repost(step, Step::post, ::handle)
+
+private fun repostAheadByPreference(step: CoroutineStep) =
+    repost(step, Step::postAhead, ::handleAhead)
+
+private fun repostByPreference(step: Step) =
+    repost(step, Step::post, ::handle)
+
+private fun repostAheadByPreference(step: Step) =
+    repost(step, Step::postAhead, ::handleAhead)
+
+private fun repost(step: CoroutineStep, post: StepFunction, handle: CoroutineFunction): Any {
+    fun markedStep() = step.markTagForSchPost().asStep()
+    return repost(
+        { post(markedStep()) },
+        { handle(step) },
+        exit = { SchedulerScope.exit(post, ::markedStep) }) }
+
+private fun repost(step: Step, post: StepFunction, handle: CoroutineFunction): Any {
+    fun markedStep() = step.markTagForSchPost()
+    return repost(
+        { post(markedStep()) },
         { handle(step.asCoroutine()) },
-        exit = { SchedulerScope.FALLBACK?.invoke(step) })
+        exit = { SchedulerScope.exit(post, ::markedStep) }) }
 
-private inline fun repost(post: Work, handle: Work, exit: AnyFunction) =
+private inline fun repost(post: Work, handle: Work, noinline exit: AnyFunction) =
     if (!SchedulerScope.isClockPreferred && Scheduler.hasObservers())
         post()
     else if (Clock.isRunning)
@@ -1204,10 +1222,6 @@ private inline fun repost(post: Work, handle: Work, exit: AnyFunction) =
     else
         exit()
         ?: currentThread.interrupt()
-
-// runnable <-> message
-fun post(callback: Runnable) = clock?.post?.invoke(callback)
-fun postAhead(callback: Runnable) = clock?.postAhead?.invoke(callback)
 
 // step <-> runnable
 fun handle(step: CoroutineStep) = post(runnableOf(step))
@@ -1229,16 +1243,23 @@ fun reinvokeAheadInterrupting(step: Step) = postAhead(interruptingRunnableOf(ste
 fun reinvokeSafelyInterrupting(step: Step) = post(safeInterruptingRunnableOf(step))
 fun reinvokeAheadSafelyInterrupting(step: Step) = postAhead(safeInterruptingRunnableOf(step))
 
-fun Step.asCoroutine(): CoroutineStep = { this@asCoroutine() }
+// runnable <-> message
+fun post(callback: Runnable) = clock?.post?.invoke(callback)
+fun postAhead(callback: Runnable) = clock?.postAhead?.invoke(callback)
+
+private fun Step.asCoroutine(): CoroutineStep = { this@asCoroutine() }
 
 private fun CoroutineStep.asStep() = suspend { invoke(annotatedOrSchedulerScope()) }
 
-private fun Runnable.asStep() = suspend { run() }
+private fun Runnable.asStep() =
+    Clock.getStep(this) ?: toStep()
 
 private fun Runnable.asCoroutine(): CoroutineStep =
     Clock.getCoroutine(this) ?: toCoroutine()
 
 private fun Runnable.toCoroutine(): CoroutineStep = { run() }
+
+private fun Runnable.toStep() = suspend { run() }
 
 private fun Runnable.asMessage() =
     with(Clock) { getCoroutine(this@asMessage)?.run(::getMessage) }
@@ -2416,6 +2437,7 @@ private typealias LiveSequence = MutableList<LiveWork>
 private typealias LiveWorkFunction = (LiveWork) -> Any?
 private typealias LiveWorkPredicate = (LiveWork) -> Boolean
 private typealias StepFunction = (Step) -> Any?
+private typealias StepPointer = () -> Step
 
 private typealias HandlerFunction = Clock.(Message) -> Unit
 private typealias MessageFunction = (Message) -> Any?
