@@ -1177,44 +1177,34 @@ private fun launch(it: CoroutineStep) =
     .apply { saveNewElement(it) }
 
 fun repost(step: CoroutineStep) =
-    repostByPreference(step)
+    repostByPreference(step, Step::post, ::handle)
 
 fun repostAhead(step: CoroutineStep) =
-    repostAheadByPreference(step)
+    repostByPreference(step, Step::postAhead, ::handleAhead)
 
 fun schedule(step: Step) =
-    repostByPreference(step)
+    repostByPreference(step, Step::post, ::handle)
 
 fun scheduleAhead(step: Step) =
-    repostAheadByPreference(step)
+    repostByPreference(step, Step::postAhead, ::handleAhead)
 
-private fun repostByPreference(step: CoroutineStep) =
-    repost(step, Step::post, ::handle)
-
-private fun repostAheadByPreference(step: CoroutineStep) =
-    repost(step, Step::postAhead, ::handleAhead)
-
-private fun repostByPreference(step: Step) =
-    repost(step, Step::post, ::handle)
-
-private fun repostAheadByPreference(step: Step) =
-    repost(step, Step::postAhead, ::handleAhead)
-
-private fun repost(step: CoroutineStep, post: StepFunction, handle: CoroutineFunction): Any {
+private fun repostByPreference(step: CoroutineStep, post: StepFunction, handle: CoroutineFunction): Any {
     fun markedStep() = step.markTagForSchPost().asStep()
-    return repost(
+    return repostByPreference(
         { post(markedStep()) },
         { handle(step) },
-        exit = { SchedulerScope.exit(post, ::markedStep) }) }
+        exit = { SchedulerScope.exit(post, ::markedStep) })
+}
 
-private fun repost(step: Step, post: StepFunction, handle: CoroutineFunction): Any {
+private fun repostByPreference(step: Step, post: StepFunction, handle: CoroutineFunction): Any {
     fun markedStep() = step.markTagForSchPost()
-    return repost(
+    return repostByPreference(
         { post(markedStep()) },
         { handle(step.asCoroutine()) },
-        exit = { SchedulerScope.exit(post, ::markedStep) }) }
+        exit = { SchedulerScope.exit(post, ::markedStep) })
+}
 
-private inline fun repost(post: Work, handle: Work, noinline exit: AnyFunction) =
+private inline fun repostByPreference(post: Work, handle: Work, noinline exit: AnyFunction) =
     if (!SchedulerScope.isClockPreferred && Scheduler.hasObservers())
         post()
     else if (Clock.isRunning)
