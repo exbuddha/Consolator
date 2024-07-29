@@ -8,7 +8,7 @@ import net.consolator.expire
 import net.consolator.BaseApplication.Companion.COMMIT_NAV_MAIN_UI
 import net.consolator.Scheduler.applicationMigrationManager
 
-class MigrationManager : Resolver {
+internal class MigrationManager : Resolver {
     override fun commit(vararg context: Any?) {
         when (context.firstOrNull()) {
             BaseFragment::onViewCreated -> {

@@ -9,7 +9,7 @@ import net.consolator.database.AppDatabase
         parentColumns = [AppDatabase.ID],
         childColumns = [StackTraceElementEntity.EXCEPTION_ID],
     )])
-data class StackTraceElementEntity(
+internal data class StackTraceElementEntity(
     @ColumnInfo(name = EXCEPTION_ID)
     val exception: Long,
 

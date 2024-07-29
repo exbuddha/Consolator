@@ -18,7 +18,7 @@ import net.consolator.session
         parentColumns = [AppDatabase.ID],
         childColumns = [ExceptionEntity.CAUSE],
     )])
-data class ExceptionEntity(
+internal data class ExceptionEntity(
     @ColumnInfo(name = TYPE)
     val type: Long,
 

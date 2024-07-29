@@ -4,7 +4,7 @@ import androidx.room.*
 import net.consolator.session
 
 @Entity(tableName = NetworkStateEntity.TABLE)
-data class NetworkStateEntity(
+internal data class NetworkStateEntity(
     @ColumnInfo(name = IS_CONNECTED)
     var isConnected: Boolean,
 

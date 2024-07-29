@@ -2,6 +2,6 @@ package net.consolator.application
 
 import net.consolator.Resolver
 
-class MemoryManager : Resolver {
+internal class MemoryManager : Resolver {
     private companion object
 }

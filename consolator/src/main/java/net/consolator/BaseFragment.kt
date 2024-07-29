@@ -26,8 +26,8 @@ import net.consolator.BaseApplication.Companion.COMMIT_NAV_MAIN_UI
 import net.consolator.Scheduler.applicationMemoryManager
 import net.consolator.Scheduler.applicationMigrationManager
 
-abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
-    protected lateinit var transit: (Short) -> Unit
+abstract class BaseFragment : Fragment(contentLayoutId) {
+    internal lateinit var transit: (Short) -> Unit
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -110,25 +110,11 @@ abstract class BaseFragment : Fragment(contentLayoutId), ObjectProvider {
         super.onDestroyView()
     }
 
-    @Deprecated("Requires API Level <= 34")
-    override fun onLowMemory() {
-        defer<MemoryManager>(::onLowMemory) {
-            super.onLowMemory() }
-    }
-
     @Retention(SOURCE)
     @Target(EXPRESSION)
-    protected annotation class MainViewGroup
+    internal annotation class MainViewGroup
 
-    override fun invoke(type: AnyKClass) = when (type) {
-        MigrationManager::class ->
-            ::applicationMigrationManager.requireAsync(constructor = ::MigrationManager)
-        MemoryManager::class ->
-            ::applicationMemoryManager.require(constructor = ::MemoryManager)
-        else ->
-            throw BaseImplementationRestriction() }
-
-    companion object {
+    internal companion object {
         const val UI_TAG = "FRAGMENT"
     }
 }

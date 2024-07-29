@@ -12,7 +12,7 @@ import net.consolator.database.AppDatabase.Companion.DB_VERSION
     RuntimeSessionEntity::class,
 ])
 @File("app.db")
-abstract class AppDatabase : RoomDatabase() {
+internal abstract class AppDatabase : RoomDatabase() {
     abstract fun runtimeDao(): RuntimeDao
     companion object {
         var dateTimeFormat: DateFormat? = null

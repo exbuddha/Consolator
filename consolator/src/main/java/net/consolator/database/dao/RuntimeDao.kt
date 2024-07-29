@@ -6,7 +6,7 @@ import net.consolator.database.entity.ThreadEntity
 import net.consolator.db
 
 @Dao
-abstract class RuntimeDao {
+internal abstract class RuntimeDao {
     @Query("INSERT INTO ${RuntimeSessionEntity.TABLE}(${RuntimeSessionEntity.CTX_TIME},${ThreadEntity.RUNTIME_ID}) VALUES (:ctxTime)")
     abstract suspend fun newSession(ctxTime: Long): Long
 

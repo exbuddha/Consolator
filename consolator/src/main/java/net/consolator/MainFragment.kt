@@ -38,7 +38,7 @@ class MainFragment : BaseFragment() {
     private inline fun <reified R> screenEventInterceptor(listener: Any, callback: KFunction<R>, vararg args: Any?, noinline postback: PostbackFunction?): Interception = null
 }
 
-typealias Transition = Pair<Fragment?, Int?>
+internal typealias Transition = Pair<Fragment?, Int?>
 
-typealias Interception = Pair<AnyFunction?, Boolean?>?
-typealias PostbackFunction = (Interception) -> Any?
+internal typealias Interception = Pair<AnyFunction?, Boolean?>?
+internal typealias PostbackFunction = (Interception) -> Any?

@@ -4,7 +4,6 @@ import android.app.*
 import android.content.*
 import android.os.*
 import androidx.core.content.ContextCompat.registerReceiver
-import androidx.fragment.app.Fragment
 import androidx.lifecycle.*
 import androidx.room.*
 import java.io.*
@@ -27,7 +26,7 @@ import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Dispatchers.Main
 import kotlinx.coroutines.Dispatchers.Unconfined
 
-fun commit(step: CoroutineStep) =
+internal fun commit(step: CoroutineStep) =
     (service ?:
     step.annotatedScope ?:
     foregroundLifecycleOwner?.lifecycleScope ?:
@@ -59,7 +58,7 @@ fun commit(vararg context: Any?): Any? =
         } }
         else -> Unit }
 
-sealed interface BaseServiceScope : ResolverScope, ReferredContext, UniqueContext {
+internal sealed interface BaseServiceScope : ResolverScope, ReferredContext, UniqueContext {
     fun Intent?.invoke(flags: Int, startId: Int, mode: Int): Int? {
         if (SchedulerScope.isClockPreferred)
             this@invoke.makeClockStartSafely()
@@ -157,7 +156,7 @@ sealed interface BaseServiceScope : ResolverScope, ReferredContext, UniqueContex
 }
 
 @Coordinate
-object Scheduler : SchedulerScope, MutableLiveData<Step?>(), StepObserver, Synchronizer<Step>, PriorityQueue<AnyFunction> {
+internal object Scheduler : SchedulerScope, MutableLiveData<Step?>(), StepObserver, Synchronizer<Step>, PriorityQueue<AnyFunction> {
     private fun observe() {
         observeForever(this)
         SchedulerScope.isSchedulerObserved = true }
@@ -229,7 +228,7 @@ object Scheduler : SchedulerScope, MutableLiveData<Step?>(), StepObserver, Synch
 
 sealed interface SchedulerScope : ResolverScope {
     companion object {
-        fun init() {
+        internal fun init() {
             invoke().asType<Scheduler>()
             ?.observeAsync() }
 
@@ -244,21 +243,21 @@ sealed interface SchedulerScope : ResolverScope {
                     Scheduler.observeAsync()
                     callback?.invoke() } }
 
-        fun avoidClock() {
+        internal fun avoidClock() {
             if (isClockPreferred)
                 DEFAULT = null }
 
-        fun avoidScheduler() {
+        internal fun avoidScheduler() {
             if (isSchedulerPreferred)
                 preferClock() }
 
-        val isClockPreferred
+        internal val isClockPreferred
             get() = DEFAULT === HandlerScope
 
-        val isSchedulerPreferred
+        internal val isSchedulerPreferred
             get() = DEFAULT !== HandlerScope
 
-        var isSchedulerObserved = false
+        internal var isSchedulerObserved = false
 
         private var DEFAULT: ResolverScope? = null
             set(value) {
@@ -271,7 +270,7 @@ sealed interface SchedulerScope : ResolverScope {
 
         operator fun invoke() = DEFAULT ?: Scheduler
 
-        operator fun <R> invoke(block: Companion.() -> R) = this.block()
+        internal operator fun <R> invoke(block: Companion.() -> R) = this.block()
     }
 }
 
@@ -296,25 +295,22 @@ fun ResolverScope.commit(vararg tag: Tag) =
 fun ResolverScope.commit(vararg path: Path) =
     commit(*path.mapToStringArray())
 
-inline fun <reified T : Resolver> LifecycleOwner.defer(member: UnitKFunction, vararg context: Any?) =
-    defer(T::class, this, member, *context)
+internal inline fun <reified T : Resolver> LifecycleOwner.defer(member: UnitKFunction, vararg context: Any?) =
+    defer(T::class, T::class, member, *context)
 
-inline fun <reified T : Resolver> LifecycleOwner.defer(member: UnitKFunction, vararg context: Any?, noinline `super`: Work) =
-    defer(T::class, this, member, *context, implicit(`super`))
+internal inline fun <reified T : Resolver> Context.defer(member: UnitKFunction, vararg context: Any?, noinline `super`: Work) =
+    defer(T::class, T::class, member, *context, implicit(`super`))
 
-inline fun <reified T : Resolver> Context.defer(member: UnitKFunction, vararg context: Any?, noinline `super`: Work) =
-    defer(T::class, this, member, *context, implicit(`super`))
+internal inline fun <reified T : Resolver> BaseActivity.defer(member: UnitKFunction, vararg context: Any?, noinline `super`: Work) =
+    defer(T::class, this, member, *context, `super`)
 
-inline fun <reified T : Resolver> BaseActivity.defer(member: UnitKFunction, vararg context: Any?, noinline `super`: Work) =
-    (this as Context).defer<T>(member, *context, `super` = `super`)
-
-fun implicit(`super`: Work) = when {
+internal fun implicit(`super`: Work) = when {
     `super`.isImplicit -> {
         `super`()
         emptyWork }
     else -> `super` }
 
-fun attach(step: CoroutineStep, vararg args: Any?): Any? {
+internal fun attach(step: CoroutineStep, vararg args: Any?): Any? {
     val enlist: CoroutineFunction? = (
         args.firstOrNull()
         ?: if (SchedulerScope.isClockPreferred)
@@ -379,10 +375,10 @@ private interface SchedulerElement : CoroutineContext.Element {
 private interface SchedulerKey : CoroutineContext.Key<SchedulerElement> {
     companion object : SchedulerKey }
 
-fun CoroutineScope.relaunch(instance: JobKProperty, context: CoroutineContext = SchedulerContext, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep) =
+internal fun CoroutineScope.relaunch(instance: JobKProperty, context: CoroutineContext = SchedulerContext, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep) =
     relaunch(::launch, instance, context, start, step)
 
-fun LifecycleOwner.relaunch(instance: JobKProperty, context: CoroutineContext = SchedulerContext, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep) =
+internal fun LifecycleOwner.relaunch(instance: JobKProperty, context: CoroutineContext = SchedulerContext, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep) =
     relaunch(::launch, instance, context, start, step)
 
 private fun relaunch(launcher: JobKFunction, instance: JobKProperty, context: CoroutineContext, start: CoroutineStart, step: CoroutineStep) =
@@ -390,13 +386,13 @@ private fun relaunch(launcher: JobKFunction, instance: JobKProperty, context: Co
         launcher.call(context, start, step) }
     .also { instance.markTag() }
 
-fun launch(context: CoroutineContext = SchedulerContext, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep) =
+internal fun launch(context: CoroutineContext = SchedulerContext, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep) =
     step.markTagForSchLaunch()
         .afterTrackingTagsForJobLaunch(context, start).let { step ->
     Scheduler.launch(context, start, step)
         .apply { saveNewElement(step) } }
 
-fun LifecycleOwner.launch(context: CoroutineContext = SchedulerContext, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep): Job? {
+internal fun LifecycleOwner.launch(context: CoroutineContext = SchedulerContext, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep): Job? {
     val scope = step.annotatedScope ?: lifecycleScope
     val (context, start, step) = scope.determineCoroutine(context, start, step)
     step.markTagForFloLaunch()
@@ -582,47 +578,49 @@ fun CoroutineScope?.converge(job: Job, context: Any?) {}
 
 fun CoroutineScope.enact(job: Job, context: Any?) {}
 
-fun CoroutineScope.enact(job: Job, exit: ThrowableFunction? = null) {}
+internal fun CoroutineScope.enact(job: Job, exit: ThrowableFunction? = null) {}
 
 fun CoroutineScope.error(job: Job, context: Any?) {}
 
-fun CoroutineScope.error(job: Job, exit: ThrowableFunction? = null) {}
+internal fun CoroutineScope.error(job: Job, exit: ThrowableFunction? = null) {}
 
 fun CoroutineScope.retry(job: Job, context: Any?) {}
 
-fun CoroutineScope.retry(job: Job, exit: ThrowableFunction? = null) {}
+internal fun CoroutineScope.retry(job: Job, exit: ThrowableFunction? = null) {}
 
-fun CoroutineScope.close(job: Job, exit: ThrowableFunction? = null) {}
+fun CoroutineScope.close(job: Job, context: Any?) {}
 
-fun CoroutineScope.keepAlive(job: Job) = keepAliveNode(job.node)
+internal fun CoroutineScope.close(job: Job, exit: ThrowableFunction? = null) {}
 
-fun CoroutineScope.keepAliveOrClose(job: Job) = keepAliveOrCloseNode(job.node)
+internal fun CoroutineScope.keepAlive(job: Job) = keepAliveNode(job.node)
 
-fun CoroutineScope.keepAliveNode(node: SchedulerNode): Boolean = false
+internal fun CoroutineScope.keepAliveOrClose(job: Job) = keepAliveOrCloseNode(job.node)
 
-fun CoroutineScope.keepAliveOrCloseNode(node: SchedulerNode) =
+internal fun CoroutineScope.keepAliveNode(node: SchedulerNode): Boolean = false
+
+internal fun CoroutineScope.keepAliveOrCloseNode(node: SchedulerNode) =
     keepAliveNode(node) || node.close()
 
-fun SchedulerNode.close(): Boolean = true
+internal fun SchedulerNode.close(): Boolean = true
 
-fun Job.close(node: SchedulerNode): Boolean = true
+internal fun Job.close(node: SchedulerNode): Boolean = true
 
 fun Job.close() {}
 
-val Job.node: SchedulerNode
+internal val Job.node: SchedulerNode
     get() = TODO()
 
-fun LifecycleOwner.detach(job: Job? = null) {}
+internal fun LifecycleOwner.detach(job: Job? = null) {}
 
-fun LifecycleOwner.reattach(job: Job? = null) {}
+internal fun LifecycleOwner.reattach(job: Job? = null) {}
 
-fun LifecycleOwner.close(job: Job? = null) {}
+internal fun LifecycleOwner.close(job: Job? = null) {}
 
-fun LifecycleOwner.detach(node: SchedulerNode) {}
+internal fun LifecycleOwner.detach(node: SchedulerNode) {}
 
-fun LifecycleOwner.reattach(node: SchedulerNode) {}
+internal fun LifecycleOwner.reattach(node: SchedulerNode) {}
 
-fun LifecycleOwner.close(node: SchedulerNode) {}
+internal fun LifecycleOwner.close(node: SchedulerNode) {}
 
 fun CoroutineScope.change(event: Transit) =
     EventBus.commit(event)
@@ -630,96 +628,96 @@ fun CoroutineScope.change(event: Transit) =
 fun CoroutineScope.change(stage: ContextStep) =
     EventBus.commit(stage)
 
-fun <R> CoroutineScope.change(member: KFunction<R>, stage: ContextStep) =
+internal fun <R> CoroutineScope.change(member: KFunction<R>, stage: ContextStep) =
     EventBus.commit(stage)
 
-fun <R> CoroutineScope.change(owner: LifecycleOwner, member: KFunction<R>, stage: ContextStep) =
+internal fun <R> CoroutineScope.change(owner: LifecycleOwner, member: KFunction<R>, stage: ContextStep) =
     EventBus.commit(stage)
 
-fun <R> CoroutineScope.change(ref: WeakContext, member: KFunction<R>, stage: ContextStep) =
+internal fun <R> CoroutineScope.change(ref: WeakContext, member: KFunction<R>, stage: ContextStep) =
     EventBus.commit(stage)
 
-fun <R> CoroutineScope.change(ref: WeakContext, owner: LifecycleOwner, member: KFunction<R>, stage: ContextStep) =
+internal fun <R> CoroutineScope.change(ref: WeakContext, owner: LifecycleOwner, member: KFunction<R>, stage: ContextStep) =
     EventBus.commit(stage)
 
-suspend fun CoroutineScope.repeatSuspended(scope: CoroutineScope = this, predicate: PredicateFunction = @Tag(IS_ACTIVE) { isActive }, delayTime: DelayFunction = @Tag(YIELD) { 0L }, block: JobFunction) {
+internal suspend fun CoroutineScope.repeatSuspended(scope: CoroutineScope = this, predicate: PredicateFunction = @Tag(IS_ACTIVE) { isActive }, delayTime: DelayFunction = @Tag(YIELD) { 0L }, block: JobFunction) {
     markTagsForJobRepeat(predicate, delayTime, block, currentJob())
     while (predicate()) {
         block(scope)
         if (isActive)
             delayOrYield(delayTime()) } }
 
-suspend fun delayOrYield(dt: Long = 0L) {
+internal suspend fun delayOrYield(dt: Long = 0L) {
     if (dt > 0) delay(dt)
     else if (dt == 0L) yield() }
 
-suspend fun CoroutineScope.currentContext(scope: CoroutineScope = this) =
+internal suspend fun CoroutineScope.currentContext(scope: CoroutineScope = this) =
     currentJob()[CONTEXT].asContext()!!
 
-suspend fun CoroutineScope.registerContext(context: WeakContext, scope: CoroutineScope = this) {
+internal suspend fun CoroutineScope.registerContext(context: WeakContext, scope: CoroutineScope = this) {
     currentJob()[CONTEXT] = context }
 
-val SequencerScope.isActive
+internal val SequencerScope.isActive
     get() = Sequencer { isCancelled } == false
 
-fun SequencerScope.cancel() =
+internal fun SequencerScope.cancel() =
     Sequencer.cancel()
 
-fun SequencerScope.commit(vararg tag: Tag) =
+internal fun SequencerScope.commit(vararg tag: Tag) =
     commit(*tag.mapToStringArray())
 
-fun LiveWork.attach(tag: String? = null) =
+internal fun LiveWork.attach(tag: String? = null, owner: LifecycleOwner? = null) =
     Sequencer.attach(this, tag)
 
-fun LiveWork.attachOnce(tag: String? = null) =
+internal fun LiveWork.attachOnce(tag: String? = null, owner: LifecycleOwner? = null) =
     Sequencer.attachOnce(this, tag)
 
-fun LiveWork.attachAfter(tag: String? = null) =
+internal fun LiveWork.attachAfter(tag: String? = null, owner: LifecycleOwner? = null) =
     Sequencer.attachAfter(this, tag)
 
-fun LiveWork.attachBefore(tag: String? = null) =
+internal fun LiveWork.attachBefore(tag: String? = null, owner: LifecycleOwner? = null) =
     Sequencer.attachBefore(this, tag)
 
-fun LiveWork.attachOnceAfter(tag: String? = null) =
+internal fun LiveWork.attachOnceAfter(tag: String? = null, owner: LifecycleOwner? = null) =
     Sequencer.attachOnceAfter(this, tag)
 
-fun LiveWork.attachOnceBefore(tag: String? = null) =
+internal fun LiveWork.attachOnceBefore(tag: String? = null, owner: LifecycleOwner? = null) =
     Sequencer.attachOnceBefore(this, tag)
 
-fun LiveWork.detach() {}
+internal fun LiveWork.detach() {}
 
-fun LiveWork.close() {}
+internal fun LiveWork.close() {}
 
-fun <T, R> Pair<LiveData<T>, (T) -> R>.toLiveWork(async: Boolean = false) =
+internal fun <T, R> Pair<LiveData<T>, (T) -> R>.toLiveWork(async: Boolean = false) =
     LiveWork(@Keep { first.asType() }, second.asType(), async)
 
-fun <T, R> capture(context: CoroutineContext, step: suspend LiveDataScope<T>.() -> Unit, capture: (T) -> R) =
+internal fun <T, R> capture(context: CoroutineContext, step: suspend LiveDataScope<T>.() -> Unit, capture: (T) -> R) =
     liveData(context, block = step) to capture
 
-fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(owner: LifecycleOwner, observer: Observer<T> = disposerOf(this)): Observer<T> {
+internal fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(owner: LifecycleOwner, observer: Observer<T> = disposerOf(this)): Observer<T> {
     first.observe(owner, observer)
     return observer }
 
-fun <T, R> Pair<LiveData<T>, (T) -> R>.dispose(owner: LifecycleOwner, disposer: Observer<T> = owner.disposerOf(this)) =
+internal fun <T, R> Pair<LiveData<T>, (T) -> R>.dispose(owner: LifecycleOwner, disposer: Observer<T> = owner.disposerOf(this)) =
     observe(owner, disposer)
 
-fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(observer: Observer<T> = disposerOf(this)): Observer<T> {
+internal fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(observer: Observer<T> = disposerOf(this)): Observer<T> {
     first.observeForever(observer)
     return observer }
 
-fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(owner: LifecycleOwner, observer: (Pair<LiveData<T>, (T) -> R>) -> Observer<T> = ::disposerOf) =
+internal fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(owner: LifecycleOwner, observer: (Pair<LiveData<T>, (T) -> R>) -> Observer<T> = ::disposerOf) =
     observe(owner, observer(this))
 
-fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(observer: (Pair<LiveData<T>, (T) -> R>) -> Observer<T> = ::disposerOf) =
+internal fun <T, R> Pair<LiveData<T>, (T) -> R>.observe(observer: (Pair<LiveData<T>, (T) -> R>) -> Observer<T> = ::disposerOf) =
     observe(observer(this))
 
-fun <T, R> Pair<LiveData<T>, (T) -> R>.removeObserver(observer: Observer<T>) =
+internal fun <T, R> Pair<LiveData<T>, (T) -> R>.removeObserver(observer: Observer<T>) =
     first.removeObserver(observer)
 
-fun <T, R> Pair<LiveData<T>, (T) -> R>.removeObservers(owner: LifecycleOwner) =
+internal fun <T, R> Pair<LiveData<T>, (T) -> R>.removeObservers(owner: LifecycleOwner) =
     first.removeObservers(owner)
 
-fun <T, R> observerOf(liveStep: Pair<LiveData<T>, (T) -> R>) =
+internal fun <T, R> observerOf(liveStep: Pair<LiveData<T>, (T) -> R>) =
     Observer<T> { liveStep.second(it) }
 
 private fun <T, R> disposerOf(liveStep: Pair<LiveData<T>, (T) -> R>) =
@@ -735,38 +733,38 @@ private fun <T, R> LifecycleOwner.disposerOf(liveStep: Pair<LiveData<T>, (T) -> 
         step.removeObservers(this)
         capture(value) }
 
-infix fun LiveWork.then(next: SequencerStep): LiveWork = this
+internal infix fun LiveWork.then(next: SequencerStep): LiveWork = this
 
-infix fun LiveWork.then(next: LiveWorkFunction): LiveWork = this
+internal infix fun LiveWork.then(next: LiveWorkFunction): LiveWork = this
 
-infix fun LiveWork.after(prev: SequencerStep): LiveWork = this
+internal infix fun LiveWork.after(prev: SequencerStep): LiveWork = this
 
-infix fun LiveWork.given(predicate: LiveWorkPredicate): LiveWork = this
+internal infix fun LiveWork.given(predicate: LiveWorkPredicate): LiveWork = this
 
-infix fun LiveWork.unless(predicate: LiveWorkPredicate): LiveWork = this
+internal infix fun LiveWork.unless(predicate: LiveWorkPredicate): LiveWork = this
 
-infix fun LiveWork.otherwise(next: SequencerStep): LiveWork = this
+internal infix fun LiveWork.otherwise(next: SequencerStep): LiveWork = this
 
-infix fun LiveWork.onCancel(action: SequencerStep): LiveWork = this
+internal infix fun LiveWork.onCancel(action: SequencerStep): LiveWork = this
 
-infix fun LiveWork.onError(action: SequencerStep): LiveWork = this
+internal infix fun LiveWork.onError(action: SequencerStep): LiveWork = this
 
-infix fun LiveWork.onTimeout(action: SequencerStep): LiveWork = this
+internal infix fun LiveWork.onTimeout(action: SequencerStep): LiveWork = this
 
-suspend fun SequencerScope.change(event: Transit) =
+internal suspend fun SequencerScope.change(event: Transit) =
     reset {
     EventBus.commit(event) }
 
-suspend fun SequencerScope.change(stage: ContextStep) =
+internal suspend fun SequencerScope.change(stage: ContextStep) =
     resetByTag(getTag(stage)) {
     EventBus.commit(stage) }
 
-suspend fun <R> SequencerScope.capture(block: () -> R) =
+internal suspend fun <R> SequencerScope.capture(block: () -> R) =
     emit {
         reset()
         block() }
 
-suspend fun <R> SequencerScope.captureByTag(tag: String, block: () -> R) =
+internal suspend fun <R> SequencerScope.captureByTag(tag: String, block: () -> R) =
     emit {
         resetByTag(tag)
         block() }
@@ -779,8 +777,8 @@ private suspend inline fun <R> SequencerScope.resetByTag(tag: String, block: () 
     resetByTag(tag)
     return block() }
 
-fun SequencerScope.reset() = net.consolator.reset()
-fun SequencerScope.resetByTag(tag: String) = net.consolator.resetByTag(tag)
+internal fun SequencerScope.reset() = net.consolator.reset()
+internal fun SequencerScope.resetByTag(tag: String) = net.consolator.resetByTag(tag)
 
 private fun reset() { sequencer?.reset() }
 private fun resetByTag(tag: String) { sequencer?.resetByTag(tag) }
@@ -1372,10 +1370,10 @@ private class Sequencer : Synchronizer<LiveWork>, Transactor<Int, Boolean?>, Pri
 
 private var jobs: JobFunctionSet? = null
 
-operator fun Job.get(tag: String) =
+internal operator fun Job.get(tag: String) =
     jobs?.find { tag == it.first() }?.second.asAnyArray()?.get(1)
 
-operator fun Job.set(tag: String, value: Any?) {
+internal operator fun Job.set(tag: String, value: Any?) {
     // addressable layer work
     value.markTag(tag) }
 
@@ -1398,13 +1396,13 @@ private fun combineTags(tag: String, self: String?) =
 
 private fun returnItsTag(it: Any?) = it.asNullable().tag?.string
 
-fun AnyKCallable.markTag() = tag.also { jobs?.save(it, this) }
+internal fun AnyKCallable.markTag() = tag.also { jobs?.save(it, this) }
 
-fun Any.markTag() = asCallable().markTag()
+internal fun Any.markTag() = asCallable().markTag()
 
-fun Any?.markTag(tag: String) = jobs?.save(tag, asNullable())
+internal fun Any?.markTag(tag: String) = jobs?.save(tag, asNullable())
 
-fun Any?.markSequentialTag(vararg tag: String?): String? = tag.first()
+internal fun Any?.markSequentialTag(vararg tag: String?): String? = tag.first()
 
 private fun <T> T.applyMarkTag(tag: String) = apply { markTag(tag) }
 
@@ -1423,7 +1421,7 @@ private fun getTag(callback: Runnable): String? = TODO()
 private fun getTag(msg: Message): String? = TODO()
 private fun getTag(what: Int): String? = TODO()
 
-fun markTags(vararg function: Any?) {
+internal fun markTags(vararg function: Any?) {
     when (val context = function.firstOrNull()) {
         (context === JOB_LAUNCH) ->
             markTagsForJobLaunch(*function, i = 1)
@@ -1581,73 +1579,73 @@ inline infix fun AnyFunction?.unless(crossinline predicate: Predicate) = this?.l
 inline infix fun <T, R, S> ((T) -> R)?.thru(crossinline next: (R) -> S): ((T) -> S)? = this?.let { {
     next(this@thru(it)) } }
 
-fun <R> KCallable<R>.with(vararg args: Any?): () -> R = {
+internal fun <R> KCallable<R>.with(vararg args: Any?): () -> R = {
     this@with.call(*args) }
 
-fun <R> call(vararg args: Any?): (KCallable<R>) -> R = {
+internal fun <R> call(vararg args: Any?): (KCallable<R>) -> R = {
     it.call(*args) }
 
-inline fun <L : Any, R, S : R> transact(noinline lock: () -> L, predicate: (L?) -> Boolean = { true }, block: (L) -> R, fallback: () -> S? = { null }): R? {
+internal inline fun <L : Any, R, S : R> transact(noinline lock: () -> L, predicate: (L?) -> Boolean = { true }, block: (L) -> R, fallback: () -> S? = { null }): R? {
     if (predicate(null))
         lock().let { key ->
             synchronized(key) {
                 if (predicate(key)) return block(key) } }
     return fallback() }
 
-inline fun <R, S : R> transact(state: State, predicate: StatePredicate, block: (Any) -> R, fallback: () -> S? = { null }): R? {
+internal inline fun <R, S : R> transact(state: State, predicate: StatePredicate, block: (Any) -> R, fallback: () -> S? = { null }): R? {
     if (predicate(state, null))
         state().let { lock ->
             synchronized(lock) {
                 if (predicate(state, lock)) return block(lock) } }
     return fallback() }
 
-inline fun <R> commitAsync(lock: Any, predicate: Predicate, block: () -> R) {
+internal inline fun <R> commitAsync(lock: Any, predicate: Predicate, block: () -> R) {
     if (predicate())
         synchronized(lock) {
             if (predicate()) block() } }
 
-inline fun <R, S : R> commitAsyncForResult(lock: Any, predicate: Predicate, block: () -> R, fallback: () -> S? = { null }): R? {
+internal inline fun <R, S : R> commitAsyncForResult(lock: Any, predicate: Predicate, block: () -> R, fallback: () -> S? = { null }): R? {
     if (predicate())
         synchronized(lock) {
             if (predicate()) return block() }
     return fallback() }
 
-fun Any?.toJobId() = asJob().hashCode()
+internal fun Any?.toJobId() = asJob().hashCode()
 
-suspend fun currentJob() = currentCoroutineContext().job
-fun currentThreadJob() = ::currentJob.block()
+internal suspend fun currentJob() = currentCoroutineContext().job
+internal fun currentThreadJob() = ::currentJob.block()
 
-fun <T> blockOf(step: suspend CoroutineScope.() -> T): () -> T = { runBlocking(block = step) }
-fun <T> runnableOf(step: suspend CoroutineScope.() -> T) = Runnable { runBlocking(block = step) }
-fun <T> safeRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { trySafely(blockOf(step)) }
-fun <T> interruptingRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { tryInterrupting(step) }
-fun <T> safeInterruptingRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { trySafelyInterrupting(step) }
+internal fun <T> blockOf(step: suspend CoroutineScope.() -> T): () -> T = { runBlocking(block = step) }
+internal fun <T> runnableOf(step: suspend CoroutineScope.() -> T) = Runnable { runBlocking(block = step) }
+internal fun <T> safeRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { trySafely(blockOf(step)) }
+internal fun <T> interruptingRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { tryInterrupting(step) }
+internal fun <T> safeInterruptingRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { trySafelyInterrupting(step) }
 
-fun <T> blockOf(step: suspend () -> T): () -> T = step::block
-fun <T> runnableOf(step: suspend () -> T) = Runnable { step.block() }
-fun <T> safeRunnableOf(step: suspend () -> T) = Runnable { trySafely(blockOf(step)) }
-fun <T> interruptingRunnableOf(step: suspend () -> T) = Runnable { tryInterrupting(blockOf(step)) }
-fun <T> safeInterruptingRunnableOf(step: suspend () -> T) = Runnable { trySafelyInterrupting(blockOf(step)) }
+internal fun <T> blockOf(step: suspend () -> T): () -> T = step::block
+internal fun <T> runnableOf(step: suspend () -> T) = Runnable { step.block() }
+internal fun <T> safeRunnableOf(step: suspend () -> T) = Runnable { trySafely(blockOf(step)) }
+internal fun <T> interruptingRunnableOf(step: suspend () -> T) = Runnable { tryInterrupting(blockOf(step)) }
+internal fun <T> safeInterruptingRunnableOf(step: suspend () -> T) = Runnable { trySafelyInterrupting(blockOf(step)) }
 
-fun <R> (suspend () -> R).block() = runBlocking { invoke() }
-fun <T, R> (suspend T.() -> R).block(scope: T) = runBlocking { invoke(scope) }
-fun <T, U, R> (suspend T.(U) -> R).block(scope: T, value: U) = runBlocking { invoke(scope, value) }
-fun <T, U, R> (suspend T.(U) -> R).block(scope: () -> T, value: U) = runBlocking { invoke(scope(), value) }
-fun <T, U, R> (suspend T.(U) -> R).block(scope: KCallable<T>, value: U) = runBlocking { invoke(scope.call(), value) }
+internal fun <R> (suspend () -> R).block() = runBlocking { invoke() }
+internal fun <T, R> (suspend T.() -> R).block(scope: T) = runBlocking { invoke(scope) }
+internal fun <T, U, R> (suspend T.(U) -> R).block(scope: T, value: U) = runBlocking { invoke(scope, value) }
+internal fun <T, U, R> (suspend T.(U) -> R).block(scope: () -> T, value: U) = runBlocking { invoke(scope(), value) }
+internal fun <T, U, R> (suspend T.(U) -> R).block(scope: KCallable<T>, value: U) = runBlocking { invoke(scope.call(), value) }
 
 private fun Step.post() = Scheduler.postValue(this)
 private fun Step.postAhead() { Scheduler.value = this }
 
-fun schedule(step: Step) =
+internal fun schedule(step: Step) =
     repostByPreference(step, Step::post, ::handle)
 
-fun scheduleAhead(step: Step) =
+internal fun scheduleAhead(step: Step) =
     repostByPreference(step, Step::postAhead, ::handleAhead)
 
-fun repost(step: CoroutineStep) =
+internal fun repost(step: CoroutineStep) =
     repostByPreference(step, Step::post, ::handle)
 
-fun repostAhead(step: CoroutineStep) =
+internal fun repostAhead(step: CoroutineStep) =
     repostByPreference(step, Step::postAhead, ::handleAhead)
 
 private fun repostByPreference(step: CoroutineStep, post: StepFunction, handle: CoroutineFunction) =
@@ -1676,14 +1674,14 @@ private fun Step.toCoroutine(): CoroutineStep = { this@toCoroutine() }
 private fun CoroutineStep.toStep() = suspend { invoke(annotatedOrSchedulerScope()) }
 
 // step <-> runnable
-fun handle(step: CoroutineStep) = post(runnableOf(step))
-fun handleAhead(step: CoroutineStep) = postAhead(runnableOf(step))
-fun handleSafely(step: CoroutineStep) = post(safeRunnableOf(step))
-fun handleAheadSafely(step: CoroutineStep) = postAhead(safeRunnableOf(step))
-fun handleInterrupting(step: CoroutineStep) = post(interruptingRunnableOf(step))
-fun handleAheadInterrupting(step: CoroutineStep) = postAhead(interruptingRunnableOf(step))
-fun handleSafelyInterrupting(step: CoroutineStep) = post(safeInterruptingRunnableOf(step))
-fun handleAheadSafelyInterrupting(step: CoroutineStep) = postAhead(safeInterruptingRunnableOf(step))
+internal fun handle(step: CoroutineStep) = post(runnableOf(step))
+internal fun handleAhead(step: CoroutineStep) = postAhead(runnableOf(step))
+internal fun handleSafely(step: CoroutineStep) = post(safeRunnableOf(step))
+internal fun handleAheadSafely(step: CoroutineStep) = postAhead(safeRunnableOf(step))
+internal fun handleInterrupting(step: CoroutineStep) = post(interruptingRunnableOf(step))
+internal fun handleAheadInterrupting(step: CoroutineStep) = postAhead(interruptingRunnableOf(step))
+internal fun handleSafelyInterrupting(step: CoroutineStep) = post(safeInterruptingRunnableOf(step))
+internal fun handleAheadSafelyInterrupting(step: CoroutineStep) = postAhead(safeInterruptingRunnableOf(step))
 
 private fun Runnable.asCoroutine(): CoroutineStep =
     Clock.getCoroutine(this) ?: toCoroutine()
@@ -1691,14 +1689,14 @@ private fun Runnable.asCoroutine(): CoroutineStep =
 private fun Runnable.toCoroutine(): CoroutineStep = { run() }
 
 // step <-> runnable
-fun reinvoke(step: Step) = post(runnableOf(step))
-fun reinvokeAhead(step: Step) = postAhead(runnableOf(step))
-fun reinvokeSafely(step: Step) = post(safeRunnableOf(step))
-fun reinvokeAheadSafely(step: Step) = postAhead(safeRunnableOf(step))
-fun reinvokeInterrupting(step: Step) = post(interruptingRunnableOf(step))
-fun reinvokeAheadInterrupting(step: Step) = postAhead(interruptingRunnableOf(step))
-fun reinvokeSafelyInterrupting(step: Step) = post(safeInterruptingRunnableOf(step))
-fun reinvokeAheadSafelyInterrupting(step: Step) = postAhead(safeInterruptingRunnableOf(step))
+internal fun reinvoke(step: Step) = post(runnableOf(step))
+internal fun reinvokeAhead(step: Step) = postAhead(runnableOf(step))
+internal fun reinvokeSafely(step: Step) = post(safeRunnableOf(step))
+internal fun reinvokeAheadSafely(step: Step) = postAhead(safeRunnableOf(step))
+internal fun reinvokeInterrupting(step: Step) = post(interruptingRunnableOf(step))
+internal fun reinvokeAheadInterrupting(step: Step) = postAhead(interruptingRunnableOf(step))
+internal fun reinvokeSafelyInterrupting(step: Step) = post(safeInterruptingRunnableOf(step))
+internal fun reinvokeAheadSafelyInterrupting(step: Step) = postAhead(safeInterruptingRunnableOf(step))
 
 private fun Runnable.asStep() =
     Clock.getStep(this) ?: toStep()
@@ -1706,8 +1704,8 @@ private fun Runnable.asStep() =
 private fun Runnable.toStep() = suspend { run() }
 
 // runnable <-> message
-fun post(callback: Runnable) = clock?.post?.invoke(callback)
-fun postAhead(callback: Runnable) = clock?.postAhead?.invoke(callback)
+internal fun post(callback: Runnable) = clock?.post?.invoke(callback)
+internal fun postAhead(callback: Runnable) = clock?.postAhead?.invoke(callback)
 
 private fun Runnable.asMessage() =
     with(Clock) { getCoroutine(this@asMessage)?.run(::getMessage) }
@@ -1720,37 +1718,7 @@ fun Runnable.startAtTime(uptime: Long) {}
 
 private fun Runnable.detach(): Runnable? = null
 
-fun Runnable.close() {}
-
-private fun Message.asStep() = callback.asStep()
-
-private fun Message.asCoroutine() = callback.asCoroutine()
-
-private fun Message.asRunnable() = callback
-
-fun Message.send() {}
-
-fun Message.sendDelayed(delay: Long) {}
-
-fun Message.sendAtTime(uptime: Long) {}
-
-private fun Message.detach(): Message? = null
-
-private fun Message.close() {}
-
-fun message(callback: Runnable): Message = TODO()
-
-fun message(what: Int): Message = TODO()
-
-infix fun Message.thenRun(next: Runnable): Message = this
-
-infix fun Message.afterRun(prev: Runnable): Message = this
-
-infix fun Message.otherwiseRun(next: Runnable): Message = this
-
-infix fun Message.onErrorRun(action: Runnable): Message = this
-
-infix fun Message.onTimeoutRun(action: Runnable): Message = this
+private fun Runnable.close() {}
 
 infix fun Runnable.then(next: Runnable): Runnable = this
 
@@ -1770,34 +1738,64 @@ infix fun Runnable.onError(action: Runnable): Runnable = this
 
 infix fun Runnable.onTimeout(action: Runnable): Runnable = this
 
-infix fun Message.then(next: Message): Message = this
+private fun Message.asStep() = callback.asStep()
 
-infix fun Message.then(next: Int): Message = this
+private fun Message.asCoroutine() = callback.asCoroutine()
 
-infix fun Message.after(prev: Message): Message = this
+private fun Message.asRunnable() = callback
 
-infix fun Message.after(prev: Int): Message = this
+internal fun message(callback: Runnable): Message = TODO()
 
-infix fun Message.given(predicate: MessagePredicate): Message = this
+internal fun message(what: Int): Message = TODO()
 
-infix fun Message.unless(predicate: MessagePredicate): Message = this
+fun Message.send() {}
 
-infix fun Message.otherwise(next: Message): Message = this
+fun Message.sendDelayed(delay: Long) {}
 
-infix fun Message.otherwise(next: Int): Message = this
+fun Message.sendAtTime(uptime: Long) {}
 
-infix fun Message.onError(action: Message): Message = this
+private fun Message.detach(): Message? = null
 
-infix fun Message.onTimeout(action: Message): Message = this
+private fun Message.close() {}
 
-infix fun Message.then(next: MessageFunction): Message = this
+internal infix fun Message.thenRun(next: Runnable): Message = this
 
-infix fun Message.otherwise(next: MessageFunction): Message = this
+internal infix fun Message.afterRun(prev: Runnable): Message = this
+
+internal infix fun Message.otherwiseRun(next: Runnable): Message = this
+
+internal infix fun Message.onErrorRun(action: Runnable): Message = this
+
+internal infix fun Message.onTimeoutRun(action: Runnable): Message = this
+
+internal infix fun Message.then(next: Message): Message = this
+
+internal infix fun Message.then(next: Int): Message = this
+
+internal infix fun Message.after(prev: Message): Message = this
+
+internal infix fun Message.after(prev: Int): Message = this
+
+internal infix fun Message.given(predicate: MessagePredicate): Message = this
+
+internal infix fun Message.unless(predicate: MessagePredicate): Message = this
+
+internal infix fun Message.otherwise(next: Message): Message = this
+
+internal infix fun Message.otherwise(next: Int): Message = this
+
+internal infix fun Message.onError(action: Message): Message = this
+
+internal infix fun Message.onTimeout(action: Message): Message = this
+
+internal infix fun Message.then(next: MessageFunction): Message = this
+
+internal infix fun Message.otherwise(next: MessageFunction): Message = this
 
 private var clock: Clock? = null
     get() = field.singleton().also { field = it }
 
-open class Clock(
+internal open class Clock(
     name: String,
     priority: Int = currentThread.priority
 ) : HandlerThread(name, priority), Synchronizer<Any>, Transactor<Message, Any?>, PriorityQueue<Runnable>, AdjustOperator<Runnable, Number> {
@@ -2011,15 +2009,15 @@ object EventBus : AbstractFlow<Any?>(), Transactor<ContextStep, Boolean>, Priori
     override fun commit(step: ContextStep) =
         queue.add(step)
 
-    fun commit(event: Transit) =
+    internal fun commit(event: Transit) =
         queue.add(event)
 
-    fun commit(vararg event: Event) =
+    internal fun commit(vararg event: Event) =
         event.forEach { commit(it.transit) }
 
     override var queue: MutableList<Any?> = mutableListOf()
 
-    fun clear() {
+    internal fun clear() {
         queue.clear() }
 }
 
@@ -2086,6 +2084,8 @@ private open class Item<T>(override val obj: T) : ObjectReference<T>, CharSequen
 
     private var tag: CharSequence = ::obj.tag?.string ?: ""
 
+    protected var visitor: Visitor<T>? = null
+
     lateinit var type: Type
 
     enum class Type { Coroutine, JobFunction, LiveStep, SchedulerStep, Step, Work, Runnable, Message, Lock, State }
@@ -2100,22 +2100,22 @@ private open class Item<T>(override val obj: T) : ObjectReference<T>, CharSequen
         get() = tag.length
 }
 
-fun <T> ResolverScope.item(ref: Coordinate) =
-    with(ref) { item<T>(target, key) }
+internal operator fun <T> ResolverScope.get(ref: Coordinate) =
+    with(ref) { get<T>(target, key) }
 
-private fun <T> ResolverScope.item(target: AnyKClass = Any::class, key: KeyType): T = TODO()
-
-private fun liveStep(target: AnyKClass, key: KeyType) =
-    SchedulerScope().item<SequencerStep>(target, key)
+private operator fun <T> ResolverScope.get(target: AnyKClass = Any::class, key: KeyType): T = TODO()
 
 private fun coroutineStep(target: AnyKClass, key: KeyType) =
-    SchedulerScope().item<CoroutineStep>(target, key)
+    SchedulerScope().get<CoroutineStep>(target, key)
+
+private fun liveStep(target: AnyKClass, key: KeyType) =
+    SchedulerScope().get<SequencerStep>(target, key)
 
 private fun step(target: AnyKClass, key: KeyType) =
-    SchedulerScope().item<Step>(target, key)
+    SchedulerScope().get<Step>(target, key)
 
 private fun runnable(target: AnyKClass, key: KeyType) =
-    SchedulerScope().item<Runnable>(target, key)
+    SchedulerScope().get<Runnable>(target, key)
 
 @Retention(SOURCE)
 @Target(ANNOTATION_CLASS, CLASS, CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
@@ -2131,7 +2131,7 @@ annotation class Tag(
 
 @Retention(SOURCE)
 @Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
-annotation class Keep
+internal annotation class Keep
 
 @Retention(SOURCE)
 @Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
@@ -2171,25 +2171,25 @@ annotation class Path(
     annotation class Converging(val paths: StringArray = [])
 }
 
-open class SchedulerIntent : Throwable()
+internal open class SchedulerIntent : Throwable()
 
-open class Propagate : SchedulerIntent()
+internal open class Propagate : SchedulerIntent()
 
-abstract class FromLastCancellation : SchedulerIntent()
+internal abstract class FromLastCancellation : SchedulerIntent()
 
 @Retention(SOURCE)
 @Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
-annotation class JobTree(
+internal annotation class JobTree(
     val branch: String = "",
     val level: LevelType = 0u)
 
 @Retention(SOURCE)
 @Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
-annotation class JobTreeRoot
+internal annotation class JobTreeRoot
 
 @Retention(SOURCE)
 @Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
-annotation class Scope(
+internal annotation class Scope(
     val type: KClass<out CoroutineScope> = Scheduler::class,
     val provider: AnyKClass = Any::class)
 
@@ -2203,11 +2203,11 @@ private annotation class Synchronous(val node: SchedulerNode = Annotation::class
 
 @Retention(SOURCE)
 @Target(EXPRESSION)
-annotation class Ahead
+internal annotation class Ahead
 
 @Retention(SOURCE)
 @Target(EXPRESSION)
-annotation class Implicit
+internal annotation class Implicit
 
 @Retention(SOURCE)
 @Target(EXPRESSION)
@@ -2220,7 +2220,7 @@ private annotation class Unlisted
 private val AnyKCallable.tag
     get() = annotations.find { it is Tag } as? Tag
 
-val Any.isKept
+internal val Any.isKept
     get() = asCallable().annotations.any { it is Keep }
 
 private val AnyKCallable.event
@@ -2240,27 +2240,18 @@ private val Any.annotatedScope
         when (annotation.provider) {
             Any::class ->
                 annotation.type.reconstruct(this)
-            Fragment::class,
-            BaseFragment::class,
-            MainFragment::class,
-            Activity::class,
-            BaseActivity::class,
             MainActivity::class ->
                 foregroundLifecycleOwner.asObjectProvider()!!(annotation.type)
-            Application::class,
-            BaseApplication::class,
-            MainApplication::class ->
-                instance.asObjectProvider()!!(annotation.type)
             else ->
                 throw BaseImplementationRestriction()
         } as CoroutineScope } }
 
 private fun Any.annotatedOrSchedulerScope() = annotatedScope ?: SchedulerScope()
 
-val Step.isScheduledAhead
+internal val Step.isScheduledAhead
     get() = asCallable().annotations.find { it is Ahead } !== null
 
-val Any.isImplicit
+internal val Any.isImplicit
     get() = asCallable().annotations.find { it is Implicit } !== null
 
 private val Any.isEnlisted
@@ -2276,7 +2267,7 @@ private typealias PropertyState = suspend (AnyKProperty) -> Any?
 private typealias PredicateFunction = suspend () -> Boolean
 private typealias DelayFunction = suspend () -> Long
 
-interface Expiry : MutableSet<Lifetime> {
+internal interface Expiry : MutableSet<Lifetime> {
     fun unsetAll(property: AnyKMutableProperty) {
         // must be strengthened by connecting to other expiry sets
         forEach { alive ->
@@ -2299,12 +2290,12 @@ interface Expiry : MutableSet<Lifetime> {
     }
 }
 
-typealias Lifetime = (AnyKMutableProperty) -> Boolean?
+private typealias Lifetime = (AnyKMutableProperty) -> Boolean?
 
-fun AnyKMutableProperty.expire() = set(null)
+internal fun AnyKMutableProperty.expire() = set(null)
 
-fun <T> T.asCallable(): KCallable<T> = asObjRef()::obj
-fun <T> T?.asNullable(): KCallable<T?> = asNullRef()::obj
+internal fun <T> T.asCallable(): KCallable<T> = asObjRef()::obj
+internal fun <T> T?.asNullable(): KCallable<T?> = asNullRef()::obj
 
 private interface ObjectReference<T> { val obj: T }
 private interface NullReference<T> : ObjectReference<T?>
@@ -2322,51 +2313,51 @@ private inline fun <T> T.asUniqueRef(block: () -> ObjectReference<T>) =
         this::obj.asType()!!
     else block()
 
-fun trueWhenNull(it: Any?) = it === null
+internal fun trueWhenNull(it: Any?) = it === null
 
 private typealias TransitType = Short
 private typealias Transit = TransitType?
 
-val Any?.transit: Transit
+internal val Any?.transit: Transit
     get() = when (this) {
         is Relay -> transit
         is Number -> toTransit()
         else -> asNullable().event?.transit }
 
-fun Number?.toTransit() = this?.asType<TransitType>()
+internal fun Number?.toTransit() = this?.asType<TransitType>()
 
 private typealias KeyType = Short
 
-fun Number?.toCoordinateTarget(): AnyKClass = Any::class
+internal fun Number?.toCoordinateTarget(): AnyKClass = Any::class
 
-fun Number?.toCoordinateKey() = this?.asType<KeyType>()
+internal fun Number?.toCoordinateKey() = this?.asType<KeyType>()
 
-typealias ChannelType = Short
+internal typealias ChannelType = Short
 
-fun Number?.toChannel() = this?.asType<ChannelType>()
+internal fun Number?.toChannel() = this?.asType<ChannelType>()
 
-fun Array<out Tag>.mapToStringArray() = mapToTypedArray { it.string }
+internal fun Array<out Tag>.mapToStringArray() = mapToTypedArray { it.string }
 
-fun Array<out Path>.mapToStringArray() = mapToTypedArray { it.name }
+internal fun Array<out Path>.mapToStringArray() = mapToTypedArray { it.name }
 
-typealias LevelType = UByte
+internal typealias LevelType = UByte
 
-fun Number?.toLevel() = this?.toByte()?.toUByte()
+internal fun Number?.toLevel() = this?.toByte()?.toUByte()
 
-fun Any?.asMessage() = asType<Message>()
-fun Any?.asRunnable() = asType<Runnable>()
-fun Any?.asLiveWork() = asType<LiveWork>()
-fun Any?.asJob() = asType<Job>()
-fun Any?.asWork() = asType<Work>()
+internal fun Any?.asMessage() = asType<Message>()
+internal fun Any?.asRunnable() = asType<Runnable>()
+internal fun Any?.asLiveWork() = asType<LiveWork>()
+internal fun Any?.asJob() = asType<Job>()
+internal fun Any?.asWork() = asType<Work>()
 
 private typealias SchedulerNode = KClass<out Annotation>
 private typealias SchedulerPath = Array<KClass<out Throwable>>
 private typealias SchedulerStep = suspend CoroutineScope.(Job, Any?) -> Unit
-typealias JobFunction = suspend (Any?) -> Unit
+internal typealias JobFunction = suspend (Any?) -> Unit
 private typealias JobFunctionSet = MutableSet<JobFunctionItem>
 private typealias JobFunctionItem = CharsToAnyPair
 private typealias JobPredicate = (Job) -> Boolean
-typealias CoroutineFunction = (CoroutineStep) -> Any?
+internal typealias CoroutineFunction = (CoroutineStep) -> Any?
 private typealias CoroutinePointer = () -> CoroutineStep?
 private typealias CharsToAnyPair = Pair<CharsPointer, Any>
 
@@ -2393,32 +2384,32 @@ private typealias RunnableGrid = MutableList<RunnableList>
 
 private typealias StatePredicate = (Any, Any?) -> Boolean
 
-typealias Work = () -> Unit
-typealias Step = suspend () -> Unit
-typealias AnyStep = suspend () -> Any?
-typealias AnyToAnyStep = suspend (Any?) -> Any?
-typealias CoroutineStep = suspend CoroutineScope.() -> Unit
+internal typealias Work = () -> Unit
+internal typealias Step = suspend () -> Unit
+internal typealias AnyStep = suspend () -> Any?
+internal typealias AnyToAnyStep = suspend (Any?) -> Any?
+internal typealias CoroutineStep = suspend CoroutineScope.() -> Unit
 private typealias AnyFlowCollector = FlowCollector<Any?>
 
-typealias ExceptionHandler = Thread.UncaughtExceptionHandler
-typealias Process = android.os.Process
+internal typealias ExceptionHandler = Thread.UncaughtExceptionHandler
+internal typealias Process = android.os.Process
 
 val emptyWork = {}
 val emptyStep = suspend {}
 
-val processLifecycleScope
+internal val processLifecycleScope
     get() = ProcessLifecycleOwner.get().lifecycleScope
 
-val currentThread get() = Thread.currentThread()
-val mainThread = currentThread
-val onMainThread get() = currentThread.isMainThread()
-fun Thread.isMainThread() = this === mainThread
+internal val currentThread get() = Thread.currentThread()
+internal val mainThread = currentThread
+internal val onMainThread get() = currentThread.isMainThread()
+internal fun Thread.isMainThread() = this === mainThread
 
 private fun newThread(group: ThreadGroup, name: String, priority: Int, target: Runnable) = Thread(group, target, name).also { it.priority = priority }
 private fun newThread(name: String, priority: Int, target: Runnable) = Thread(target, name).also { it.priority = priority }
 private fun newThread(priority: Int, target: Runnable) = Thread(target).also { it.priority = priority }
 
-fun Context.registerReceiver(filter: IntentFilter) =
+internal fun Context.registerReceiver(filter: IntentFilter) =
     registerReceiver(this, receiver, filter, null,
         clock?.alsoStartAsync()?.handler,
         RECEIVER_EXPORTED)
@@ -2429,11 +2420,11 @@ private typealias ResolverKClass = KClass<out Resolver>
 private typealias ResolverKProperty = KMutableProperty<out Resolver?>
 private typealias UnitKFunction = KFunction<Unit>
 
-typealias AnyKClass = KClass<*>
-typealias AnyKCallable = KCallable<*>
-typealias AnyKFunction = KFunction<*>
-typealias AnyKProperty = KProperty<*>
-typealias AnyKMutableProperty = KMutableProperty<*>
+internal typealias AnyKClass = KClass<*>
+internal typealias AnyKCallable = KCallable<*>
+internal typealias AnyKFunction = KFunction<*>
+internal typealias AnyKProperty = KProperty<*>
+internal typealias AnyKMutableProperty = KMutableProperty<*>
 
 private operator fun AnyKCallable.plus(lock: AnyKCallable) = this
 
@@ -2447,13 +2438,13 @@ enum class Lock : State { Closed, Open }
 
 private typealias ID = Short
 
-fun Number?.toStateId() = this?.asType<ID>()
+internal fun Number?.toStateId() = this?.asType<ID>()
 
 sealed interface State {
-    object Succeeded : Resolved
-    object Failed : Resolved
+    data object Succeeded : Resolved
+    data object Failed : Resolved
 
-    interface Resolved : State {
+    sealed interface Resolved : State {
         companion object : Resolved {
             inline infix fun where(predicate: Predicate) =
                 if (predicate()) this
@@ -2464,13 +2455,13 @@ sealed interface State {
                 else this
     } }
 
-    interface Unresolved : State { companion object : Unresolved }
-    interface Ambiguous : State { companion object : Ambiguous }
+    sealed interface Unresolved : State { companion object : Unresolved }
+    sealed interface Ambiguous : State { companion object : Ambiguous }
 
     companion object : Synchronizer<State> {
         fun of(vararg args: Any?): State = Ambiguous
 
-        fun of(property: AnyKProperty): State = Ambiguous
+        internal fun of(property: AnyKProperty): State = Ambiguous
 
         operator fun <R> invoke(block: Companion.(State) -> R): State = TODO()
 
@@ -2481,26 +2472,26 @@ sealed interface State {
         override fun <R> synchronize(lock: State?, block: () -> R) =
             synchronized(lock ?: this, block)
 
-        operator fun invoke(): State = Lock.Open
+        internal operator fun invoke(): State = Lock.Open
 
-        operator fun get(id: ID): State = when (id.toInt()) {
+        internal operator fun get(id: ID): State = when (id.toInt()) {
             1 -> Resolved unless ::appDbOrSessionIsNull
             2 -> Resolved unless ::logDbOrNetDbIsNull
             else ->
                 Lock.Open
         }
-        operator fun set(id: ID, lock: Any) { when (id.toInt()) {
+        internal operator fun set(id: ID, lock: Any) { when (id.toInt()) {
             1 -> if (lock is Resolved) SchedulerScope().windDown()
         } }
 
-        operator fun plus(lock: Any): State = Ambiguous
-        operator fun plusAssign(lock: Any) {}
-        operator fun minus(lock: Any): State = Ambiguous
-        operator fun minusAssign(lock: Any) {}
-        operator fun rangeTo(lock: Any): State = Ambiguous
-        operator fun not(): State = Ambiguous
-        operator fun contains(lock: Any) = false
-        operator fun compareTo(lock: Any) = 1
+        internal operator fun plus(lock: Any): State = Ambiguous
+        internal operator fun plusAssign(lock: Any) {}
+        internal operator fun minus(lock: Any): State = Ambiguous
+        internal operator fun minusAssign(lock: Any) {}
+        internal operator fun rangeTo(lock: Any): State = Ambiguous
+        internal operator fun not(): State = Ambiguous
+        internal operator fun contains(lock: Any) = false
+        internal operator fun compareTo(lock: Any) = 1
     }
 
     operator fun invoke(vararg param: Any?): Lock = this as Lock
@@ -2514,4 +2505,4 @@ sealed interface State {
     operator fun compareTo(state: Any) = 0
 }
 
-val SVC_TAG get() = if (onMainThread) "SERVICE" else "CLOCK"
+internal val SVC_TAG get() = if (onMainThread) "SERVICE" else "CLOCK"

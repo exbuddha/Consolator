@@ -4,7 +4,7 @@ import androidx.room.*
 import net.consolator.session
 
 @Entity(tableName = NetworkCapabilitiesEntity.TABLE)
-data class NetworkCapabilitiesEntity(
+internal data class NetworkCapabilitiesEntity(
     override val nid: Int,
 
     @ColumnInfo(name = CAPABILITIES)

@@ -16,6 +16,6 @@ import net.consolator.database.AppDatabase.Companion.DB_VERSION
     StackTraceElementEntity::class,
 ])
 @File("log.db")
-abstract class LogDatabase : RoomDatabase() {
+internal abstract class LogDatabase : RoomDatabase() {
     abstract fun logDao(): LogDao
 }

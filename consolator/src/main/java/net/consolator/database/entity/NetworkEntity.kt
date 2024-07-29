@@ -3,7 +3,7 @@ package net.consolator.database.entity
 import androidx.room.*
 import net.consolator.session
 
-open class NetworkEntity(
+internal open class NetworkEntity(
     @ColumnInfo(name = NETWORK_ID)
     open val nid: Int,
 

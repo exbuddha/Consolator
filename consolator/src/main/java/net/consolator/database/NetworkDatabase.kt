@@ -12,6 +12,6 @@ import net.consolator.database.AppDatabase.Companion.DB_VERSION
     NetworkStateEntity::class,
 ])
 @File("net.db")
-abstract class NetworkDatabase : RoomDatabase() {
+internal abstract class NetworkDatabase : RoomDatabase() {
     abstract fun networkDao(): NetworkDao
 }

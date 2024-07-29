@@ -6,8 +6,8 @@ import net.consolator.activity.*
 import net.consolator.application.*
 
 abstract class BaseActivity : AppCompatActivity(), ReferredContext {
-    var enableNetworkCallbacks: Work? = null
-    var disableNetworkCallbacks: Work? = null
+    internal var enableNetworkCallbacks: Work? = null
+    internal var disableNetworkCallbacks: Work? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,16 +33,10 @@ abstract class BaseActivity : AppCompatActivity(), ReferredContext {
         super.onStop()
     }
 
-    @Deprecated("Requires API Level <= 34")
-    override fun onLowMemory() {
-        defer<MemoryManager>(::onLowMemory) {
-            super.onLowMemory() }
-    }
-
     override var ref: WeakContext? = null
         get() = field.unique(this).also { field = it }
 
-    abstract inner class ConfigurationChangeManager : ConfigurationManager()
-    abstract inner class NightModeChangeManager : ConfigurationManager()
-    abstract inner class LocalesChangeManager : ConfigurationManager()
+    internal abstract inner class ConfigurationChangeManager : ConfigurationManager()
+    internal abstract inner class NightModeChangeManager : ConfigurationManager()
+    internal abstract inner class LocalesChangeManager : ConfigurationManager()
 }

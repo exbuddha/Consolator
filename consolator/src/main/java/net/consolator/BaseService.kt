@@ -3,7 +3,7 @@ package net.consolator
 import android.app.*
 import android.content.*
 
-open class BaseService : Service(), BaseServiceScope {
+internal open class BaseService : Service(), BaseServiceScope {
     override var startTime = 0L
 
     override fun onCreate() {

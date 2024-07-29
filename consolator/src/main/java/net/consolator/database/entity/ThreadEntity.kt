@@ -4,7 +4,7 @@ import androidx.room.*
 import net.consolator.session
 
 @Entity(tableName = ThreadEntity.TABLE)
-data class ThreadEntity(
+internal data class ThreadEntity(
     @ColumnInfo(name = RUNTIME_ID)
     val rid: Long,
 

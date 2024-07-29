@@ -3,7 +3,7 @@ package net.consolator.database.entity
 import androidx.room.*
 
 @Entity(tableName = ExceptionTypeEntity.TABLE)
-data class ExceptionTypeEntity(
+internal data class ExceptionTypeEntity(
     @ColumnInfo(name = TYPE)
     val type: String,
 

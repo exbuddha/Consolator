@@ -2,7 +2,7 @@ package net.consolator.database.entity
 
 import androidx.room.*
 
-abstract class BaseEntity(
+internal abstract class BaseEntity(
     @PrimaryKey
     open val id: Long,
 )

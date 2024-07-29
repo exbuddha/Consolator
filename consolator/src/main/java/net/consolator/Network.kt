@@ -11,33 +11,33 @@ import kotlinx.coroutines.*
 import okhttp3.*
 import kotlinx.coroutines.Dispatchers.IO
 
-val network
+internal val network
     get() = connectivityManager.activeNetwork
 
-val isConnected
+internal val isConnected
     get() = connectivityRequest?.canBeSatisfiedBy(networkCapabilities) ?: false
 
-var hasInternet = false
+internal var hasInternet = false
     get() = isConnected && field
 
-val hasMobile
+internal val hasMobile
     get() = networkCapabilities?.hasTransport(TRANSPORT_CELLULAR) ?: false
 
-val hasWifi
+internal val hasWifi
     get() = networkCapabilities?.hasTransport(TRANSPORT_WIFI) ?: false
 
-val networkCapabilities
+internal val networkCapabilities
     get() = with(connectivityManager) { getNetworkCapabilities(activeNetwork) }
 
 private val connectivityManager
     get() = foregroundContext.getSystemService(ConnectivityManager::class.java)!!
 
 @Coordinate @Tag(NET_CAP_REGISTER)
-fun registerNetworkCallback() {
+internal fun registerNetworkCallback() {
     networkCallback?.apply(connectivityManager::registerDefaultNetworkCallback) }
 
 @Tag(NET_CAP_UNREGISTER)
-fun unregisterNetworkCallback() {
+internal fun unregisterNetworkCallback() {
     networkCallback?.apply(connectivityManager::unregisterNetworkCallback)
     clearNetworkCallbackObjects() }
 
@@ -48,39 +48,39 @@ private var networkCallback: NetworkCallback? = null
             trySafely { reactToNetworkCapabilitiesChanged.invoke(network, networkCapabilities) } } }
     .also { field = it }
 
-var reactToNetworkCapabilitiesChanged: (Network, NetworkCapabilities) -> Unit = { network, networkCapabilities ->
+internal var reactToNetworkCapabilitiesChanged: (Network, NetworkCapabilities) -> Unit = { network, networkCapabilities ->
     commit @Tag(NET_CAP_UPDATE) {
         updateNetworkCapabilities(network, networkCapabilities) } }
 
 @Coordinate @Tag(INET_REGISTER)
-fun CoroutineScope.registerInternetCallback() {
+internal fun CoroutineScope.registerInternetCallback() {
     relaunch(::networkCaller, IO, step = ::repeatNetworkCallFunction) }
 
 @Coordinate @Tag(INET_REGISTER)
-fun LifecycleOwner.registerInternetCallback() {
+internal fun LifecycleOwner.registerInternetCallback() {
     relaunch(::networkCaller, IO, step = ::repeatNetworkCallFunction) }
 
-fun pauseInternetCallback() {
+internal fun pauseInternetCallback() {
     isNetCallbackResumed = false }
 
-fun resumeInternetCallback() {
+internal fun resumeInternetCallback() {
     isNetCallbackResumed = true }
 
 @Tag(INET_UNREGISTER)
-fun unregisterInternetCallback() {
+internal fun unregisterInternetCallback() {
     networkCaller?.cancel()
     netCallDelayTime = -1L
     clearInternetCallbackObjects() }
 
 @JobTreeRoot @NetworkListener
 @Coordinate @Tag(INET)
-var networkCaller: Job? = null
+internal var networkCaller: Job? = null
     set(value) {
         // update addressable layer
         field = value }
 
 @Tag(INET_CALL)
-var netCall: Call? = null
+internal var netCall: Call? = null
     private set
 
 private suspend fun repeatNetworkCallFunction(scope: CoroutineScope) {
@@ -143,9 +143,9 @@ private val isNetCallTimeIntervalExceeded
 
 private var isNetCallbackResumed = true
 
-fun buildNetCallRequest(cmd: Any) = buildHttpRequest(cmd)
+internal fun buildNetCallRequest(cmd: Any) = buildHttpRequest(cmd)
 
-fun buildHttpRequest(
+internal fun buildHttpRequest(
     cmd: Any,
     method: String = "GET",
     headers: Headers? = null,
@@ -191,7 +191,7 @@ private fun JobThrowableFunction.commit(scope: Any?, ex: Throwable) {
     markTag()
     invoke(scope, ex) }
 
-operator fun NetCall.get(cmd: String): Any? = when {
+internal operator fun NetCall.get(cmd: String): Any? = when {
     cmd === INET_CALL -> this
     cmd === INET_FUNCTION -> networkCallFunction
     cmd === INET_SUCCESS -> reactToNetCallResponseReceived
@@ -201,7 +201,7 @@ operator fun NetCall.get(cmd: String): Any? = when {
     cmd === INET_MIN_INTERVAL -> minNetCallTimeInterval
     else -> null }
 
-operator fun NetCall.set(cmd: String, value: Any?) {
+internal operator fun NetCall.set(cmd: String, value: Any?) {
     if (value !== null && value.isKept) {
         value.markSequentialTag(INET_CALL, cmd) }
     lock(cmd) { when {
@@ -241,19 +241,19 @@ private typealias JobThrowableFunction = (Any?, Throwable) -> Unit
 
 private inline fun <reified T : Any> take(value: Any?): T = value.asType()!!
 
-const val NET_CAP = "$NET-cap"
-const val NET_CAP_REGISTER = "$NET_CAP.$REGISTER"
-const val NET_CAP_UNREGISTER = "$NET_CAP.$UNREGISTER"
-const val NET_CAP_UPDATE = "$NET_CAP.$UPDATE"
+internal const val NET_CAP = "$NET-cap"
+internal const val NET_CAP_REGISTER = "$NET_CAP.$REGISTER"
+internal const val NET_CAP_UNREGISTER = "$NET_CAP.$UNREGISTER"
+internal const val NET_CAP_UPDATE = "$NET_CAP.$UPDATE"
 
-const val INET = "inet"
-const val INET_REGISTER = "$INET.$REGISTER"
-const val INET_UNREGISTER = "$INET.$UNREGISTER"
-const val INET_CALL = "$INET.$CALL"
-const val INET_FUNCTION = "$INET.$FUNC"
-const val INET_SUCCESS = "$INET.$SUCCESS"
-const val INET_ERROR = "$INET.$ERROR"
-const val INET_DELAY = "$INET.$DELAY"
-const val INET_INTERVAL = "$INET.$INTERVAL"
-const val INET_MIN_INTERVAL = "$INET.$MIN_INTERVAL"
-const val INET_TAG = "INTERNET"
+internal const val INET = "inet"
+internal const val INET_REGISTER = "$INET.$REGISTER"
+internal const val INET_UNREGISTER = "$INET.$UNREGISTER"
+internal const val INET_CALL = "$INET.$CALL"
+internal const val INET_FUNCTION = "$INET.$FUNC"
+internal const val INET_SUCCESS = "$INET.$SUCCESS"
+internal const val INET_ERROR = "$INET.$ERROR"
+internal const val INET_DELAY = "$INET.$DELAY"
+internal const val INET_INTERVAL = "$INET.$INTERVAL"
+internal const val INET_MIN_INTERVAL = "$INET.$MIN_INTERVAL"
+internal const val INET_TAG = "INTERNET"

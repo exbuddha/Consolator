@@ -7,7 +7,7 @@ import net.consolator.now
 import net.consolator.database.AppDatabase.Companion.CURRENT_TIMESTAMP
 
 @Entity(tableName = RuntimeSessionEntity.TABLE)
-data class RuntimeSessionEntity(
+internal data class RuntimeSessionEntity(
     @ColumnInfo(name = CTX_TIME)
     override var startTime: Long,
 

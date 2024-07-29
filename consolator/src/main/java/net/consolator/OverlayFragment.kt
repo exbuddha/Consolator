@@ -6,7 +6,7 @@ import androidx.fragment.app.*
 import kotlin.reflect.*
 import kotlin.reflect.jvm.*
 
-open class OverlayFragment(
+internal open class OverlayFragment(
     private var interceptor: InterceptFunction?
 ) : Fragment(), OnContextClickListener {
     override fun onContextClick(event: MotionEvent) =

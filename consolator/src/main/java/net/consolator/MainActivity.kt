@@ -36,19 +36,17 @@ open class MainActivity : BaseActivity(), ObjectProvider {
             super.onLocalesChanged(locales) }
     }
 
-    inner class ConfigurationChangeManager : BaseActivity.ConfigurationChangeManager()
-    inner class NightModeChangeManager : BaseActivity.NightModeChangeManager()
-    inner class LocalesChangeManager : BaseActivity.LocalesChangeManager()
+    internal inner class ConfigurationChangeManager : BaseActivity.ConfigurationChangeManager()
+    internal inner class NightModeChangeManager : BaseActivity.NightModeChangeManager()
+    internal inner class LocalesChangeManager : BaseActivity.LocalesChangeManager()
 
-    override fun invoke(type: AnyKClass) = when (type) {
+    override fun invoke(type: AnyKClass): Resolver = when (type) {
         ConfigurationChangeManager::class ->
             ConfigurationChangeManager()
         NightModeChangeManager::class ->
             NightModeChangeManager()
         LocalesChangeManager::class ->
             LocalesChangeManager()
-        MemoryManager::class ->
-            ::applicationMemoryManager.require(constructor = ::MemoryManager)
         else ->
             throw BaseImplementationRestriction() }
 }
