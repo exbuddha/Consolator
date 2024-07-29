@@ -368,6 +368,10 @@ fun <T> KProperty<T?>.isNull() = get() === null
 
 fun <T> KProperty<T?>.isNotNull() = get() !== null
 
+fun <T> KProperty<T?>.isTrue() = get() == true
+
+fun <T> KProperty<T?>.isFalse() = get() == false
+
 @Retention(SOURCE)
 @Target(CLASS)
 @Repeatable

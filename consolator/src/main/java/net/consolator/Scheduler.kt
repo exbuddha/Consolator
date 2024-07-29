@@ -2397,7 +2397,6 @@ private typealias RunnablePredicate = (Runnable) -> Boolean
 private typealias RunnableList = MutableList<Runnable>
 private typealias RunnableGrid = MutableList<RunnableList>
 
-private typealias StateToAnyFunction = (State?) -> Any?
 private typealias StatePredicate = (Any, Any?) -> Boolean
 
 typealias Work = () -> Unit
@@ -2470,14 +2469,21 @@ sealed interface State {
     interface Unresolved : State { companion object : Unresolved }
     interface Ambiguous : State { companion object : Ambiguous }
 
-    companion object : Transactor<StateToAnyFunction, State?> {
-        override fun commit(step: StateToAnyFunction): State? = null
-
-        operator fun invoke(): State = Lock.Open
-
+    companion object : Synchronizer<State> {
         fun of(vararg args: Any?): State = Ambiguous
 
         fun of(property: AnyKProperty): State = Ambiguous
+
+        operator fun <R> invoke(block: Companion.(State) -> R): State = TODO()
+
+        fun State.register(vararg args: Any?): State = TODO()
+
+        fun <R> State.onStateChanged(value: State, block: Companion.(State) -> R): R = TODO()
+
+        override fun <R> synchronize(lock: State?, block: () -> R) =
+            synchronized(lock ?: this, block)
+
+        operator fun invoke(): State = Lock.Open
 
         operator fun get(id: ID): State = when (id.toInt()) {
             1 -> Resolved unless ::appDbOrSessionIsNull

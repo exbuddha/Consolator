@@ -88,7 +88,8 @@ private suspend fun repeatNetworkCallFunction(scope: CoroutineScope) {
         block = networkCallFunction,
         delayTime = @Tag(INET_DELAY) { netCallDelayTime }) }
 
-private var networkCallFunction: JobFunction = @Tag(INET_FUNCTION) { scope ->
+private var networkCallFunction: JobFunction =
+    @Tag(INET_FUNCTION) { scope ->
     if (isNetCallbackResumed && isNetCallTimeIntervalExceeded) {
         log(info, INET_TAG, "Trying to send out http request for network caller...")
         ::netCall.commit(scope) {
@@ -102,7 +103,8 @@ private var networkCallFunction: JobFunction = @Tag(INET_FUNCTION) { scope ->
                     reactToNetCallRequestFailed.commit(scope, ex) }
             }) } } }
 
-private var reactToNetCallResponseReceived: JobResponseFunction = @Tag(INET_SUCCESS) { _, response ->
+private var reactToNetCallResponseReceived: JobResponseFunction =
+    @Tag(INET_SUCCESS) { _, response ->
     with(response) {
         hasInternet = isSuccessful
         if (isSuccessful)
@@ -111,7 +113,8 @@ private var reactToNetCallResponseReceived: JobResponseFunction = @Tag(INET_SUCC
         close() }
     log(info, INET_TAG, "Received response for internet availability.") }
 
-private var reactToNetCallRequestFailed: JobThrowableFunction = @Tag(INET_ERROR) { _, _ ->
+private var reactToNetCallRequestFailed: JobThrowableFunction =
+    @Tag(INET_ERROR) { _, _ ->
     hasInternet = false
     log(warning, INET_TAG, "Failed to send http request for internet availability.") }
 
@@ -139,25 +142,27 @@ private val isNetCallTimeIntervalExceeded
 
 private var isNetCallbackResumed = true
 
-fun buildNetCallRequest(cmd: String) = buildHttpRequest(cmd)
+fun buildNetCallRequest(cmd: Any) = buildHttpRequest(cmd)
 
 fun buildHttpRequest(
-    cmd: String,
+    cmd: Any,
     method: String = "GET",
     headers: Headers? = null,
     body: RequestBody? = null,
     retry: Boolean = false
-) = OkHttpClient.Builder()
-    .retryOnConnectionFailure(retry)
-    .build()
-    .newCall(
-        Request.Builder()
+) = when (cmd) {
+    is Call -> cmd
+    else ->
+        OkHttpClient.Builder()
+        .retryOnConnectionFailure(retry)
+        .build()
+        .newCall(Request.Builder()
             .url(cmd.asUrl())
             .apply { if (headers !== null) headers(headers) }
             .method(method, body)
-            .build())
+            .build()) }
 
-private fun String.asUrl() = this
+private fun Any.asUrl() = toString()
 
 private fun <R> NetCall.commit(scope: Any?, block: () -> R) =
     lock(INET_CALL, block)
