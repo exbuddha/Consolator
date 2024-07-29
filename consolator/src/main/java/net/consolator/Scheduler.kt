@@ -1404,7 +1404,7 @@ fun Any.markTag() = asCallable().markTag()
 
 fun Any?.markTag(tag: String) = jobs?.save(tag, asNullable())
 
-fun Any?.markSequentialTag(vararg tag: String?): String? = TODO()
+fun Any?.markSequentialTag(vararg tag: String?): String? = tag.first()
 
 private fun <T> T.applyMarkTag(tag: String) = apply { markTag(tag) }
 
@@ -2219,6 +2219,9 @@ private annotation class Unlisted
 
 private val AnyKCallable.tag
     get() = annotations.find { it is Tag } as? Tag
+
+val Any.isKept
+    get() = asCallable().annotations.any { it is Keep }
 
 private val AnyKCallable.event
     get() = annotations.find { it is Event } as? Event

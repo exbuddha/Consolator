@@ -93,7 +93,8 @@ private var networkCallFunction: JobFunction =
     if (isNetCallbackResumed && isNetCallTimeIntervalExceeded) {
         log(info, INET_TAG, "Trying to send out http request for network caller...")
         ::netCall.commit(scope) {
-            ::netCall[INET_CALL] = ::buildNetCallRequest.with("https://httpbin.org/delay/1")()
+            ::netCall[INET_CALL] = @Keep ::buildNetCallRequest
+                .with("https://httpbin.org/delay/1")
             tryCancelingForResult({
                 ::netCall.exec { response ->
                 trySafelyCanceling {
@@ -164,6 +165,8 @@ fun buildHttpRequest(
 
 private fun Any.asUrl() = toString()
 
+private fun NetCall.with(cmd: Any): Call? = call(cmd)
+
 private fun <R> NetCall.commit(scope: Any?, block: () -> R) =
     lock(INET_CALL, block)
 
@@ -172,11 +175,13 @@ private fun <R> NetCall.lock(cmd: String, block: () -> R) =
 
 private fun NetCall.asNullable() =
     if (this === ::netCall) ::netCall
-    else get().asNullable()
+    else asProperty().get().asNullable()
 
 private fun NetCall.exec(cmd: String = INET_CALL, respond: Respond) {
     markTag()
-    respond(this[cmd].asType<NetCall>()!!.call()!!.execute()) }
+    this[cmd].asType<NetCall>()?.call()
+    ?.execute()
+    ?.run(respond) }
 
 private fun JobResponseFunction.commit(scope: Any?, response: Response) {
     markTag()
@@ -197,7 +202,8 @@ operator fun NetCall.get(cmd: String): Any? = when {
     else -> null }
 
 operator fun NetCall.set(cmd: String, value: Any?) {
-    // keep old value
+    if (value !== null && value.isKept) {
+        value.markSequentialTag(INET_CALL, cmd) }
     lock(cmd) { when {
         cmd === INET_CALL -> netCall = take(value)
         cmd === INET_FUNCTION -> networkCallFunction = take(value)
@@ -206,6 +212,8 @@ operator fun NetCall.set(cmd: String, value: Any?) {
         cmd === INET_DELAY -> netCallDelayTime = take(value)
         cmd === INET_INTERVAL -> netCallTimeInterval = take(value)
         cmd === INET_MIN_INTERVAL -> minNetCallTimeInterval = take(value) } } }
+
+private fun NetCall.asProperty() = this as KProperty
 
 @Retention(SOURCE)
 @Target(FUNCTION, PROPERTY)
@@ -226,7 +234,7 @@ private fun clearInternetCallbackObjects() {
     networkCaller = null
     netCall = null }
 
-private typealias NetCall = KProperty<Call?>
+private typealias NetCall = KCallable<Call?>
 private typealias Respond = (Response) -> Unit
 private typealias JobResponseFunction = (Any?, Response) -> Unit
 private typealias JobThrowableFunction = (Any?, Throwable) -> Unit
