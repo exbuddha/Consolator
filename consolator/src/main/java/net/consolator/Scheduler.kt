@@ -27,91 +27,6 @@ import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Dispatchers.Main
 import kotlinx.coroutines.Dispatchers.Unconfined
 
-private interface Synchronizer<L> {
-    fun <R> synchronize(lock: L? = null, block: () -> R): R
-}
-
-private interface AttachOperator<in S> {
-    fun attach(step: S, vararg args: Any?): Any?
-}
-
-private interface AdjustOperator<in S, I> : AttachOperator<S> {
-    fun attach(index: I, step: S, vararg args: Any?): Any?
-    fun adjust(index: I): I
-}
-
-private interface PriorityQueue<E> {
-    var queue: MutableList<E>
-}
-
-interface Transactor<T, out R> {
-    fun commit(step: T): R
-}
-
-interface ResolverScope : CoroutineScope, Transactor<CoroutineStep, Any?> {
-    override val coroutineContext: CoroutineContext
-        get() = SchedulerContext
-
-    fun windDown() {}
-}
-
-private object HandlerScope : ResolverScope {
-    override fun commit(step: CoroutineStep) =
-        attach(step, ::handle)
-
-    override fun windDown() {
-        Clock.apply {
-            Process.setThreadPriority(threadId, Process.THREAD_PRIORITY_DEFAULT) } }
-}
-
-sealed interface SchedulerScope : ResolverScope {
-    companion object {
-        fun init() {
-            invoke().asType<Scheduler>()
-            ?.observeAsync() }
-
-        fun preferClock() {
-            DEFAULT = HandlerScope }
-
-        fun preferScheduler(callback: AnyFunction? = null) {
-            if (DEFAULT === null)
-                DEFAULT = Scheduler
-            if (!isSchedulerObserved)
-                processLifecycleScope.launch(Main) {
-                    Scheduler.observeAsync()
-                    callback?.invoke() } }
-
-        fun avoidClock() {
-            if (isClockPreferred)
-                DEFAULT = null }
-
-        fun avoidScheduler() {
-            if (isSchedulerPreferred)
-                preferClock() }
-
-        val isClockPreferred
-            get() = DEFAULT === HandlerScope
-
-        val isSchedulerPreferred
-            get() = DEFAULT !== HandlerScope
-
-        var isSchedulerObserved = false
-
-        private var DEFAULT: ResolverScope? = null
-            set(value) {
-                // engine-wide reconfiguration
-                if (value is HandlerScope)
-                    BaseServiceScope.DEFAULT_OPERATOR = ::handleAhead
-                else
-                    BaseServiceScope.DEFAULT_OPERATOR = null
-                field = value }
-
-        operator fun invoke() = DEFAULT ?: Scheduler
-
-        operator fun <R> invoke(block: Companion.() -> R) = this.block()
-    }
-}
-
 fun commit(step: CoroutineStep) =
     (service ?:
     step.annotatedScope ?:
@@ -243,7 +158,7 @@ sealed interface BaseServiceScope : ResolverScope, ReferredContext, UniqueContex
 
 @Coordinate
 object Scheduler : SchedulerScope, MutableLiveData<Step?>(), StepObserver, Synchronizer<Step>, PriorityQueue<AnyFunction> {
-    fun observe() {
+    private fun observe() {
         observeForever(this)
         SchedulerScope.isSchedulerObserved = true }
 
@@ -310,6 +225,61 @@ object Scheduler : SchedulerScope, MutableLiveData<Step?>(), StepObserver, Synch
     override var queue: MutableList<AnyFunction> = mutableListOf()
 
     operator fun <R> invoke(work: Scheduler.() -> R) = this.work()
+}
+
+sealed interface SchedulerScope : ResolverScope {
+    companion object {
+        fun init() {
+            invoke().asType<Scheduler>()
+            ?.observeAsync() }
+
+        fun preferClock() {
+            DEFAULT = HandlerScope }
+
+        fun preferScheduler(callback: AnyFunction? = null) {
+            if (DEFAULT === null)
+                DEFAULT = Scheduler
+            if (!isSchedulerObserved)
+                processLifecycleScope.launch {
+                    Scheduler.observeAsync()
+                    callback?.invoke() } }
+
+        fun avoidClock() {
+            if (isClockPreferred)
+                DEFAULT = null }
+
+        fun avoidScheduler() {
+            if (isSchedulerPreferred)
+                preferClock() }
+
+        val isClockPreferred
+            get() = DEFAULT === HandlerScope
+
+        val isSchedulerPreferred
+            get() = DEFAULT !== HandlerScope
+
+        var isSchedulerObserved = false
+
+        private var DEFAULT: ResolverScope? = null
+            set(value) {
+                // engine-wide reconfiguration
+                if (value is HandlerScope)
+                    BaseServiceScope.DEFAULT_OPERATOR = ::handleAhead
+                else
+                    BaseServiceScope.DEFAULT_OPERATOR = null
+                field = value }
+
+        operator fun invoke() = DEFAULT ?: Scheduler
+
+        operator fun <R> invoke(block: Companion.() -> R) = this.block()
+    }
+}
+
+interface ResolverScope : CoroutineScope, Transactor<CoroutineStep, Any?> {
+    override val coroutineContext: CoroutineContext
+        get() = SchedulerContext
+
+    fun windDown() = Unit
 }
 
 interface Resolver : ResolverScope {
@@ -382,7 +352,7 @@ private fun detach(step: CoroutineStep) =
     ?: step
 
 private fun launch(it: CoroutineStep) =
-    processLifecycleScope.launch(SchedulerContext, block = it
+    Scheduler.launch(SchedulerContext, block = it
         .markTagForSchLaunch()
         .afterTrackingTagsForJobLaunch())
     .apply { saveNewElement(it) }
@@ -421,25 +391,18 @@ private fun relaunch(launcher: JobKFunction, instance: JobKProperty, context: Co
     .also { instance.markTag() }
 
 fun launch(context: CoroutineContext = SchedulerContext, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep) =
-    step.markTagForPloLaunch()
+    step.markTagForSchLaunch()
         .afterTrackingTagsForJobLaunch(context, start).let { step ->
-        processLifecycleScope.launch(context, start, step)
+    Scheduler.launch(context, start, step)
         .apply { saveNewElement(step) } }
 
 fun LifecycleOwner.launch(context: CoroutineContext = SchedulerContext, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep): Job? {
-    val (scope, task) = determineScopeAndCoroutine(context, start, step)
+    val scope = step.annotatedScope ?: lifecycleScope
+    val (context, start, step) = scope.determineCoroutine(context, start, step)
     step.markTagForFloLaunch()
         .afterTrackingTagsForJobLaunch(context, start).let { step ->
-    val (context, start, step) = task
     return scope.launch(context, start, step)
         .apply { saveNewElement(step) } } }
-
-private fun LifecycleOwner.determineScopeAndCoroutine(context: CoroutineContext, start: CoroutineStart, step: CoroutineStep) =
-    determineScope(step).let { scope ->
-    scope to scope.determineCoroutine(context, start, step) }
-
-private fun LifecycleOwner.determineScope(step: CoroutineStep) =
-    step.annotatedScope ?: lifecycleScope
 
 private fun CoroutineScope.determineCoroutine(context: CoroutineContext, start: CoroutineStart, step: CoroutineStep) =
     Triple(
@@ -1449,7 +1412,6 @@ private fun Step?.markTagForSchExec() = applyMarkTag(SCH_EXEC)
 private fun Step.markTagForSchPost() = applyMarkTag(SCH_POST)
 
 private fun CoroutineStep.markTagForFloLaunch() = applyMarkTag(FLO_LAUNCH)
-private fun CoroutineStep.markTagForPloLaunch() = applyMarkTag(PLO_LAUNCH)
 private fun CoroutineStep.markTagForSchCommit() = applyMarkTag(SCH_COMMIT)
 private fun CoroutineStep.markTagForSchLaunch() = applyMarkTag(SCH_LAUNCH)
 private fun CoroutineStep.markTagForSchPost() = applyMarkTag(SCH_POST)
@@ -2011,6 +1973,32 @@ open class Clock(
     }
 }
 
+private interface AttachOperator<in S> {
+    fun attach(step: S, vararg args: Any?): Any?
+}
+
+private interface AdjustOperator<in S, I> : AttachOperator<S> {
+    fun attach(index: I, step: S, vararg args: Any?): Any?
+    fun adjust(index: I): I
+}
+
+private interface PriorityQueue<E> {
+    var queue: MutableList<E>
+}
+
+interface Transactor<T, out R> {
+    fun commit(step: T): R
+}
+
+private object HandlerScope : ResolverScope {
+    override fun commit(step: CoroutineStep) =
+        attach(step, ::handle)
+
+    override fun windDown() {
+        Clock.apply {
+            Process.setThreadPriority(threadId, Process.THREAD_PRIORITY_DEFAULT) } }
+}
+
 @OptIn(ExperimentalCoroutinesApi::class)
 object EventBus : AbstractFlow<Any?>(), Transactor<ContextStep, Boolean>, PriorityQueue<Any?> {
     override suspend fun collectSafely(collector: AnyFlowCollector) {
@@ -2043,7 +2031,7 @@ fun Step.reinvoke(transit: Transit = this.transit) =
         override suspend fun invoke() = this@reinvoke() }
 
 open class Relay(val transit: Transit = null) : Step {
-    override suspend fun invoke() {}
+    override suspend fun invoke() = Unit
 }
 
 @Retention(SOURCE)
@@ -2448,6 +2436,10 @@ private operator fun AnyKCallable.plus(lock: AnyKCallable) = this
 
 private fun <R> AnyKCallable.synchronize(block: () -> R) = synchronized(this, block)
 
+private interface Synchronizer<L> {
+    fun <R> synchronize(lock: L? = null, block: () -> R): R
+}
+
 enum class Lock : State { Closed, Open }
 
 private typealias ID = Short
@@ -2510,7 +2502,7 @@ sealed interface State {
 
     operator fun invoke(vararg param: Any?): Lock = this as Lock
     operator fun get(id: ID) = this
-    operator fun set(id: ID, state: Any) {}
+    operator fun set(id: ID, state: Any) = Unit
     operator fun plus(state: Any) = this
     operator fun minus(state: Any) = this
     operator fun rangeTo(state: Any) = this
