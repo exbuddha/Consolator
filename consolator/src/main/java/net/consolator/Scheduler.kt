@@ -66,6 +66,10 @@ private object HandlerScope : ResolverScope {
 
 sealed interface SchedulerScope : ResolverScope {
     companion object {
+        fun init() {
+            invoke().asType<Scheduler>()
+            ?.observeAsync() }
+
         fun preferClock() {
             DEFAULT = HandlerScope }
 
@@ -123,8 +127,7 @@ fun commit(vararg context: Any?): Any? =
     when (val task = context.firstOrNull()) {
         (task === START) -> {
             SchedulerScope {
-                invoke().asType<Scheduler>()
-                ?.observeAsync()
+                init()
                 preferClock()
                 preferScheduler() }
             if (SchedulerScope.isClockPreferred)
