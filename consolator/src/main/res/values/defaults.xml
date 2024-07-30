@@ -1,0 +1,3 @@
+<resources>
+    <integer name="view_min_delay">100</integer>
+</resources>

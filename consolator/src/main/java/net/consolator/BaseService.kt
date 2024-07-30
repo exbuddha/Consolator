@@ -2,6 +2,7 @@ package net.consolator
 
 import android.app.*
 import android.content.*
+import iso.consolator.*
 
 internal open class BaseService : Service(), BaseServiceScope {
     override var startTime = 0L
@@ -12,7 +13,7 @@ internal open class BaseService : Service(), BaseServiceScope {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int) =
-        intent.invoke(flags, startId,
+        intent?.invoke(flags, startId,
             super.onStartCommand(intent, flags, startId))
         ?: START_NOT_STICKY
 

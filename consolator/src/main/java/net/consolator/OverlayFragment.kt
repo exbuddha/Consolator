@@ -3,6 +3,7 @@ package net.consolator
 import android.view.*
 import android.view.GestureDetector.*
 import androidx.fragment.app.*
+import iso.consolator.*
 import kotlin.reflect.*
 import kotlin.reflect.jvm.*
 

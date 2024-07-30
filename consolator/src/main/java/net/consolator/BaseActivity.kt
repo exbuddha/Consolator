@@ -1,11 +1,14 @@
 package net.consolator
 
 import android.os.*
+import androidx.annotation.*
 import androidx.appcompat.app.*
-import net.consolator.activity.*
-import net.consolator.application.*
+import iso.consolator.*
 
-abstract class BaseActivity : AppCompatActivity(), ReferredContext {
+@LayoutRes
+internal var layoutId = R.layout.background
+
+internal abstract class BaseActivity : AppCompatActivity(), ReferredContext {
     internal var enableNetworkCallbacks: Work? = null
     internal var disableNetworkCallbacks: Work? = null
 
@@ -36,7 +39,7 @@ abstract class BaseActivity : AppCompatActivity(), ReferredContext {
     override var ref: WeakContext? = null
         get() = field.unique(this).also { field = it }
 
-    internal abstract inner class ConfigurationChangeManager : ConfigurationManager()
-    internal abstract inner class NightModeChangeManager : ConfigurationManager()
-    internal abstract inner class LocalesChangeManager : ConfigurationManager()
+    abstract inner class ConfigurationChangeManager : iso.consolator.activity.ConfigurationChangeManager()
+    abstract inner class NightModeChangeManager : iso.consolator.activity.NightModeChangeManager()
+    abstract inner class LocalesChangeManager : iso.consolator.activity.LocalesChangeManager()
 }

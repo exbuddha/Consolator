@@ -3,38 +3,42 @@ package net.consolator
 import android.content.*
 import android.os.*
 import android.view.*
+import androidx.annotation.*
 import androidx.fragment.app.*
 import kotlin.annotation.AnnotationRetention.*
 import kotlin.annotation.AnnotationTarget.*
 import kotlinx.coroutines.*
-import net.consolator.application.*
-import net.consolator.Event.Committing
-import net.consolator.Event.Listening
-import net.consolator.Event.Listening.OnEvent
-import net.consolator.Event.Retrying
-import net.consolator.Path.Parallel
-import net.consolator.State.Ambiguous
-import net.consolator.State.Failed
-import net.consolator.State.Resolved
-import net.consolator.State.Succeeded
-import net.consolator.State.Unresolved
+import iso.consolator.*
+import iso.consolator.Delay
+import iso.consolator.Event.*
+import iso.consolator.Event.Listening.*
+import iso.consolator.Path.*
+import iso.consolator.State.*
+import iso.consolator.application.*
 import kotlinx.coroutines.CoroutineStart.LAZY
 import kotlinx.coroutines.Dispatchers.IO
 import net.consolator.BaseApplication.Companion.ACTION_MIGRATE_APP
 import net.consolator.BaseApplication.Companion.ABORT_NAV_MAIN_UI
 import net.consolator.BaseApplication.Companion.COMMIT_NAV_MAIN_UI
-import net.consolator.Scheduler.applicationMemoryManager
-import net.consolator.Scheduler.applicationMigrationManager
 
-abstract class BaseFragment : Fragment(contentLayoutId) {
-    internal lateinit var transit: (Short) -> Unit
+@LayoutRes
+internal var contentLayoutId = R.layout.background
+
+internal abstract class BaseFragment : Fragment(contentLayoutId) {
+    lateinit var transit: (Short) -> Unit
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         if (State[1] is Resolved) return
         launch(start = LAZY) @MainViewGroup @Listening
         @OnEvent(ACTION_MIGRATE_APP) {
-            defer<MigrationManager>(::onViewCreated) }
+            defer<MigrationManager>(Fragment::onViewCreated, {
+                // listen to db updates
+                // preload data
+                // reset function pointers
+                // repeat until stable
+                EventBus.commit(@JobTreeRoot COMMIT_NAV_MAIN_UI)
+            }) }
         .otherwise @OnEvent(COMMIT_NAV_MAIN_UI) { _, _ ->
             transit(COMMIT_NAV_MAIN_UI)
             State[1] = Succeeded
@@ -54,11 +58,11 @@ abstract class BaseFragment : Fragment(contentLayoutId) {
         super.onAttach(context)
         if (State[1] is Resolved) return
         val context = context.asWeakReference()
-        launch(IO, LAZY) @JobTreeRoot @MainViewGroup @Retrying(
-            delay = VIEW_MIN_DELAY,
-            pathwise = [FromLastCancellation::class]
-        ) @Tag(VIEW_ATTACH) {
-            registerContext(context) }
+        launch(IO, LAZY) @JobTreeRoot @MainViewGroup
+        @Retrying @Pathwise([ FromLastCancellation::class ])
+        @Delay(VIEW_MIN_DELAY)
+        @WithContext @Tag(VIEW_ATTACH) {
+            context } // auto-register
         .then @Parallel @Path(STAGE_BUILD_APP_DB) { _, _ ->
             tryCancelingSuspended(::currentContext, Context::buildAppDatabase) }
         .then @Committing @Event(ACTION_MIGRATE_APP) { _, _ ->
@@ -112,9 +116,9 @@ abstract class BaseFragment : Fragment(contentLayoutId) {
 
     @Retention(SOURCE)
     @Target(EXPRESSION)
-    internal annotation class MainViewGroup
+    annotation class MainViewGroup
 
-    internal companion object {
+    companion object {
         const val UI_TAG = "FRAGMENT"
     }
 }

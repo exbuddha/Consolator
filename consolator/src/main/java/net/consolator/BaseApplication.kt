@@ -2,9 +2,11 @@ package net.consolator
 
 import android.app.*
 import android.content.*
-import net.consolator.application.*
+import ctx.consolator.*
+import iso.consolator.*
+import iso.consolator.application.*
 
-open class BaseApplication : Application(), UniqueContext {
+internal open class BaseApplication : Application(), UniqueContext {
     override var startTime = now()
 
     init {
@@ -19,7 +21,7 @@ open class BaseApplication : Application(), UniqueContext {
     override fun onCreate() {
         super.onCreate()
         instance = this
-        commit(START)
+        commit(START, BaseService::class)
     }
 
     override fun onTrimMemory(level: Int) {
@@ -34,7 +36,7 @@ open class BaseApplication : Application(), UniqueContext {
             putString(EXCEPTION_CAUSE, cause::class.qualifiedName)
             putString(EXCEPTION_CAUSE_MESSAGE, cause.message) } }
 
-    internal companion object {
+    companion object {
         const val ACTION_MIGRATE_APP: Short = 1
         const val COMMIT_NAV_MAIN_UI: Short = 2
         const val ABORT_NAV_MAIN_UI: Short = 3

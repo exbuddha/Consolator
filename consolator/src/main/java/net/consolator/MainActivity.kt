@@ -1,14 +1,16 @@
 package net.consolator
 
-import android.content.res.Configuration
-import android.os.Bundle
-import androidx.core.os.LocaleListCompat
-import androidx.fragment.app.add
-import androidx.fragment.app.commit
-import net.consolator.application.MemoryManager
-import net.consolator.Scheduler.applicationMemoryManager
+import android.content.res.*
+import android.os.*
+import androidx.annotation.*
+import androidx.core.os.*
+import androidx.fragment.app.*
+import iso.consolator.*
 
-open class MainActivity : BaseActivity(), ObjectProvider {
+@IdRes
+internal var containerViewId = R.id.layout_background
+
+internal open class MainActivity : BaseActivity(), ObjectProvider {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (savedInstanceState === null)
@@ -36,9 +38,9 @@ open class MainActivity : BaseActivity(), ObjectProvider {
             super.onLocalesChanged(locales) }
     }
 
-    internal inner class ConfigurationChangeManager : BaseActivity.ConfigurationChangeManager()
-    internal inner class NightModeChangeManager : BaseActivity.NightModeChangeManager()
-    internal inner class LocalesChangeManager : BaseActivity.LocalesChangeManager()
+    inner class ConfigurationChangeManager : BaseActivity.ConfigurationChangeManager()
+    inner class NightModeChangeManager : BaseActivity.NightModeChangeManager()
+    inner class LocalesChangeManager : BaseActivity.LocalesChangeManager()
 
     override fun invoke(type: AnyKClass): Resolver = when (type) {
         ConfigurationChangeManager::class ->

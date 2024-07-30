@@ -1,15 +1,15 @@
 package net.consolator
 
-import android.os.Bundle
-import android.view.View
-import androidx.fragment.app.Fragment
-import androidx.fragment.app.commit
-import kotlin.reflect.KFunction
+import android.os.*
+import android.view.*
+import androidx.fragment.app.*
+import kotlin.reflect.*
+import iso.consolator.*
 import androidx.fragment.app.FragmentTransaction.TRANSIT_FRAGMENT_OPEN
 import net.consolator.BaseApplication.Companion.ABORT_NAV_MAIN_UI
 import net.consolator.BaseApplication.Companion.COMMIT_NAV_MAIN_UI
 
-class MainFragment : BaseFragment() {
+internal class MainFragment : BaseFragment(), ObjectProvider {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         if (savedInstanceState === null) {
@@ -36,6 +36,8 @@ class MainFragment : BaseFragment() {
     }
 
     private inline fun <reified R> screenEventInterceptor(listener: Any, callback: KFunction<R>, vararg args: Any?, noinline postback: PostbackFunction?): Interception = null
+
+    override fun invoke(type: AnyKClass) = activity.asObjectProvider()!!(type)
 }
 
 internal typealias Transition = Pair<Fragment?, Int?>

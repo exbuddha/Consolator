@@ -15,3 +15,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "Consolator"
 include(":consolator")
+include(":framework")
+include(":database")
+include(":context")

@@ -15,8 +15,8 @@
 … aims to provide full support for:
 
   - navigation and fragment transitions
+  - gesture detection and interception
   - activity and service control
   - network communication and database management
   - configuration change management
   - memory management
-  - gesture detection and interception
