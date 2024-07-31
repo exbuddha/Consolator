@@ -1390,7 +1390,7 @@ private fun JobFunctionSet.save(function: AnyKCallable, tag: String) =
             combineTags(tag, this?.string),
             this?.keep ?: true) }
 
-private fun JobFunctionSet.save(function: AnyKCallable, tag: String, unit: String) {}
+private fun JobFunctionSet.save(function: AnyKCallable, vararg tag: String?) {}
 
 private fun JobFunctionSet.save(self: AnyKCallable, tag: Tag?) =
     if (tag !== null)
@@ -1399,9 +1399,9 @@ private fun JobFunctionSet.save(self: AnyKCallable, tag: Tag?) =
         save(self, null, false)
 
 private fun JobFunctionSet.save(function: AnyKCallable, tag: String?, keep: Boolean) =
-    add((tag?.let { { it } } ?: currentThreadJob().toJobId()::toString) to arrayOf(function, keep)) // rewire related parts
+    add((tag?.let { { it } } ?: currentThreadJob().toJobId()::toString) to arrayOf(function, keep))
 
-private fun combineTags(tag: String, self: String?) =
+private fun combineTags(tag: String, self: Any?) =
     if (self === null) tag
     else "$tag.$self"
 
@@ -1413,7 +1413,10 @@ internal fun Any.markTag() = asCallable().markTag()
 
 internal fun Any?.markTag(tag: String) = jobs?.save(asNullable(), tag)
 
-internal fun Any?.markSequentialTag(vararg tag: String?): String? = tag.first()
+internal fun Any?.markSequentialTag(vararg tag: String?): String? =
+    tag.first()?.let { tag ->
+    combineTags(tag, returnItsTag(this))
+    .also { markTag(it) } }
 
 private fun <T> T.applyMarkTag(tag: String) = apply { markTag(tag) }
 
@@ -1500,7 +1503,8 @@ private fun markTagsForSeqLaunch(vararg function: Any?, i: Int = 0) =
         jobs?.save(context.asNullable(), "$stepTag#$index@$jobId.$CONTEXT", false) } /* context */ }
 
 private fun markTagsForCtxReform(vararg function: Any?, i: Int = 0) =
-    function[i + 1].markSequentialTag(function[i].asString())?.also { stageTag ->
+    function[i + 1].asString()?.let { stageTag ->
+    combineTags(stageTag, function[i] /* id tag */) }?.also { stageTag ->
     val jobId = function[i + 3]?.let { job ->
         jobs?.save(job.asCallable(), "$stageTag.$JOB", false)
         job.toJobId() } /* job */
@@ -2096,29 +2100,44 @@ annotation class Timeout(
 annotation class Pathwise(
     val route: SchedulerPath = [])
 
-private open class Item<T>(override val obj: T) : ObjectReference<T>, CharSequence {
+private open class Item<T>(override var obj: T) : ObjectReference<T>, CharSequence {
     companion object {
-        fun <T> reload(property: KProperty<T>): Item<T> = TODO()
+        fun <T> find(ref: Coordinate): T = TODO()
 
-        fun <T> reload(tag: String): Item<T> = TODO()
+        fun <T> find(target: AnyKClass = Any::class, key: KeyType): T = TODO()
 
-        fun <T> reload(target: AnyKClass, key: KeyType): Item<T> = TODO()
+        fun <T, I : Item<T>> Item<T>.reload(obj: T): I = TODO()
+
+        fun <T, I : Item<T>> Item<T>.reload(property: KProperty<T>): I = TODO()
+
+        fun <T, I : Item<T>> Item<T>.reload(tag: String): I = TODO()
+
+        fun <T, I : Item<T>> Item<T>.reload(target: AnyKClass, key: KeyType): I = TODO()
     }
 
-    private var tag: CharSequence = ::obj.tag?.string ?: ""
+    private val tag: CharSequence
+        get() = ::obj.tag?.string
+            ?: "${obj.hashCode()}"
 
     lateinit var type: Type
 
     enum class Type { Coroutine, JobFunction, LiveStep, SchedulerStep, Step, Work, Runnable, Message, Lock, State }
 
-    private var annotations = ::obj.annotations
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is Item<*>) return other == obj
+        if (obj != other.obj) return false
+        if (tag != other.tag) return false
+        if (type != other.type) return false
+        return true }
+
+    override fun hashCode() = obj.hashCode()
 
     override fun get(index: Int) = tag[index]
 
     override fun subSequence(startIndex: Int, endIndex: Int) = tag.subSequence(startIndex, endIndex)
 
-    override val length
-        get() = tag.length
+    override val length get() = tag.length
 }
 
 internal operator fun <T> ResolverScope.get(ref: Coordinate) =
@@ -2127,19 +2146,35 @@ internal operator fun <T> ResolverScope.get(ref: Coordinate) =
 private operator fun <T> ResolverScope.get(target: AnyKClass = Any::class, key: KeyType): T = TODO()
 
 private fun coroutineStep(target: AnyKClass, key: KeyType) =
-    SchedulerScope().get<CoroutineStep>(target, key)
+    SchedulerScope().get<AnyCoroutineStep>(target, key)
 
 private fun liveStep(target: AnyKClass, key: KeyType) =
     SchedulerScope().get<SequencerStep>(target, key)
 
 private fun step(target: AnyKClass, key: KeyType) =
-    SchedulerScope().get<Step>(target, key)
+    SchedulerScope().get<AnyStep>(target, key)
 
 private fun runnable(target: AnyKClass, key: KeyType) =
     SchedulerScope().get<Runnable>(target, key)
 
-private class Node<T>(override val obj: T) : Item<T>(obj) {
+private class Node<T>(override var obj: T) : Item<T>(obj), KCallable<T> {
     lateinit var visitor: Visitor<T>
+
+    override fun call(vararg args: Any?): T = call(*args)
+
+    override fun callBy(args: Map<KParameter, Any?>) =
+        call(*parameters.map(args::get).toTypedArray())
+
+    override val annotations = ::obj.annotations
+    override val isAbstract = ::obj.isAbstract
+    override val isFinal = ::obj.isFinal
+    override val isOpen = ::obj.isOpen
+    override val isSuspend = ::obj.isSuspend
+    override val name = ::obj.name
+    override val parameters = ::obj.parameters
+    override val returnType = ::obj.returnType
+    override val typeParameters = ::obj.typeParameters
+    override val visibility = ::obj.visibility
 }
 
 @Retention(SOURCE)
@@ -2334,16 +2369,16 @@ fun AnyKMutableProperty.expire() = set(null)
 internal fun <T> T.asCallable(): KCallable<T> = asObjRef()::obj
 internal fun <T> T?.asNullable(): KCallable<T?> = asNullRef()::obj
 
-private interface ObjectReference<T> { val obj: T }
+private interface ObjectReference<T> { var obj: T }
 private interface NullReference<T> : ObjectReference<T?>
 
 private fun <T> T.asObjRef() =
     asUniqueRef { object : ObjectReference<T> {
-        override val obj get() = this@asObjRef } }
+        override var obj = this@asObjRef } }
 
 private fun <T> T?.asNullRef() =
     asUniqueRef { object : NullReference<T> {
-        override val obj get() = this@asNullRef } }
+        override var obj = this@asNullRef } }
 
 private inline fun <T> T.asUniqueRef(block: () -> ObjectReference<T>) =
     if (this is ObjectReference<*>)
