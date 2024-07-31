@@ -47,7 +47,7 @@ private var networkCallback: NetworkCallback? = null
         override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
             super.onCapabilitiesChanged(network, networkCapabilities)
             trySafely { reactToNetworkCapabilitiesChanged.invoke(network, networkCapabilities) } } }
-    .also { field = it }
+        .also { field = it }
 
 internal var reactToNetworkCapabilitiesChanged: (Network, NetworkCapabilities) -> Unit = { network, networkCapabilities ->
     commit @Tag(NET_CAP_UPDATE) {

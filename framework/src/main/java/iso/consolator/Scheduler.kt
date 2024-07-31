@@ -2032,15 +2032,15 @@ object EventBus : AbstractFlow<Any?>(), Transactor<ContextStep, Boolean>, Priori
         queue.clear() }
 }
 
-fun Step.relay(transit: Transit = this.transit) =
+fun AnyStep.relay(transit: Transit = this.transit) =
     Relay(transit)
 
-fun Step.reinvoke(transit: Transit = this.transit) =
+fun AnyStep.reinvoke(transit: Transit = this.transit) =
     object : Relay(transit) {
         override suspend fun invoke() = this@reinvoke() }
 
-open class Relay(val transit: Transit = null) : Step {
-    override suspend fun invoke() = Unit
+open class Relay(val transit: Transit = null) : AnyStep {
+    override suspend fun invoke(): Any? = Unit
 }
 
 @Retention(SOURCE)
