@@ -922,22 +922,22 @@ private class Sequencer : Synchronizer<LiveWork>, Transactor<Int, Boolean?>, Pri
         step?.removeObserver(observer)
         isObserving = false }
 
-    fun resetByTag(tag: String) {}
+    fun resetByTag(tag: TagType) {}
 
     fun cancel(ex: Throwable) {
         isCancelled = true
         this.ex = ex }
 
-    fun cancelByTag(tag: String, ex: Throwable) = cancel(ex)
+    fun cancelByTag(tag: TagType, ex: Throwable) = cancel(ex)
 
     fun error(ex: Throwable) {
         hasError = true
         this.ex = ex }
 
-    fun errorByTag(tag: String, ex: Throwable) = error(ex)
+    fun errorByTag(tag: TagType, ex: Throwable) = error(ex)
 
     var interrupt = fun(ex: Throwable) = ex
-    var interruptByTag = fun(tag: String, ex: Throwable) = ex
+    var interruptByTag = fun(tag: TagType, ex: Throwable) = ex
 
     suspend inline fun <R> SequencerScope.resetOnCancel(block: () -> R) =
         reset<CancellationException, _>(::reset, ::cancel, block)
@@ -1384,7 +1384,7 @@ internal operator fun Job.set(tag: TagType, value: Any?) {
     // addressable layer work
     value.markTag(tag) }
 
-private fun Job.getTag() = asCallable().tag?.id
+private fun Job.getTag() = markedCoroutineStep().asCallable().tag?.id
 
 private fun JobFunctionSet.save(function: AnyKCallable, tag: TagType) =
     function.tag.apply {
@@ -2102,7 +2102,7 @@ annotation class Timeout(
 annotation class Pathwise(
     val route: SchedulerPath = [])
 
-private open class Item<out T>(override val obj: T) : ObjectReference<T>, CharSequence {
+private open class Item<out T>(override val obj: T) : ObjectReference<T> {
     companion object {
         fun <T> find(ref: Coordinate): T = TODO()
 
@@ -2117,9 +2117,8 @@ private open class Item<out T>(override val obj: T) : ObjectReference<T>, CharSe
         fun <T, I : Item<T>> Item<T>.reload(target: AnyKClass, key: KeyType): I = TODO()
     }
 
-    private val tag: CharSequence
-        get() = ::obj.tag?.id
-            ?: "${obj.hashCode()}"
+    var tag: TagType? = null
+        get() = ::obj.tag?.id ?: field ?: obj.getTag()
 
     lateinit var type: Type
 
@@ -2135,11 +2134,7 @@ private open class Item<out T>(override val obj: T) : ObjectReference<T>, CharSe
 
     override fun hashCode() = obj.hashCode()
 
-    override fun get(index: Int) = tag[index]
-
-    override fun subSequence(startIndex: Int, endIndex: Int) = tag.subSequence(startIndex, endIndex)
-
-    override val length get() = tag.length
+    override fun toString() = tag.toString()
 }
 
 internal operator fun <T> ResolverScope.get(ref: Coordinate) =
@@ -2414,6 +2409,14 @@ private typealias TagType = String
 private typealias TagTypePointer = () -> TagType?
 
 private fun Any?.asTagType() = asType<TagType>()
+
+private fun Any?.getTag() =
+    (if (TagType::class.isString)
+        "${hashCode()}"
+    else
+        hashCode()).asTagType()!!
+
+private val KClass<TagType>.isString get() = TagType::class === String::class
 
 internal fun Array<out Tag>.mapToTagArray() = mapToTypedArray { it.id }
 
