@@ -3,8 +3,8 @@ package net.consolator
 import android.os.*
 import android.view.*
 import androidx.fragment.app.*
-import kotlin.reflect.*
 import iso.consolator.*
+import kotlin.reflect.*
 import androidx.fragment.app.FragmentTransaction.TRANSIT_FRAGMENT_OPEN
 import net.consolator.BaseApplication.Companion.ABORT_NAV_MAIN_UI
 import net.consolator.BaseApplication.Companion.COMMIT_NAV_MAIN_UI
@@ -39,8 +39,6 @@ internal class MainFragment : BaseFragment(), ObjectProvider {
 
     override fun invoke(type: AnyKClass) = activity.asObjectProvider()!!(type)
 }
-
-internal typealias Transition = Pair<Fragment?, Int?>
 
 internal typealias Interception = Pair<AnyFunction?, Boolean?>?
 internal typealias PostbackFunction = (Interception) -> Any?
