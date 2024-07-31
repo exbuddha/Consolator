@@ -2100,7 +2100,7 @@ annotation class Timeout(
 annotation class Pathwise(
     val route: SchedulerPath = [])
 
-private open class Item<T>(override var obj: T) : ObjectReference<T>, CharSequence {
+private open class Item<out T>(override val obj: T) : ObjectReference<T>, CharSequence {
     companion object {
         fun <T> find(ref: Coordinate): T = TODO()
 
@@ -2157,10 +2157,10 @@ private fun step(target: AnyKClass, key: KeyType) =
 private fun runnable(target: AnyKClass, key: KeyType) =
     SchedulerScope().get<Runnable>(target, key)
 
-private class Node<T>(override var obj: T) : Item<T>(obj), KCallable<T> {
-    lateinit var visitor: Visitor<T>
+private abstract class Node<out R>(override val obj: R) : Item<R>(obj), KCallable<R> {
+    abstract val visitor: Visitor<Node<R>>
 
-    override fun call(vararg args: Any?): T = ::obj.call(*args)
+    override fun call(vararg args: Any?): R = ::obj.call(*args)
 
     override fun callBy(args: Map<KParameter, Any?>) =
         call(*parameters.map(args::get).toTypedArray())
@@ -2369,8 +2369,8 @@ fun AnyKMutableProperty.expire() = set(null)
 internal fun <T> T.asCallable(): KCallable<T> = asObjRef()::obj
 internal fun <T> T?.asNullable(): KCallable<T?> = asNullRef()::obj
 
-private interface ObjectReference<T> { var obj: T }
-private interface NullReference<T> : ObjectReference<T?>
+private interface ObjectReference<out R> { val obj: R }
+private interface NullReference<R> : ObjectReference<R?>
 
 private fun <T> T.asObjRef() =
     asUniqueRef { object : ObjectReference<T> {

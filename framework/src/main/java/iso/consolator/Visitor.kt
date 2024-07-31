@@ -1,5 +1,5 @@
 package iso.consolator
 
-sealed interface Visitor<T> {
+sealed interface Visitor<out I> {
     companion object
 }
