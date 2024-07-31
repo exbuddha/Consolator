@@ -2160,7 +2160,7 @@ private fun runnable(target: AnyKClass, key: KeyType) =
 private class Node<T>(override var obj: T) : Item<T>(obj), KCallable<T> {
     lateinit var visitor: Visitor<T>
 
-    override fun call(vararg args: Any?): T = call(*args)
+    override fun call(vararg args: Any?): T = ::obj.call(*args)
 
     override fun callBy(args: Map<KParameter, Any?>) =
         call(*parameters.map(args::get).toTypedArray())
