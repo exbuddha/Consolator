@@ -223,7 +223,7 @@ private annotation class NetworkListener
 private var connectivityRequest: NetworkRequest? = null
     get() = field ?: buildNetworkRequest {
         addCapability(NET_CAPABILITY_INTERNET) }
-    .also { field = it }
+        .also { field = it }
 
 private inline fun buildNetworkRequest(block: NetworkRequest.Builder.() -> Unit) =
     NetworkRequest.Builder().apply(block).build()

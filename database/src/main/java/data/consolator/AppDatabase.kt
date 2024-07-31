@@ -31,10 +31,14 @@ abstract class AppDatabase : RoomDatabase() {
 
     companion object {
         var dateTimeFormat: DateFormat? = null
-            get() = field.require { SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US) }.also { field = it }
+            get() = field.require { SimpleDateFormat(
+                "yyyy-MM-dd HH:mm:ss", Locale.US) }
+                .also { field = it }
 
         var dbTimeDiff: Long? = null
-            get() = field.require { session?.run { dbTime.toLocalTime() - initTime } }.also { field = it }
+            get() = field.require { session?.run {
+                dbTime.toLocalTime() - initTime } }
+                ?.also { field = it }
 
         internal const val DB_VERSION = 1
         internal const val CURRENT_TIMESTAMP = "CURRENT_TIMESTAMP"
