@@ -1384,22 +1384,22 @@ internal operator fun Job.set(tag: String, value: Any?) {
     // addressable layer work
     value.markTag(tag) }
 
-private fun JobFunctionSet.save(tag: String, function: AnyKCallable) =
+private fun JobFunctionSet.save(function: AnyKCallable, tag: String) =
     function.tag.apply {
-        save(combineTags(tag, this?.string),
-            this?.keep ?: true,
-            function) }
+        save(function,
+            combineTags(tag, this?.string),
+            this?.keep ?: true) }
 
-private fun JobFunctionSet.save(tag: String, unit: String, function: AnyKCallable) {}
+private fun JobFunctionSet.save(function: AnyKCallable, tag: String, unit: String) {}
 
-private fun JobFunctionSet.save(tag: Tag?, self: AnyKCallable) =
+private fun JobFunctionSet.save(self: AnyKCallable, tag: Tag?) =
     if (tag !== null)
-        with(tag) { save(string, keep, self) }
+        with(tag) { save(self, string, keep) }
     else
-        save(null, false, self)
+        save(self, null, false)
 
-private fun JobFunctionSet.save(tag: String?, keep: Boolean, function: AnyKCallable) =
-    add((tag?.let { { it } } ?: currentThreadJob().toJobId()::toString) to arrayOf(keep, function)) // rewire related parts
+private fun JobFunctionSet.save(function: AnyKCallable, tag: String?, keep: Boolean) =
+    add((tag?.let { { it } } ?: currentThreadJob().toJobId()::toString) to arrayOf(function, keep)) // rewire related parts
 
 private fun combineTags(tag: String, self: String?) =
     if (self === null) tag
@@ -1407,11 +1407,11 @@ private fun combineTags(tag: String, self: String?) =
 
 private fun returnItsTag(it: Any?) = it.asNullable().tag?.string
 
-internal fun AnyKCallable.markTag() = tag.also { jobs?.save(it, this) }
+internal fun AnyKCallable.markTag() = tag.also { jobs?.save(this, it) }
 
 internal fun Any.markTag() = asCallable().markTag()
 
-internal fun Any?.markTag(tag: String) = jobs?.save(tag, asNullable())
+internal fun Any?.markTag(tag: String) = jobs?.save(asNullable(), tag)
 
 internal fun Any?.markSequentialTag(vararg tag: String?): String? = tag.first()
 
@@ -1454,42 +1454,42 @@ private fun markTagsForJobLaunch(vararg function: Any?, i: Int = 0) =
     function[i + 2]?.markTag()?.also { step ->
     val stepTag = step.string
     val jobId = function[i + 4]?.let { job ->
-        jobs?.save("$stepTag.$JOB", step.keep, job.asCallable())
+        jobs?.save(job.asCallable(), "$stepTag.$JOB", step.keep)
         job.toJobId() } /* job */
     function[i]?.let { context ->
-        jobs?.save("$stepTag@$jobId.$CONTEXT", false, context.asCallable()) } /* context */
+        jobs?.save(context.asCallable(), "$stepTag@$jobId.$CONTEXT", false) } /* context */
     function[i + 1]?.let { start ->
-        jobs?.save("$stepTag@$jobId.$START", false, start.asCallable()) } /* start */ }
+        jobs?.save(start.asCallable(), "$stepTag@$jobId.$START", false) } /* start */ }
 
 private fun markTagsForJobRepeat(vararg function: Any?, i: Int = 0) =
     function[i + 2]?.markTag()?.also { blockTag ->
     val blockTag = blockTag.string
     val jobId = function[i + 3].toJobId()
     function[i + 1]?.let { delay ->
-        jobs?.save("$blockTag@$jobId.$DELAY", delay.asCallable()) } /* delay */
+        jobs?.save(delay.asCallable(), "$blockTag@$jobId.$DELAY") } /* delay */
     function[i]?.let { predicate ->
-        jobs?.save("$blockTag@$jobId.$PREDICATE", predicate.asCallable()) } /* predicate */ }
+        jobs?.save(predicate.asCallable(), "$blockTag@$jobId.$PREDICATE") } /* predicate */ }
 
 private fun markTagsForClkAttach(vararg function: Any?, i: Int = 0) =
     function[i + 1]?.let { step -> when (step) {
     is Runnable -> {
         val stepTag = getTag(step)
-        jobs?.save("$stepTag.$CALLBACK", step.asCallable()) /* callback */
+        jobs?.save(step.asCallable(), "$stepTag.$CALLBACK") /* callback */
         function[i]?.let { index ->
-        jobs?.save("$stepTag.$INDEX", index.asCallable()) } /* index */ }
+        jobs?.save(index.asCallable(), "$stepTag.$INDEX") } /* index */ }
     is Message -> {
-        jobs?.save("${getTag(step)}.$MSG", step.asCallable()) /* message */ }
+        jobs?.save(step.asCallable(), "${getTag(step)}.$MSG") /* message */ }
     is Int ->
-        jobs?.save("${getTag(step)}.$WHAT", step.asCallable() /* what */ )
+        jobs?.save(step.asCallable(), "${getTag(step)}.$WHAT" /* what */ )
     else -> null } }
 
 private fun markTagsForSeqAttach(vararg function: Any?, i: Int = 0) =
     function[i]?.asString().let { stepTag ->
     val stepTag = stepTag ?: NULL_STEP
     function[i + 1]?.let { index ->
-        jobs?.save("$stepTag.$INDEX", index.asCallable())
+        jobs?.save(index.asCallable(), "$stepTag.$INDEX")
     function[i + 2]?.asLiveWork()?.let { work ->
-        jobs?.save("$stepTag#$index.$WORK", work.asCallable()) } } /* index & work */ }
+        jobs?.save(work.asCallable(), "$stepTag#$index.$WORK") } } /* index & work */ }
 
 private fun markTagsForSeqLaunch(vararg function: Any?, i: Int = 0) =
     function[i]?.markTag()?.also { stepTag ->
@@ -1497,15 +1497,15 @@ private fun markTagsForSeqLaunch(vararg function: Any?, i: Int = 0) =
     val index = function[i + 1]?.asInt()!! // optionally, readjust by remarks or from seq here instead
     val jobId = function[i + 3].toJobId()
     function[i + 2]?.let { context ->
-        jobs?.save("$stepTag#$index@$jobId.$CONTEXT", false, context.asNullable()) } /* context */ }
+        jobs?.save(context.asNullable(), "$stepTag#$index@$jobId.$CONTEXT", false) } /* context */ }
 
 private fun markTagsForCtxReform(vararg function: Any?, i: Int = 0) =
     function[i + 1].markSequentialTag(function[i].asString())?.also { stageTag ->
     val jobId = function[i + 3]?.let { job ->
-        jobs?.save("$stageTag.$JOB", false, job.asCallable())
+        jobs?.save(job.asCallable(), "$stageTag.$JOB", false)
         job.toJobId() } /* job */
     function[i + 2]?.let { form ->
-        jobs?.save("$stageTag@$jobId.$FORM", false, form.asCallable()) } /* form */ }
+        jobs?.save(form.asCallable(), "$stageTag@$jobId.$FORM", false) } /* form */ }
 
 inline infix fun <R, S> (suspend () -> R)?.then(crossinline next: suspend () -> S): (suspend () -> S)? = this?.let { {
     this@then()
@@ -2107,8 +2107,6 @@ private open class Item<T>(override val obj: T) : ObjectReference<T>, CharSequen
 
     private var tag: CharSequence = ::obj.tag?.string ?: ""
 
-    protected var visitor: Visitor<T>? = null
-
     lateinit var type: Type
 
     enum class Type { Coroutine, JobFunction, LiveStep, SchedulerStep, Step, Work, Runnable, Message, Lock, State }
@@ -2139,6 +2137,10 @@ private fun step(target: AnyKClass, key: KeyType) =
 
 private fun runnable(target: AnyKClass, key: KeyType) =
     SchedulerScope().get<Runnable>(target, key)
+
+private class Node<T>(override val obj: T) : Item<T>(obj) {
+    lateinit var visitor: Visitor<T>
+}
 
 @Retention(SOURCE)
 @Target(ANNOTATION_CLASS, CLASS, CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
