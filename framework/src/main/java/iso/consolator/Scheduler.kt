@@ -109,7 +109,7 @@ interface BaseServiceScope : ResolverScope, ReferredContext, UniqueContext {
         buildDatabaseOrResetByTag(identifier, instance, stage, post, ::whenNotNullOrResetByTag)
 
     private suspend inline fun <reified D : RoomDatabase> SequencerScope.buildDatabaseOrResetByTag(identifier: Any?, instance: KMutableProperty<out D?>, noinline stage: ContextStep?, noinline post: AnyStep, condition: PropertyCondition) =
-        returnItsTag(identifier)?.let { tag ->
+        returnTag(identifier)?.let { tag ->
         buildDatabaseOrResetByTag(instance, tag)
         condition(instance, tag,
             formAfterMarkingTagsForCtxReform(tag, stage, post, currentJob())) }
@@ -426,6 +426,8 @@ private fun Job.saveNewElement(step: AnyCoroutineStep) {}
 private fun Job.attachToElement(next: AnyCoroutinePointer): AnyCoroutineStep = TODO()
 
 private fun Job.markedCoroutineStep(): AnyCoroutineStep = TODO()
+
+private fun Job.getTag() = markedCoroutineStep().asCallable().tag?.id
 
 // from this point on, step and context are the same
 // this is not the coroutine context but the context of the step for the job
@@ -969,7 +971,7 @@ private class Sequencer : Synchronizer<LiveWork>, Transactor<Int, Boolean?>, Pri
     private fun resettingByTagFirstly(step: SequencerStep) = step after { resetByTag(getTag(step)) }
     private fun resettingByTagLastly(step: SequencerStep) = step then { resetByTag(getTag(step)) }
 
-    private fun getTag(step: SequencerStep) = returnItsTag(step)!!
+    private fun getTag(step: SequencerStep) = returnTag(step)!!
 
     var isActive = false
     var isObserving = false
@@ -1108,101 +1110,101 @@ private class Sequencer : Synchronizer<LiveWork>, Transactor<Int, Boolean?>, Pri
         var index = -1
         return stepToNull(async) { liveData(block = {
             stepAfterTrackingTagsForSeqLaunch(step, { index })(step) }) }
-            .also { index = attach(it, returnItsTag(step)) } }
+            .also { index = attach(it, returnTag(step)) } }
 
     fun attach(async: Boolean = false, step: SequencerStep, capture: CaptureFunction): LiveWork {
         var index = -1
         return Triple({ liveData(block = {
             stepAfterTrackingTagsForSeqLaunch(step, { index })(step) }) },
             capture, async)
-            .also { index = attach(it, returnItsTag(step)) } }
+            .also { index = attach(it, returnTag(step)) } }
 
     fun attach(context: CoroutineContext, async: Boolean = false, step: SequencerStep): LiveWork {
         var index = -1
         return stepToNull(async) { liveData(context, block = {
             stepAfterTrackingTagsForSeqLaunch(step, { index }, context)(step) }) }
-            .also { index = attach(it, returnItsTag(step)) } }
+            .also { index = attach(it, returnTag(step)) } }
 
     fun attach(context: CoroutineContext, async: Boolean = false, step: SequencerStep, capture: CaptureFunction): LiveWork {
         var index = -1
         return Triple({ liveData(context, block = {
             stepAfterTrackingTagsForSeqLaunch(step, { index }, context)(step) }) },
             capture, async)
-            .also { index = attach(it, returnItsTag(step)) } }
+            .also { index = attach(it, returnTag(step)) } }
 
     fun attach(index: Int, async: Boolean = false, step: SequencerStep) =
         stepToNull(async) { liveData(block = {
             stepAfterTrackingTagsForSeqLaunch(step, { index })(step) }) }
-            .also { attach(index, it, returnItsTag(step)) }
+            .also { attach(index, it, returnTag(step)) }
 
     fun attach(index: Int, async: Boolean = false, step: SequencerStep, capture: CaptureFunction) =
         Triple({ liveData(block = {
             stepAfterTrackingTagsForSeqLaunch(step, { index })(step) }) },
             capture, async)
-            .also { attach(index, it, returnItsTag(step)) }
+            .also { attach(index, it, returnTag(step)) }
 
     fun attach(index: Int, context: CoroutineContext, async: Boolean = false, step: SequencerStep) =
         stepToNull(async) { liveData(context, block = {
             stepAfterTrackingTagsForSeqLaunch(step, { index }, context)(step) }) }
-            .also { attach(index, it, returnItsTag(step)) }
+            .also { attach(index, it, returnTag(step)) }
 
     fun attach(index: Int, context: CoroutineContext, async: Boolean = false, step: SequencerStep, capture: CaptureFunction) =
         Triple({ liveData(context, block = {
             stepAfterTrackingTagsForSeqLaunch(step, { index }, context)(step) }) },
             capture, async)
-            .also { attach(index, it, returnItsTag(step)) }
+            .also { attach(index, it, returnTag(step)) }
 
     fun attachAfter(async: Boolean = false, step: SequencerStep): LiveWork {
         var index = -1
         return stepToNull(async) { liveData(block = {
             stepAfterTrackingTagsForSeqLaunch(step, { index })(step) }) }
-            .also { index = attachAfter(it, returnItsTag(step)) } }
+            .also { index = attachAfter(it, returnTag(step)) } }
 
     fun attachAfter(async: Boolean = false, step: SequencerStep, capture: CaptureFunction): LiveWork {
         var index = -1
         return Triple({ liveData(block = {
             stepAfterTrackingTagsForSeqLaunch(step, { index })(step) }) },
             capture, async)
-            .also { index = attachAfter(it, returnItsTag(step)) } }
+            .also { index = attachAfter(it, returnTag(step)) } }
 
     fun attachAfter(context: CoroutineContext, async: Boolean = false, step: SequencerStep): LiveWork {
         var index = -1
         return stepToNull(async) { liveData(context, block = {
             stepAfterTrackingTagsForSeqLaunch(step, { index }, context)(step) }) }
-            .also { index = attachAfter(it, returnItsTag(step)) } }
+            .also { index = attachAfter(it, returnTag(step)) } }
 
     fun attachAfter(context: CoroutineContext, async: Boolean = false, step: SequencerStep, capture: CaptureFunction): LiveWork {
         var index = -1
         return Triple({ liveData(context, block = {
             stepAfterTrackingTagsForSeqLaunch(step, { index }, context)(step) }) },
             capture, async)
-            .also { index = attachAfter(it, returnItsTag(step)) } }
+            .also { index = attachAfter(it, returnTag(step)) } }
 
     fun attachBefore(async: Boolean = false, step: SequencerStep): LiveWork {
         var index = -1
         return stepToNull(async) { liveData(block = {
             stepAfterTrackingTagsForSeqLaunch(step, { index })(step) }) }
-            .also { index = attachBefore(it, returnItsTag(step)) } }
+            .also { index = attachBefore(it, returnTag(step)) } }
 
     fun attachBefore(async: Boolean = false, step: SequencerStep, capture: CaptureFunction): LiveWork {
         var index = -1
         return Triple({ liveData(block = {
             stepAfterTrackingTagsForSeqLaunch(step, { index })(step) }) },
             capture, async)
-            .also { index = attachBefore(it, returnItsTag(step)) } }
+            .also { index = attachBefore(it, returnTag(step)) } }
 
     fun attachBefore(context: CoroutineContext, async: Boolean = false, step: SequencerStep): LiveWork {
         var index = -1
         return stepToNull(async) { liveData(context, block = {
             stepAfterTrackingTagsForSeqLaunch(step, { index }, context)(step) }) }
-            .also { index = attachBefore(it, returnItsTag(step)) } }
+            .also { index = attachBefore(it, returnTag(step)) } }
 
     fun attachBefore(context: CoroutineContext, async: Boolean = false, step: SequencerStep, capture: CaptureFunction): LiveWork {
         var index = -1
         return Triple({ liveData(context, block = {
             stepAfterTrackingTagsForSeqLaunch(step, { index }, context)(step) }) },
             capture, async)
-            .also { index = attachBefore(it, returnItsTag(step)) } }
+            .also { index = attachBefore(it, returnTag(step)) } }
 
     fun capture(block: CaptureFunction) =
         attach(nullStepTo(block))
@@ -1384,8 +1386,6 @@ internal operator fun Job.set(tag: TagType, value: Any?) {
     // addressable layer work
     value.markTag(tag) }
 
-private fun Job.getTag() = markedCoroutineStep().asCallable().tag?.id
-
 private fun JobFunctionSet.save(function: AnyKCallable, tag: TagType) =
     function.tag.apply {
         save(function,
@@ -1401,21 +1401,21 @@ private fun JobFunctionSet.save(self: AnyKCallable, tag: Tag?) =
         save(self, null, false)
 
 private fun JobFunctionSet.save(function: AnyKCallable, tag: TagType?, keep: Boolean) =
-    add((tag?.let { { it } } ?: currentThreadJob()::getTag) to arrayOf(function, keep))
+    add((tag?.let { { it } } ?: currentThreadJob()::hashTag) to arrayOf(function, keep))
 
-private fun combineTags(tag: TagType, self: Any?) =
+private fun combineTags(tag: TagType, self: TagType?) =
     if (self === null) tag
     else reduceTags(tag, TAG_DOT, self.toTagType())
 
 internal fun reduceTags(vararg tag: TagType) =
-    (if (TagType::class.isNotString)
+    (if (TagType::class.isNumber)
         tag.map(TagType::toInt)
             .reduce(Int::times)
     else
         tag.map(TagType::toString)
             .reduce { acc, it -> acc + it }).asTagType()!!
 
-private fun returnItsTag(it: Any?) = it.asNullable().tag?.id
+private fun returnTag(it: Any?) = it.asNullable().tag?.id
 
 internal fun AnyKCallable.markTag() = tag.also { jobs?.save(this, it) }
 
@@ -1425,7 +1425,7 @@ internal fun Any?.markTag(tag: TagType) = jobs?.save(asNullable(), tag)
 
 internal fun Any?.markSequentialTag(vararg tag: TagType?): TagType? =
     tag.first()?.let { tag ->
-    combineTags(tag, returnItsTag(this))
+    combineTags(tag, returnTag(this))
     .also { this@markSequentialTag.markTag(it) } }
 
 private fun <T> T.applyMarkTag(tag: TagType) = apply { markTag(tag) }
@@ -1508,7 +1508,7 @@ private fun markTagsForClkAttach(vararg function: Any?, i: Int = 0) =
 private fun markTagsForSeqAttach(vararg function: Any?, i: Int = 0) =
     function[i]?.asTagType().let { stepTag ->
     val stepTag = stepTag ?: NULL_STEP
-    function[i + 1]?.let { index ->
+    function[i + 1].asInt()?.let { index ->
         jobs?.save(index.asCallable(),
             reduceTags(stepTag, TAG_DOT, INDEX))
     function[i + 2]?.asLiveWork()?.let { work ->
@@ -1525,8 +1525,8 @@ private fun markTagsForSeqLaunch(vararg function: Any?, i: Int = 0) =
             reduceTags(stepTag, TAG_HASH, index.toTagType(), TAG_AT, jobId.toTagType(), TAG_DOT, CONTEXT), false) } /* context */ }
 
 private fun markTagsForCtxReform(vararg function: Any?, i: Int = 0) =
-    returnItsTag(function[i + 1]).asTagType()?.let { stageTag ->
-    combineTags(stageTag, function[i] /* id tag */) }?.also { stageTag ->
+    returnTag(function[i + 1]).asTagType()?.let { stageTag ->
+    combineTags(stageTag, function[i].asTagType() /* id tag */) }?.also { stageTag ->
     val jobId = function[i + 3]?.let { job ->
         jobs?.save(job.asCallable(),
             reduceTags(stageTag, TAG_DOT, JOB), false)
@@ -2140,7 +2140,7 @@ private open class Item<out T>(override val obj: T) : ObjectReference<T> {
     }
 
     var tag: TagType? = null
-        get() = ::obj.tag?.id ?: field ?: obj.getTag()
+        get() = ::obj.tag?.id ?: field ?: obj.hashTag()
 
     lateinit var type: Type
 
@@ -2216,44 +2216,44 @@ internal annotation class Keep
 @Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
 @Repeatable
 annotation class Path(
-    val name: String = "",
+    val name: PathType,
     val route: SchedulerPath = []) {
 
     @Retention(SOURCE)
     @Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
     @Repeatable
     annotation class Adjacent(
-        val paths: StringArray = [])
+        val paths: PathArray = [])
 
     @Retention(SOURCE)
     @Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
     @Repeatable
     annotation class Preceding(
-        val paths: StringArray = [])
+        val paths: PathArray = [])
 
     @Retention(SOURCE)
     @Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
     @Repeatable
     annotation class Proceeding(
-        val paths: StringArray = [])
+        val paths: PathArray = [])
 
     @Retention(SOURCE)
     @Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
     @Repeatable
     annotation class Parallel(
-        val paths: StringArray = [])
+        val paths: PathArray = [])
 
     @Retention(SOURCE)
     @Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
     @Repeatable
     annotation class Diverging(
-        val paths: StringArray = [])
+        val paths: PathArray = [])
 
     @Retention(SOURCE)
     @Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
     @Repeatable
     annotation class Converging(
-        val paths: StringArray = [])
+        val paths: PathArray = [])
 }
 
 open class SchedulerIntent : Throwable()
@@ -2269,7 +2269,7 @@ annotation class WithContext
 @Retention(SOURCE)
 @Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
 internal annotation class JobTree(
-    val branch: String = "",
+    val branch: PathType,
     val level: LevelType = 0u)
 
 @Retention(SOURCE)
@@ -2432,20 +2432,25 @@ private typealias TagTypePointer = () -> TagType?
 
 private fun Any?.asTagType() = asType<TagType>()
 
-private fun Any.toTagType() =
-    (if (TagType::class.isString)
-        toString()
-    else if (this is String)
+private fun Number.toTagType() =
+    (if (TagType::class.isNumber)
+        this
+    else toString()).asTagType()!!
+
+private fun String.toTagType() =
+    (if (TagType::class.isNumber)
         toInt()
-    else
-        this).asTagType()!!
+    else this).asTagType()!!
 
-private fun Any?.getTag() = hashCode().toTagType()
+private fun Any?.hashTag() = hashCode().toTagType()
 
+private val KClass<TagType>.isNumber get() = TagType::class !== String::class
 private val KClass<TagType>.isString get() = TagType::class === String::class
-private val KClass<TagType>.isNotString get() = TagType::class !== String::class
 
 internal fun Array<out Tag>.mapToTagArray() = mapToTypedArray { it.id }
+
+private typealias PathType = String
+private typealias PathArray = Array<PathType>
 
 internal fun Array<out Path>.mapToTagArray() = mapToTypedArray { it.name }
 
