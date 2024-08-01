@@ -114,17 +114,17 @@ interface BaseServiceScope : ResolverScope, ReferredContext, UniqueContext {
         condition(instance, tag,
             formAfterMarkingTagsForCtxReform(tag, stage, post, currentJob())) }
 
-    private suspend inline fun <reified D : RoomDatabase> SequencerScope.buildDatabaseOrResetByTag(instance: KMutableProperty<out D?>, tag: String) {
+    private suspend inline fun <reified D : RoomDatabase> SequencerScope.buildDatabaseOrResetByTag(instance: KMutableProperty<out D?>, tag: TagType) {
         ref?.get()?.run<Context, D?> {
             sequencer { trySafelyCanceling {
             resetByTagOnError(tag) {
             commitAsyncAndResetByTag(instance, tag, ::buildDatabase) } } }
         }?.apply(instance::set) }
 
-    private suspend inline fun <R> SequencerScope.commitAsyncAndResetByTag(lock: AnyKProperty, tag: String, block: () -> R) =
+    private suspend inline fun <R> SequencerScope.commitAsyncAndResetByTag(lock: AnyKProperty, tag: TagType, block: () -> R) =
         commitAsyncOrResetByTag(lock, tag) { block().also { resetByTag(tag) } }
 
-    private suspend inline fun <R> SequencerScope.commitAsyncOrResetByTag(lock: AnyKProperty, tag: String, block: () -> R) =
+    private suspend inline fun <R> SequencerScope.commitAsyncOrResetByTag(lock: AnyKProperty, tag: TagType, block: () -> R) =
         commitAsyncForResult(lock, lock::isNull, block) { resetByTag(tag); null }
 
     private fun SequencerScope.synchronize(identifier: Any?, stage: ContextStep?) =
@@ -141,10 +141,10 @@ interface BaseServiceScope : ResolverScope, ReferredContext, UniqueContext {
 
     private fun SequencerScope.form(stage: ContextStep, vararg step: AnyStep) = step.first() then form(stage)
 
-    private fun formAfterMarkingTagsForCtxReform(tag: String, stage: ContextStep?, form: AnyStep, job: Job) =
+    private fun formAfterMarkingTagsForCtxReform(tag: TagType, stage: ContextStep?, form: AnyStep, job: Job) =
         (form after { markTagsForCtxReform(tag, stage, form, job) })!!
 
-    private suspend inline fun whenNotNullOrResetByTag(instance: AnyKProperty, stage: String, step: AnyStep) =
+    private suspend inline fun whenNotNullOrResetByTag(instance: AnyKProperty, stage: TagType, step: AnyStep) =
         if (instance.isNotNull())
             step()
         else resetByTag(stage)
@@ -672,22 +672,22 @@ internal fun SequencerScope.cancel() =
 internal fun SequencerScope.commit(vararg tag: Tag) =
     commit(*tag.mapToTagArray())
 
-internal fun LiveWork.attach(tag: String? = null, owner: LifecycleOwner? = null) =
+internal fun LiveWork.attach(tag: TagType? = null, owner: LifecycleOwner? = null) =
     Sequencer.attach(this, tag)
 
-internal fun LiveWork.attachOnce(tag: String? = null, owner: LifecycleOwner? = null) =
+internal fun LiveWork.attachOnce(tag: TagType? = null, owner: LifecycleOwner? = null) =
     Sequencer.attachOnce(this, tag)
 
-internal fun LiveWork.attachAfter(tag: String? = null, owner: LifecycleOwner? = null) =
+internal fun LiveWork.attachAfter(tag: TagType? = null, owner: LifecycleOwner? = null) =
     Sequencer.attachAfter(this, tag)
 
-internal fun LiveWork.attachBefore(tag: String? = null, owner: LifecycleOwner? = null) =
+internal fun LiveWork.attachBefore(tag: TagType? = null, owner: LifecycleOwner? = null) =
     Sequencer.attachBefore(this, tag)
 
-internal fun LiveWork.attachOnceAfter(tag: String? = null, owner: LifecycleOwner? = null) =
+internal fun LiveWork.attachOnceAfter(tag: TagType? = null, owner: LifecycleOwner? = null) =
     Sequencer.attachOnceAfter(this, tag)
 
-internal fun LiveWork.attachOnceBefore(tag: String? = null, owner: LifecycleOwner? = null) =
+internal fun LiveWork.attachOnceBefore(tag: TagType? = null, owner: LifecycleOwner? = null) =
     Sequencer.attachOnceBefore(this, tag)
 
 internal fun LiveWork.detach() {}
@@ -844,12 +844,12 @@ private class Sequencer : Synchronizer<LiveWork>, Transactor<Int, Boolean?>, Pri
         queue.add(index)
         resume() }
 
-    fun resume(tag: TagType) {
+    fun resumeByTag(tag: TagType) {
         fun getIndex(tag: TagType): Int = TODO()
         resume(getIndex(tag)) }
 
     fun resume(tag: Tag) =
-        resume(tag.id)
+        resumeByTag(tag.id)
 
     fun resume() {
         isActive = true
@@ -1003,15 +1003,15 @@ private class Sequencer : Synchronizer<LiveWork>, Transactor<Int, Boolean?>, Pri
 
         const val ATTACHED_ALREADY = -1
 
-        fun attach(step: LiveWork, tag: String? = null) = invoke { attach(step, tag) }
-        fun attachOnce(step: LiveWork, tag: String? = null) = invoke { attachOnce(step, tag) }
-        fun attachAfter(step: LiveWork, tag: String? = null) = invoke { attachAfter(step, tag) }
-        fun attachBefore(step: LiveWork, tag: String? = null) = invoke { attachBefore(step, tag) }
-        fun attachOnceAfter(step: LiveWork, tag: String? = null) = invoke { attachOnceAfter(step, tag) }
-        fun attachOnceBefore(step: LiveWork, tag: String? = null) = invoke { attachOnceBefore(step, tag) }
+        fun attach(step: LiveWork, tag: TagType? = null) = invoke { attach(step, tag) }
+        fun attachOnce(step: LiveWork, tag: TagType? = null) = invoke { attachOnce(step, tag) }
+        fun attachAfter(step: LiveWork, tag: TagType? = null) = invoke { attachAfter(step, tag) }
+        fun attachBefore(step: LiveWork, tag: TagType? = null) = invoke { attachBefore(step, tag) }
+        fun attachOnceAfter(step: LiveWork, tag: TagType? = null) = invoke { attachOnceAfter(step, tag) }
+        fun attachOnceBefore(step: LiveWork, tag: TagType? = null) = invoke { attachOnceBefore(step, tag) }
 
         fun start() = invoke { start() }
-        fun resume(tag: String) = invoke { resume(tag) }
+        fun resumeByTag(tag: TagType) = invoke { resumeByTag(tag) }
         fun resume(tag: Tag) = invoke { resume(tag) }
         fun resume() = invoke { resume() }
         fun resumeAsync() = invoke { resumeAsync() }
@@ -1405,7 +1405,15 @@ private fun JobFunctionSet.save(function: AnyKCallable, tag: TagType?, keep: Boo
 
 private fun combineTags(tag: TagType, self: Any?) =
     if (self === null) tag
-    else "$tag.$self"
+    else reduceTags(tag, TAG_DOT, self.toTagType())
+
+internal fun reduceTags(vararg tag: TagType) =
+    (if (TagType::class.isNotString)
+        tag.map(TagType::toInt)
+            .reduce(Int::times)
+    else
+        tag.map(TagType::toString)
+            .reduce { acc, it -> acc + it }).asTagType()!!
 
 private fun returnItsTag(it: Any?) = it.asNullable().tag?.id
 
@@ -1459,42 +1467,53 @@ private fun markTagsForJobLaunch(vararg function: Any?, i: Int = 0) =
     function[i + 2]?.markTag()?.also { tag ->
     val stepTag = tag.id
     val jobId = function[i + 4]?.let { job ->
-        jobs?.save(job.asCallable(), "$stepTag.$JOB", tag.keep)
+        jobs?.save(job.asCallable(),
+            reduceTags(stepTag, TAG_DOT, JOB), tag.keep)
         job.toJobId() } /* job */
     function[i]?.let { context ->
-        jobs?.save(context.asCallable(), "$stepTag@$jobId.$CONTEXT", false) } /* context */
+        jobs?.save(context.asCallable(),
+            reduceTags(stepTag, TAG_AT, jobId!!.toTagType(), TAG_DOT, CONTEXT), false) } /* context */
     function[i + 1]?.let { start ->
-        jobs?.save(start.asCallable(), "$stepTag@$jobId.$START", false) } /* start */ }
+        jobs?.save(start.asCallable(),
+            reduceTags(stepTag, TAG_AT, jobId!!.toTagType(), TAG_DOT, START), false) } /* start */ }
 
 private fun markTagsForJobRepeat(vararg function: Any?, i: Int = 0) =
     function[i + 2]?.markTag()?.also { blockTag ->
     val blockTag = blockTag.id
     val jobId = function[i + 3].toJobId()
     function[i + 1]?.let { delay ->
-        jobs?.save(delay.asCallable(), "$blockTag@$jobId.$DELAY") } /* delay */
+        jobs?.save(delay.asCallable(),
+            reduceTags(blockTag, TAG_AT, jobId.toTagType(), TAG_DOT, DELAY)) } /* delay */
     function[i]?.let { predicate ->
-        jobs?.save(predicate.asCallable(), "$blockTag@$jobId.$PREDICATE") } /* predicate */ }
+        jobs?.save(predicate.asCallable(),
+            reduceTags(blockTag, TAG_AT, jobId.toTagType(), TAG_DOT, PREDICATE)) } /* predicate */ }
 
 private fun markTagsForClkAttach(vararg function: Any?, i: Int = 0) =
     function[i + 1]?.let { step -> when (step) {
     is Runnable -> {
         val stepTag = getTag(step)
-        jobs?.save(step.asCallable(), "$stepTag.$CALLBACK") /* callback */
+        jobs?.save(step.asCallable(),
+            reduceTags(stepTag!!, TAG_DOT, CALLBACK)) /* callback */
         function[i]?.let { index ->
-        jobs?.save(index.asCallable(), "$stepTag.$INDEX") } /* index */ }
+        jobs?.save(index.asCallable(),
+            reduceTags(stepTag!!, TAG_DOT, INDEX)) } /* index */ }
     is Message -> {
-        jobs?.save(step.asCallable(), "${getTag(step)}.$MSG") /* message */ }
+        jobs?.save(step.asCallable(),
+            reduceTags(getTag(step)!!, TAG_DOT, MSG)) /* message */ }
     is Int ->
-        jobs?.save(step.asCallable(), "${getTag(step)}.$WHAT" /* what */ )
+        jobs?.save(step.asCallable(),
+            reduceTags(getTag(step)!!, TAG_DOT, WHAT) /* what */ )
     else -> null } }
 
 private fun markTagsForSeqAttach(vararg function: Any?, i: Int = 0) =
     function[i]?.asTagType().let { stepTag ->
     val stepTag = stepTag ?: NULL_STEP
     function[i + 1]?.let { index ->
-        jobs?.save(index.asCallable(), "$stepTag.$INDEX")
+        jobs?.save(index.asCallable(),
+            reduceTags(stepTag, TAG_DOT, INDEX))
     function[i + 2]?.asLiveWork()?.let { work ->
-        jobs?.save(work.asCallable(), "$stepTag#$index.$WORK") } } /* index & work */ }
+        jobs?.save(work.asCallable(),
+            reduceTags(stepTag, TAG_HASH, index.toTagType(), TAG_DOT, WORK)) } } /* index & work */ }
 
 private fun markTagsForSeqLaunch(vararg function: Any?, i: Int = 0) =
     function[i]?.markTag()?.also { stepTag ->
@@ -1502,16 +1521,19 @@ private fun markTagsForSeqLaunch(vararg function: Any?, i: Int = 0) =
     val index = function[i + 1]?.asInt()!! // optionally, readjust by remarks or from seq here instead
     val jobId = function[i + 3].toJobId()
     function[i + 2]?.let { context ->
-        jobs?.save(context.asNullable(), "$stepTag#$index@$jobId.$CONTEXT", false) } /* context */ }
+        jobs?.save(context.asNullable(),
+            reduceTags(stepTag, TAG_HASH, index.toTagType(), TAG_AT, jobId.toTagType(), TAG_DOT, CONTEXT), false) } /* context */ }
 
 private fun markTagsForCtxReform(vararg function: Any?, i: Int = 0) =
     returnItsTag(function[i + 1]).asTagType()?.let { stageTag ->
     combineTags(stageTag, function[i] /* id tag */) }?.also { stageTag ->
     val jobId = function[i + 3]?.let { job ->
-        jobs?.save(job.asCallable(), "$stageTag.$JOB", false)
+        jobs?.save(job.asCallable(),
+            reduceTags(stageTag, TAG_DOT, JOB), false)
         job.toJobId() } /* job */
     function[i + 2]?.let { form ->
-        jobs?.save(form.asCallable(), "$stageTag@$jobId.$FORM", false) } /* form */ }
+        jobs?.save(form.asCallable(),
+            reduceTags(stageTag, TAG_AT, jobId!!.toTagType(), TAG_DOT, FORM), false) } /* form */ }
 
 inline infix fun <R, S> (suspend () -> R)?.then(crossinline next: suspend () -> S): (suspend () -> S)? = this?.let { {
     this@then()
@@ -2329,7 +2351,7 @@ private val Any.isEnlisted
 private val Any.isUnlisted
     get() = asCallable().annotations.find { it is Unlisted } !== null
 
-private typealias PropertyCondition = suspend (AnyKProperty, String, AnyStep) -> Any?
+private typealias PropertyCondition = suspend (AnyKProperty, TagType, AnyStep) -> Any?
 private typealias PropertyPredicate = suspend (AnyKProperty) -> Boolean
 private typealias PropertyState = suspend (AnyKProperty) -> Any?
 
@@ -2410,13 +2432,18 @@ private typealias TagTypePointer = () -> TagType?
 
 private fun Any?.asTagType() = asType<TagType>()
 
-private fun Any?.getTag() =
+private fun Any.toTagType() =
     (if (TagType::class.isString)
-        "${hashCode()}"
+        toString()
+    else if (this is String)
+        toInt()
     else
-        hashCode()).asTagType()!!
+        this).asTagType()!!
+
+private fun Any?.getTag() = hashCode().toTagType()
 
 private val KClass<TagType>.isString get() = TagType::class === String::class
+private val KClass<TagType>.isNotString get() = TagType::class !== String::class
 
 internal fun Array<out Tag>.mapToTagArray() = mapToTypedArray { it.id }
 

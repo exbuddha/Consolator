@@ -394,6 +394,11 @@ internal fun bypassAllLogs() {
 
 private typealias LogFunction = (String, String) -> Any?
 
+internal const val TAG_DOT = "."
+internal const val TAG_AT = "@"
+internal const val TAG_HASH = "#"
+internal const val TAG_DASH = "-"
+
 internal const val IS = "is"
 internal const val MIN = "min"
 internal const val NULL = "null"
