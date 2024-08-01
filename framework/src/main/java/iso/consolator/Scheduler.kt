@@ -290,9 +290,9 @@ sealed interface SchedulerScope : ResolverScope {
 interface ResolverScope : CoroutineScope, Transactor<AnyCoroutineStep, Any?> {
     override val coroutineContext: CoroutineContext
         get() = SchedulerContext
-
-    fun windDown() = Unit
 }
+
+private fun ResolverScope.windDown() = Unit
 
 interface Resolver : ResolverScope {
     override fun commit(step: AnyCoroutineStep) =
@@ -2038,11 +2038,11 @@ interface Transactor<T, out R> {
 private object HandlerScope : ResolverScope {
     override fun commit(step: AnyCoroutineStep) =
         attach(step, ::handle)
-
-    override fun windDown() {
-        Clock.apply {
-        Process.setThreadPriority(threadId, Process.THREAD_PRIORITY_DEFAULT) } }
 }
+
+private fun HandlerScope.windDown() {
+    Clock.apply {
+        Process.setThreadPriority(threadId, Process.THREAD_PRIORITY_DEFAULT) } }
 
 @OptIn(ExperimentalCoroutinesApi::class)
 object EventBus : AbstractFlow<Any?>(), Transactor<ContextStep, Boolean>, PriorityQueue<Any?> {
@@ -2202,6 +2202,10 @@ private abstract class Node<out R>(override val obj: R) : Item<R>(obj), KCallabl
     override val returnType = ::obj.returnType
     override val typeParameters = ::obj.typeParameters
     override val visibility = ::obj.visibility
+}
+
+interface FunctionProvider {
+    operator fun <R> invoke(vararg tag: TagType): KCallable<R>
 }
 
 @Retention(SOURCE)
@@ -2442,7 +2446,7 @@ internal typealias ChannelType = Short
 
 internal fun Number?.toChannel() = this?.asType<ChannelType>()
 
-private typealias TagType = String
+typealias TagType = String
 private typealias TagTypePointer = () -> TagType?
 
 private fun Any?.asTagType() = asType<TagType>()

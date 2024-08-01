@@ -6,11 +6,12 @@ import androidx.annotation.*
 import androidx.core.os.*
 import androidx.fragment.app.*
 import iso.consolator.*
+import kotlin.reflect.*
 
 @IdRes
 internal var containerViewId = R.id.layout_background
 
-internal open class MainActivity : BaseActivity(), ObjectProvider {
+internal open class MainActivity : BaseActivity(), ObjectProvider, FunctionProvider {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (savedInstanceState === null)
@@ -51,4 +52,6 @@ internal open class MainActivity : BaseActivity(), ObjectProvider {
             LocalesChangeManager()
         else ->
             throw BaseImplementationRestriction() }
+
+    override fun <R> invoke(vararg tag: TagType): KCallable<R> = TODO()
 }

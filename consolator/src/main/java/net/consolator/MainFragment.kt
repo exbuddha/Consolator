@@ -9,7 +9,7 @@ import androidx.fragment.app.FragmentTransaction.TRANSIT_FRAGMENT_OPEN
 import net.consolator.BaseApplication.Companion.ABORT_NAV_MAIN_UI
 import net.consolator.BaseApplication.Companion.COMMIT_NAV_MAIN_UI
 
-internal class MainFragment : BaseFragment(), ObjectProvider {
+internal class MainFragment : BaseFragment(), ObjectProvider, FunctionProvider {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         if (savedInstanceState === null) {
@@ -38,6 +38,8 @@ internal class MainFragment : BaseFragment(), ObjectProvider {
     private inline fun <reified R> screenEventInterceptor(listener: Any, callback: KFunction<R>, vararg args: Any?, noinline postback: PostbackFunction?): Interception = null
 
     override fun invoke(type: AnyKClass) = activity.asObjectProvider()!!(type)
+
+    override fun <R> invoke(vararg tag: TagType): KCallable<R> = activity.asFunctionProvider()!!(*tag)
 }
 
 internal typealias Interception = Pair<AnyFunction?, Boolean?>?
