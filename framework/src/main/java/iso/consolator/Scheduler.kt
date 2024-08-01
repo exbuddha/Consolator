@@ -210,18 +210,26 @@ object Scheduler : SchedulerScope, MutableLiveData<AnyStep?>(), AnyStepObserver,
         ?.run { synchronize(this, ::block) } }
 
     override fun <R> synchronize(lock: AnyStep?, block: () -> R) =
-        if (lock !== null)
-            if (lock.isScheduledAhead) {
-                with(queue) { map {
-                    remove(it)
-                    it() } }
+        if (lock !== null) {
+            fun AnyFunctionList.run() { map {
+                remove(it)
+                it() } }
+            if (lock.isImplicit)
+                block()
+            else
+            if (lock.isScheduledLast) {
+                queue.run()
                 block() }
+            else
+            if (lock.isScheduledFirst)
+                block().also {
+                queue.run() }
             else {
                 queue.add(block)
-                Unit.type() }
+                Unit.type() } }
         else Unit.type()
 
-    override var queue: MutableList<AnyFunction> = mutableListOf()
+    override var queue: AnyFunctionList = mutableListOf()
 
     internal operator fun <R> invoke(work: Scheduler.() -> R) = this.work()
 }
@@ -2293,7 +2301,11 @@ private annotation class Synchronous(
 
 @Retention(SOURCE)
 @Target(EXPRESSION)
-annotation class Ahead
+annotation class First
+
+@Retention(SOURCE)
+@Target(EXPRESSION)
+annotation class Last
 
 @Retention(SOURCE)
 @Target(EXPRESSION)
@@ -2339,8 +2351,11 @@ private val Any.annotatedScope
 
 private fun Any.annotatedOrSchedulerScope() = annotatedScope ?: SchedulerScope()
 
-internal val AnyStep.isScheduledAhead
-    get() = asCallable().annotations.find { it is Ahead } !== null
+internal val AnyStep.isScheduledFirst
+    get() = asCallable().annotations.find { it is First } !== null
+
+internal val AnyStep.isScheduledLast
+    get() = asCallable().annotations.find { it is Last } !== null
 
 internal val Any.isImplicit
     get() = asCallable().annotations.find { it is Implicit } !== null

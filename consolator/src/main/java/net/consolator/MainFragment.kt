@@ -18,7 +18,7 @@ internal class MainFragment : BaseFragment(), ObjectProvider {
                 show(this@MainFragment) }
             transit = fun(action: Short) { when (action) {
                 COMMIT_NAV_MAIN_UI ->
-                    schedule @Ahead {
+                    schedule @Implicit {
                     parentFragmentManager.commit {
                         setTransition(TRANSIT_FRAGMENT_OPEN)
                         replace(
