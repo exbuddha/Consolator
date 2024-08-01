@@ -2062,7 +2062,7 @@ object EventBus : AbstractFlow<Any?>(), Transactor<ContextStep, Boolean>, Priori
     internal fun commit(vararg event: Event) =
         event.forEach { commit(it.transit) }
 
-    override var queue: MutableList<Any?> = mutableListOf()
+    override var queue: AnyMutableList = mutableListOf()
 
     internal fun clear() {
         queue.clear() }

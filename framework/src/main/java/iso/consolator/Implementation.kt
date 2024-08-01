@@ -341,6 +341,7 @@ typealias ObjectProvider = (AnyKClass) -> Any
 
 typealias AnyArray = Array<*>
 internal typealias StringArray = Array<String>
+internal typealias AnyMutableList = MutableList<Any?>
 typealias AnyFunction = () -> Any?
 internal typealias AnyFunctionList = MutableList<AnyFunction>
 internal typealias AnyToAnyFunction = (Any?) -> Any?
