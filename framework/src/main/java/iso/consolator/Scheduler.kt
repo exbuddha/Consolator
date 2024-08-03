@@ -339,11 +339,11 @@ inline fun <reified T : Resolver> Context.defer(member: UnitKFunction, vararg co
 inline fun <reified T : Resolver> Activity.defer(member: UnitKFunction, vararg context: Any?, noinline `super`: Work) =
     defer(T::class, this, member, *context, `super`)
 
-fun implicit(`super`: Work) = when {
-    `super`.isImplicit -> {
-        `super`()
+fun implicit(work: Work) = when {
+    work.isImplicit -> {
+        work()
         emptyWork }
-    else -> `super` }
+    else -> work }
 
 internal fun attach(step: AnyCoroutineStep, vararg args: Any?): Any? {
     val enlist: AnyCoroutineFunction? = (
