@@ -76,6 +76,9 @@ fun commit(vararg context: Any?): Any? =
             is Activity -> { /* notify activity-stop listener */ }
             is Fragment -> { /* notify fragment-stop listener */ }
             else -> Unit } }
+        (task === DESTROY) -> { when (val component = context.secondOrNull()) {
+            is Fragment -> {}
+            else -> Unit } }
         else -> Unit }
 
 interface BaseServiceScope : ResolverScope, ReferredContext, UniqueContext {
@@ -427,15 +430,15 @@ internal fun launch(context: CoroutineContext = SchedulerContext, start: Corouti
 
 fun LifecycleOwner.launch(context: CoroutineContext = SchedulerContext, start: CoroutineStart = CoroutineStart.DEFAULT, step: AnyCoroutineStep): Job? {
     val scope = step.annotatedScope ?: lifecycleScope
-    val (context, start, step) = scope.determineCoroutine(context, start, step)
+    val (context, start, step) = scope.determineCoroutine(this, context, start, step)
     step.markTagForFloLaunch()
         .afterTrackingTagsForJobLaunch(this, context, start).let { step ->
     return scope.launch(context, start) { step() }
         .apply { saveNewElement(step) } } }
 
-private fun CoroutineScope.determineCoroutine(context: CoroutineContext, start: CoroutineStart, step: AnyCoroutineStep) =
+private fun CoroutineScope.determineCoroutine(owner: LifecycleOwner, context: CoroutineContext, start: CoroutineStart, step: AnyCoroutineStep) =
     Triple(
-        // context key <-> step
+        // context key <-> step <-> owner
         if (context.isSchedulerContext()) context
         else SchedulerContext + context,
         start,
@@ -1439,10 +1442,10 @@ private fun combineTags(tag: TagType, self: TagType?) =
 internal fun reduceTags(vararg tag: TagType) =
     (if (TagType::class.isNumber)
         tag.map(TagType::toInt)
-            .reduce(Int::times)
+            .reduce(Int::plus)
     else
         tag.map(TagType::toString)
-            .reduce { acc, it -> acc + it }).asTagType()!!
+            .reduce(String::concat)).asTagType()!!
 
 private fun returnTag(it: Any?) = it.asNullable().tag?.id
 
@@ -1498,14 +1501,20 @@ private fun markTagsForJobLaunch(vararg function: Any?, i: Int = 0) =
     jobs?.save(function[i + 3].asCallable(), tag) /* step */
     function[i].let { owner ->
         /* notify pre-save listener */
-        jobs?.save(owner.asNullable(), reduceTags(stepTag, TAG_AT,
-            (if (owner is Activity)
+        jobs?.save(owner.asNullable(), reduceTags(stepTag, TAG_AT, when (owner) {
+            is Activity ->
                 owner::class.tag?.id
-            else if (TagType::class.isNumber)
-                owner.asFragment()?.id
-            else
-                owner.asFragment()?.tag)
-        .asTagType()!!)) } /* owner */
+                ?: owner::class.hashTag()
+            is Fragment ->
+                owner.asFragment()?.let {
+                if (TagType::class.isNumber)
+                    it.id
+                else it.tag }
+                ?: owner::class.tag?.id
+                ?: owner::class.hashTag()
+            else ->
+                owner?.let { it::class.hashTag() } }
+        .asTagType()!!, TAG_DOT, OWNER)) } /* owner */
     val jobId = function[i + 5]?.let { job ->
         jobs?.save(job.asCallable(),
             reduceTags(stepTag, TAG_DOT, JOB), tag.keep)
@@ -2499,6 +2508,8 @@ private fun Any?.hashTag() = hashCode().toTagType()
 
 private val KClass<TagType>.isNumber get() = TagType::class !== String::class
 private val KClass<TagType>.isString get() = TagType::class === String::class
+
+private fun String.concat(it: String) = this + it
 
 internal fun Array<out Tag>.mapToTagArray() = mapToTypedArray { it.id }
 
