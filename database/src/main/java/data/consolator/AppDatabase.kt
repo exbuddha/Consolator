@@ -31,13 +31,13 @@ abstract class AppDatabase : RoomDatabase() {
 
     companion object {
         var dateTimeFormat: DateFormat? = null
-            get() = field.require { SimpleDateFormat(
-                "yyyy-MM-dd HH:mm:ss", Locale.US) }
+            get() = field ?: SimpleDateFormat(
+                "yyyy-MM-dd HH:mm:ss", Locale.US)
                 .also { field = it }
 
         var dbTimeDiff: Long? = null
-            get() = field.require { session?.run {
-                dbTime.toLocalTime() - initTime } }
+            get() = field ?: session?.run {
+                dbTime.toLocalTime() - initTime }
                 ?.also { field = it }
 
         internal const val DB_VERSION = 1

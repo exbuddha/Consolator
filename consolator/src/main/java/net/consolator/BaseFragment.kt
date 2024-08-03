@@ -95,23 +95,32 @@ internal abstract class BaseFragment : Fragment(contentLayoutId) {
         super.onStart()
         if (foregroundLifecycleOwner === activity)
             foregroundLifecycleOwner = this
+        commit(START, this)
     }
 
     override fun onResume() {
         if (State[1] !is Resolved)
             reattach(MainViewGroup::class)
         super.onResume()
+        commit(RESUME, this)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        commit(PAUSE, this)
     }
 
     override fun onStop() {
+        commit(STOP, this)
         if (foregroundLifecycleOwner === this)
             foregroundLifecycleOwner = parentFragment ?: activity
         super.onStop()
     }
 
     override fun onDestroyView() {
-        close(MainViewGroup::class)
         super.onDestroyView()
+        close(MainViewGroup::class)
+        commit(DESTROY, this)
     }
 
     @Retention(SOURCE)

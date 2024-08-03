@@ -28,10 +28,27 @@ internal abstract class BaseActivity : AppCompatActivity(), ReferredContext {
         super.onStart()
         foregroundLifecycleOwner = this
         enableNetworkCallbacks?.invoke()
+        commit(START, this)
+    }
+
+    override fun onRestart() {
+        super.onRestart()
+        commit(RESTART, this)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        commit(RESUME, this)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        commit(PAUSE, this)
     }
 
     override fun onStop() {
         disableNetworkCallbacks?.invoke()
+        commit(STOP, this)
         foregroundLifecycleOwner = null
         super.onStop()
     }

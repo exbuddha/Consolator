@@ -40,23 +40,42 @@ internal fun commit(step: CoroutineStep) =
 
 fun commit(vararg context: Any?): Any? =
     when (val task = context.firstOrNull()) {
-        (task === START) -> {
-            SchedulerScope {
-                init()
-                preferClock()
-                preferScheduler() }
-            if (SchedulerScope.isClockPreferred)
-                clock = Clock(SVC, Thread.MAX_PRIORITY)
-                @Synchronous @Tag(CLOCK_INIT) {
-                    // turn clock until scope is active
-                    log(info, SVC_TAG, "Clock is detected.") }
-                .alsoStart()
-            with(foregroundContext) {
-                startService(
-                intendFor(context.secondOrNull().asType<Service>()!!::class)
-                .putExtra(START_TIME_KEY,
-                    startTime()))
-        } }
+        (task === START) -> { when (val component = context.secondOrNull()) {
+            BaseServiceScope::class -> {
+                SchedulerScope {
+                    init()
+                    preferClock()
+                    preferScheduler() }
+                if (SchedulerScope.isClockPreferred)
+                    clock = Clock(SVC, Thread.MAX_PRIORITY)
+                    @Synchronous @Tag(CLOCK_INIT) {
+                        // turn clock until scope is active
+                        log(info, SVC_TAG, "Clock is detected.") }
+                    .alsoStart()
+                with(foregroundContext) {
+                    startService(
+                    intendFor(component.asType()!!)
+                    .putExtra(START_TIME_KEY,
+                        startTime()))
+            } }
+            is Activity -> { /* notify activity-start listener */ }
+            is Fragment -> { /* notify fragment-start listener */ }
+            else -> Unit } }
+        (task === RESTART) -> { when (val component = context.secondOrNull()) {
+            is Activity -> { /* notify activity-restart listener */ }
+            else -> Unit } }
+        (task === RESUME) -> { when (val component = context.secondOrNull()) {
+            is Activity -> { /* notify activity-resume listener */ }
+            is Fragment -> { /* notify fragment-resume listener */ }
+            else -> Unit } }
+        (task === PAUSE) -> { when (val component = context.secondOrNull()) {
+            is Activity -> { /* notify activity-pause listener */ }
+            is Fragment -> { /* notify fragment-pause listener */ }
+            else -> Unit } }
+        (task === STOP) -> { when (val component = context.secondOrNull()) {
+            is Activity -> { /* notify activity-stop listener */ }
+            is Fragment -> { /* notify fragment-stop listener */ }
+            else -> Unit } }
         else -> Unit }
 
 interface BaseServiceScope : ResolverScope, ReferredContext, UniqueContext {
@@ -362,9 +381,9 @@ private fun detach(step: CoroutineStep) =
     ?: step
 
 private fun launch(it: CoroutineStep) =
-    Scheduler.launch(SchedulerContext, block = it
-        .markTagForSchLaunch()
-        .afterTrackingTagsForJobLaunch())
+    Scheduler.launch(SchedulerContext, block = {
+        it.markTagForSchLaunch()
+        .afterTrackingTagsForJobLaunch()() })
     .apply { saveNewElement(it) }
 
 private object SchedulerContext : CoroutineContext {
@@ -402,16 +421,16 @@ private fun relaunch(launcher: JobKFunction, instance: JobKProperty, context: Co
 
 internal fun launch(context: CoroutineContext = SchedulerContext, start: CoroutineStart = CoroutineStart.DEFAULT, step: AnyCoroutineStep) =
     step.markTagForSchLaunch()
-        .afterTrackingTagsForJobLaunch(context, start).let { step ->
-    Scheduler.launch(context, start, step)
+        .afterTrackingTagsForJobLaunch(null, context, start).let { step ->
+    Scheduler.launch(context, start) { step() }
         .apply { saveNewElement(step) } }
 
 fun LifecycleOwner.launch(context: CoroutineContext = SchedulerContext, start: CoroutineStart = CoroutineStart.DEFAULT, step: AnyCoroutineStep): Job? {
     val scope = step.annotatedScope ?: lifecycleScope
     val (context, start, step) = scope.determineCoroutine(context, start, step)
     step.markTagForFloLaunch()
-        .afterTrackingTagsForJobLaunch(context, start).let { step ->
-    return scope.launch(context, start, step)
+        .afterTrackingTagsForJobLaunch(this, context, start).let { step ->
+    return scope.launch(context, start) { step() }
         .apply { saveNewElement(step) } } }
 
 private fun CoroutineScope.determineCoroutine(context: CoroutineContext, start: CoroutineStart, step: AnyCoroutineStep) =
@@ -426,8 +445,10 @@ private fun CoroutineContext.isSchedulerContext() =
     this is SchedulerContext ||
     this[SchedulerKey] is SchedulerElement
 
-private fun AnyCoroutineStep.afterTrackingTagsForJobLaunch(context: CoroutineContext? = null, start: CoroutineStart? = null) =
-    (after { job, _ -> markTagsForJobLaunch(context, start, this, job) })!!
+private fun AnyCoroutineStep.afterTrackingTagsForJobLaunch(owner: LifecycleOwner? = null, context: CoroutineContext? = null, start: CoroutineStart? = null) =
+    returnTag(this)?.let { tag ->
+    (after { job, _ -> markTagsForJobLaunch(owner, context, start, this, tag, job) })!! }
+    ?: this
 
 private fun Job.saveNewElement(step: AnyCoroutineStep) {}
 
@@ -1472,18 +1493,30 @@ internal fun markTags(vararg function: Any?) {
                 .forEach(AnyKCallable::markTag) } }
 
 private fun markTagsForJobLaunch(vararg function: Any?, i: Int = 0) =
-    function[i + 2]?.markTag()?.also { tag ->
+    function[i + 4].asTag()?.also { tag ->
     val stepTag = tag.id
-    val jobId = function[i + 4]?.let { job ->
+    jobs?.save(function[i + 3].asCallable(), tag) /* step */
+    function[i].let { owner ->
+        /* notify pre-save listener */
+        jobs?.save(owner.asNullable(), reduceTags(stepTag, TAG_AT,
+            (if (owner is Activity)
+                owner::class.tag?.id
+            else if (TagType::class.isNumber)
+                owner.asFragment()?.id
+            else
+                owner.asFragment()?.tag)
+        .asTagType()!!)) } /* owner */
+    val jobId = function[i + 5]?.let { job ->
         jobs?.save(job.asCallable(),
             reduceTags(stepTag, TAG_DOT, JOB), tag.keep)
         job.toJobId() } /* job */
-    function[i]?.let { context ->
+    function[i + 1]?.let { context ->
         jobs?.save(context.asCallable(),
             reduceTags(stepTag, TAG_AT, jobId!!.toTagType(), TAG_DOT, CONTEXT), false) } /* context */
-    function[i + 1]?.let { start ->
+    function[i + 2]?.let { start ->
         jobs?.save(start.asCallable(),
-            reduceTags(stepTag, TAG_AT, jobId!!.toTagType(), TAG_DOT, START), false) } /* start */ }
+            reduceTags(stepTag, TAG_AT, jobId!!.toTagType(), TAG_DOT, START), false) } /* start */
+        /* notify post-save listener */ }
 
 private fun markTagsForJobRepeat(vararg function: Any?, i: Int = 0) =
     function[i + 2]?.markTag()?.also { blockTag ->
@@ -2138,11 +2171,9 @@ private open class Item<out T>(override val obj: T) : ObjectReference<T> {
 
         fun <T> find(target: AnyKClass = Any::class, key: KeyType): T = TODO()
 
-        fun <T, I : Item<T>> Item<T>.reload(obj: T): I = TODO()
+        fun <T, I : Item<T>> Item<T>.reload(property: KCallable<T>): I = TODO()
 
-        fun <T, I : Item<T>> Item<T>.reload(property: KProperty<T>): I = TODO()
-
-        fun <T, I : Item<T>> Item<T>.reload(tag: String): I = TODO()
+        fun <T, I : Item<T>> Item<T>.reload(tag: TagType): I = TODO()
 
         fun <T, I : Item<T>> Item<T>.reload(target: AnyKClass, key: KeyType): I = TODO()
     }
@@ -2215,7 +2246,7 @@ annotation class Coordinate(
     val key: KeyType = 0)
 
 @Retention(SOURCE)
-@Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+@Target(ANNOTATION_CLASS, CLASS, CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
 annotation class Tag(
     val id: TagType,
     val keep: Boolean = true)
@@ -2322,6 +2353,9 @@ private annotation class Enlisted
 @Retention(SOURCE)
 @Target(EXPRESSION)
 private annotation class Unlisted
+
+private val AnyKClass.tag
+    get() = annotations.find { it is Tag } as? Tag
 
 private val AnyKCallable.tag
     get() = annotations.find { it is Tag } as? Tag
@@ -2477,11 +2511,12 @@ internal typealias LevelType = UByte
 
 internal fun Number?.toLevel() = this?.toByte()?.toUByte()
 
-internal fun Any?.asMessage() = asType<Message>()
-internal fun Any?.asRunnable() = asType<Runnable>()
-internal fun Any?.asLiveWork() = asType<LiveWork>()
-internal fun Any?.asJob() = asType<Job>()
-internal fun Any?.asWork() = asType<Work>()
+private fun Any?.asMessage() = asType<Message>()
+private fun Any?.asRunnable() = asType<Runnable>()
+private fun Any?.asLiveWork() = asType<LiveWork>()
+private fun Any?.asJob() = asType<Job>()
+private fun Any?.asWork() = asType<Work>()
+private fun Any?.asTag() = asType<Tag>()
 
 private typealias SchedulerNode = KClass<out Annotation>
 private typealias SchedulerPath = Array<KClass<out Throwable>>

@@ -146,7 +146,7 @@ internal fun Context.isPermissionGranted(permission: String) =
     ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
 
 internal fun Context.intendFor(cls: Class<*>) = Intent(this, cls)
-internal fun Context.intendFor(cls: AnyKClass) = intendFor(cls.java)
+private fun Context.intendFor(cls: AnyKClass) = intendFor(cls.java)
 
 interface ReferredContext { var ref: WeakContext? }
 
@@ -265,6 +265,9 @@ inline fun <reified T : Any> Any?.asType(): T? =
 
 internal inline fun <reified T : Any> T?.singleton(vararg args: Any?, lock: Any = T::class.lock()) =
     commitAsyncForResult(lock, { this === null }, { T::class.new(*args) }, { this }) as T
+
+internal inline fun <T> T?.require(constructor: () -> T) =
+    this ?: constructor()
 
 internal inline fun <reified T : Any> T?.reconstruct(constructor: KCallable<T?>, vararg args: Any?) =
     this ?: constructor.call(*args)
@@ -406,10 +409,10 @@ internal const val IS = "is"
 internal const val MIN = "min"
 internal const val NULL = "null"
 
+const val MAIN = "main"
 internal const val JOB = "job"
 internal const val BUILD = "build"
 internal const val INIT = "init"
-const val START = "start"
 internal const val LAUNCH = "launch"
 internal const val COMMIT = "commit"
 internal const val EXEC = "exec"
@@ -448,11 +451,21 @@ const val NOW = "now"
 internal const val INTERVAL = "interval"
 internal const val MIN_INTERVAL = "$MIN-$INTERVAL"
 
+internal const val CONFIG = "config"
+const val START = "start"
+const val RESTART = "restart"
+const val RESUME = "resume"
+const val PAUSE = "pause"
+const val STOP = "stop"
+const val DESTROY = "destroy"
+
 internal const val APP = "app"
+internal const val ACTIVITY = "activity"
+internal const val FRAGMENT = "fragment"
 internal const val VIEW = "view"
 internal const val CONTEXT = "context"
 internal const val CTX = "ctx"
-const val MAIN = "main"
+internal const val OWNER = "owner"
 internal const val SHARED = "shared"
 internal const val SERVICE = "service"
 internal const val SVC = "svc"
@@ -466,14 +479,18 @@ internal const val LOG = "log"
 internal const val NET = "net"
 internal const val DB = "db"
 
+const val MAIN_ACTIVITY = "$MAIN-$ACTIVITY"
+const val MAIN_FRAGMENT = "$MAIN-$FRAGMENT"
+
 internal const val APP_DB = "$APP-$DB"
 internal const val LOG_DB = "$LOG-$DB"
 internal const val NET_DB = "$NET-$DB"
 internal const val SESSION = "session"
 
+const val VIEW_ATTACH = "$VIEW.$ATTACH"
+internal const val SCH_CONFIG = "$SCH.$CONFIG"
 internal const val CLOCK_INIT = "$CLOCK.$INIT"
 internal const val CLK_ATTACH = "$CLK.$ATTACH"
-const val VIEW_ATTACH = "$VIEW.$ATTACH"
 internal const val CTX_REFORM = "$CTX.$REFORM"
 internal const val JOB_LAUNCH = "$JOB.$LAUNCH"
 internal const val JOB_REPEAT = "$JOB.$REPEAT"
