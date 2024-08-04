@@ -376,17 +376,15 @@ private fun reattach(step: AnyCoroutineStep) =
 
 private fun detach(step: AnyCoroutineStep) =
     @Unlisted with(Clock) {
+    run { synchronize {
         ::isRunning.then {
         getRunnable(step)?.detach()
         ?: getMessage(step)?.detach()?.asRunnable() } }
-    ?.asCoroutine()
+    ?.asCoroutine() } }
     ?: step
 
 private fun launch(it: AnyCoroutineStep) =
-    Scheduler.launch(SchedulerContext, block = {
-        it.markTagForSchLaunch()
-        .afterTrackingTagsForJobLaunch()() })
-    .apply { saveNewElement(it) }
+    Scheduler.launch { it() }
 
 private object SchedulerContext : CoroutineContext {
     override fun <R> fold(initial: R, operation: (R, CoroutineContext.Element) -> R): R {
@@ -2065,6 +2063,7 @@ internal open class Clock(
         fun quit() = clock?.quit()
 
         fun apply(block: Clock.() -> Unit) = clock?.apply(block)
+        fun <R> run(block: Clock.() -> R) = clock?.run(block)
     }
 }
 
