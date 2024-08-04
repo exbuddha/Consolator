@@ -183,7 +183,7 @@ object Scheduler : SchedulerScope, MutableLiveData<AnyStep?>(), AnyStepObserver,
         removeObserver(this)
         SchedulerScope.isSchedulerObserved = false }
 
-    fun <T : Resolver> defer(resolver: KClass<out T>, provider: Any, vararg context: Any?): Unit? {
+    fun <T : Resolver> defer(resolver: KClass<out T>, provider: Any, vararg context: Any?): Any? {
         fun ResolverKProperty.setResolverThenCommit() =
             reconstruct(provider).get()?.commit(context)
         return when (resolver) {
@@ -324,7 +324,7 @@ interface Resolver : ResolverScope {
         commit(blockOf(step))
 
     fun commit(vararg context: Any?) =
-        context.lastOrNull().asWork()?.invoke()
+        context.lastOrNull().asAnyFunction()?.invoke()
 }
 
 fun ResolverScope.commit(vararg tag: Tag): Any? = TODO()

@@ -339,6 +339,7 @@ internal fun Any?.asString() = asType<String>()
 internal fun Any?.asInt() = asType<Int>()
 internal fun Any?.asLong() = asType<Long>()
 internal fun Any?.asAnyArray() = asType<AnyArray>()
+internal fun Any?.asAnyFunction() = asType<AnyFunction>()
 
 internal typealias ObjectPointer = () -> Any
 typealias ObjectProvider = (AnyKClass) -> Any
