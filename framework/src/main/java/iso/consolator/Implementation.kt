@@ -27,14 +27,14 @@ import kotlinx.serialization.json.Json
 import android.Manifest.permission.ACCESS_NETWORK_STATE
 import android.Manifest.permission.INTERNET
 
-var instance: Application? = null
+lateinit var instance: Application
 var service: BaseServiceScope? = null
 
 internal var receiver: BroadcastReceiver? = null
     get() = field.singleton().also { field = it }
 
 internal val foregroundContext: Context
-    get() = service.asContext() ?: instance!!
+    get() = service.asContext() ?: instance
 
 var foregroundLifecycleOwner: LifecycleOwner? = null
 
