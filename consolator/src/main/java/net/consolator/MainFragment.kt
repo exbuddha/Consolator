@@ -10,13 +10,9 @@ import net.consolator.BaseApplication.Companion.ABORT_NAV_MAIN_UI
 import net.consolator.BaseApplication.Companion.COMMIT_NAV_MAIN_UI
 
 @Tag(MAIN_FRAGMENT)
-internal class MainFragment : BaseFragment(), ObjectProvider, FunctionProvider {
+internal open class MainFragment : BaseFragment(), ObjectProvider, FunctionProvider {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-        if (savedInstanceState === null) {
-            // show animation or progress bar
-            parentFragmentManager.commit {
-                show(this@MainFragment) }
+        if (savedInstanceState === null)
             transit = fun(action: Short) { when (action) {
                 COMMIT_NAV_MAIN_UI ->
                     schedule @Implicit {
@@ -24,7 +20,7 @@ internal class MainFragment : BaseFragment(), ObjectProvider, FunctionProvider {
                         setTransition(TRANSIT_FRAGMENT_OPEN)
                         replace(
                             this@MainFragment.id,
-                            OverlayFragment(::screenEventInterceptor)
+                            OverlayFragment(this@MainFragment, ::screenEventInterceptor)
                             .apply {
                                 /* renew main view */
                             }) } }
@@ -32,7 +28,12 @@ internal class MainFragment : BaseFragment(), ObjectProvider, FunctionProvider {
                     /* continue animation or alternatives */ }
                 else ->
                     throw BaseImplementationRestriction()
-            } }
+        } }
+        super.onViewCreated(view, savedInstanceState)
+        if (savedInstanceState === null) {
+            // show animation or progress bar
+            parentFragmentManager.commit {
+                show(this@MainFragment) }
             log(info, UI_TAG, "Main fragment view is created.") }
     }
 

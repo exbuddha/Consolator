@@ -2,14 +2,18 @@ package net.consolator
 
 import android.view.*
 import android.view.GestureDetector.*
-import androidx.fragment.app.*
 import iso.consolator.*
 import kotlin.reflect.*
 import kotlin.reflect.jvm.*
 
 internal open class OverlayFragment(
-    private var interceptor: InterceptFunction?
-) : Fragment(), OnContextClickListener {
+    previous: MainFragment? = null,
+    private var interceptor: InterceptFunction? = null
+) : MainFragment(), OnContextClickListener {
+    init {
+        previous?.view?.apply {
+        /* rebind to previous view */ } }
+
     override fun onContextClick(event: MotionEvent) =
         intercept(
             OnContextClickListener::onContextClick, event) {
