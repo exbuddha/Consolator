@@ -21,7 +21,7 @@ internal open class BaseApplication : Application(), UniqueContext {
     override fun onCreate() {
         super.onCreate()
         instance = this
-        commit(START, BaseService::class)
+        commitStartApp(BaseService::class)
     }
 
     override fun onTrimMemory(level: Int) {

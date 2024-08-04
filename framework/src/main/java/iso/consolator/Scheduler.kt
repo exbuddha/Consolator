@@ -27,64 +27,49 @@ import androidx.core.content.ContextCompat.RECEIVER_EXPORTED
 import kotlinx.coroutines.Dispatchers.Default
 import kotlinx.coroutines.Dispatchers.IO
 
-internal fun commit(step: CoroutineStep) =
-    (service ?:
-    step.annotatedScope ?:
-    foregroundLifecycleOwner?.lifecycleScope ?:
-    SchedulerScope()).let { scope ->
-        (scope::class.memberFunctions.find {
-            it.name == "commit" &&
-            it.parameters.size == 2 &&
-            it.parameters[1].name == "step" }
-        ?: Scheduler::commit).call(scope, step) }
+fun commitStartApp(component: KClass<out Service>) {
+    SchedulerScope {
+        init()
+        preferClock()
+        preferScheduler() }
+    if (SchedulerScope.isClockPreferred)
+        clock = Clock(SVC, Thread.MAX_PRIORITY)
+        @Synchronous @Tag(CLOCK_INIT) {
+            // turn clock until scope is active
+            log(info, SVC_TAG, "Clock is detected.") }
+            .alsoStart()
+    with(foregroundContext) {
+        startService(
+            intendFor(component.asType()!!)
+                .putExtra(START_TIME_KEY,
+                    startTime()))
+    } }
 
-fun commit(vararg context: Any?): Any? =
-    when (val task = context.firstOrNull()) {
-        (task === START) -> { when (val component = context.secondOrNull()) {
-            BaseServiceScope::class -> {
-                SchedulerScope {
-                    init()
-                    preferClock()
-                    preferScheduler() }
-                if (SchedulerScope.isClockPreferred)
-                    clock = Clock(SVC, Thread.MAX_PRIORITY)
-                    @Synchronous @Tag(CLOCK_INIT) {
-                        // turn clock until scope is active
-                        log(info, SVC_TAG, "Clock is detected.") }
-                    .alsoStart()
-                with(foregroundContext) {
-                    startService(
-                    intendFor(component.asType()!!)
-                    .putExtra(START_TIME_KEY,
-                        startTime()))
-            } }
-            is Activity -> { /* notify activity-start listener */ }
-            is Fragment -> { /* notify fragment-start listener */ }
-            else -> Unit } }
-        (task === RESTART) -> { when (val component = context.secondOrNull()) {
-            is Activity -> { /* notify activity-restart listener */ }
-            else -> Unit } }
-        (task === RESUME) -> { when (val component = context.secondOrNull()) {
-            is Activity -> { /* notify activity-resume listener */ }
-            is Fragment -> { /* notify fragment-resume listener */ }
-            else -> Unit } }
-        (task === PAUSE) -> { when (val component = context.secondOrNull()) {
-            is Activity -> { /* notify activity-pause listener */ }
-            is Fragment -> { /* notify fragment-pause listener */ }
-            else -> Unit } }
-        (task === STOP) -> { when (val component = context.secondOrNull()) {
-            is Activity -> { /* notify activity-stop listener */ }
-            is Fragment -> { /* notify fragment-stop listener */ }
-            else -> Unit } }
-        (task === DESTROY) -> { when (val component = context.secondOrNull()) {
-            is Activity -> { /* notify activity-destroy listener */ }
-            is Fragment -> { /* notify fragment-destroy listener */ }
-            else -> Unit } }
-        (task === SAVE) -> { when (val component = context.secondOrNull()) {
-            is Activity -> { /* notify activity-save listener */ }
-            is Fragment -> { /* notify fragment-save listener */ }
-            else -> Unit } }
-        else -> Unit }
+fun commitStartActivity(instance: Activity) {}
+
+fun commitStartFragment(instance: Fragment) {}
+
+fun commitRestartActivity(instance: Activity) {}
+
+fun commitResumeActivity(instance: Activity) {}
+
+fun commitResumeFragment(instance: Fragment) {}
+
+fun commitPauseActivity(instance: Activity) {}
+
+fun commitPauseFragment(instance: Fragment) {}
+
+fun commitStopActivity(instance: Activity) {}
+
+fun commitStopFragment(instance: Fragment) {}
+
+fun commitDestroyActivity(instance: Activity) {}
+
+fun commitDestroyFragment(instance: Fragment) {}
+
+fun commitSaveActivity(instance: Activity) {}
+
+fun commitSaveFragment(instance: Fragment) {}
 
 interface BaseServiceScope : ResolverScope, ReferredContext, UniqueContext {
     fun Intent.invoke(flags: Int, startId: Int, mode: Int): Int? {
@@ -319,6 +304,17 @@ interface ResolverScope : CoroutineScope, Transactor<AnyCoroutineStep, Any?> {
         get() = SchedulerContext
 }
 
+internal fun commit(step: CoroutineStep) =
+    (step.annotatedScope ?:
+    foregroundLifecycleOwner?.lifecycleScope ?:
+    service ?:
+    SchedulerScope()).let { scope ->
+        (scope::class.memberFunctions.find {
+            it.name == "commit" &&
+            it.parameters.size == 2 &&
+            it.parameters[1].name == "step" }
+        ?: Scheduler::commit).call(scope, step) }
+
 private fun ResolverScope.windDown() = Unit
 
 interface Resolver : ResolverScope {
@@ -329,11 +325,9 @@ interface Resolver : ResolverScope {
         context.lastOrNull().asWork()?.invoke()
 }
 
-fun ResolverScope.commit(vararg tag: Tag) =
-    commit(*tag.mapToTagArray())
+fun ResolverScope.commit(vararg tag: Tag): Any? = TODO()
 
-fun ResolverScope.commit(vararg path: Path) =
-    commit(*path.mapToTagArray())
+fun ResolverScope.commit(vararg path: Path): Any? = TODO()
 
 inline fun <reified T : Resolver> LifecycleOwner.defer(member: UnitKFunction, vararg context: Any?) =
     defer(T::class, T::class, member, *context)
@@ -715,8 +709,7 @@ internal val SequencerScope.isActive
 internal fun SequencerScope.cancel() =
     Sequencer.cancel()
 
-internal fun SequencerScope.commit(vararg tag: Tag) =
-    commit(*tag.mapToTagArray())
+internal fun SequencerScope.commit(vararg tag: Tag): Any? = TODO()
 
 internal fun LiveWork.attach(tag: TagType? = null, owner: LifecycleOwner? = null) =
     Sequencer.attach(this, tag)

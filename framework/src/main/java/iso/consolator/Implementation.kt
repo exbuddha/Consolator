@@ -43,16 +43,16 @@ const val VIEW_MIN_DELAY = 300L
 internal typealias ContextStep = suspend Context.(Any?) -> Any?
 
 internal fun Context.change(stage: ContextStep) =
-    commit(stage)
+    commit { stage(null) }
 
 internal fun Context.changeLocally(owner: LifecycleOwner, stage: ContextStep) =
-    commit(stage)
+    commit { stage(null) }
 
 internal fun Context.changeBroadly(ref: WeakContext = asWeakReference(), stage: ContextStep) =
-    commit(stage)
+    commit { stage(null) }
 
 internal fun Context.changeGlobally(ref: WeakContext = asWeakReference(), owner: LifecycleOwner, stage: ContextStep) =
-    commit(stage)
+    commit { stage(null) }
 
 @Diverging([STAGE_BUILD_APP_DB])
 fun Context.stageAppDbCreated(scope: Any?) {

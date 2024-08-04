@@ -28,40 +28,40 @@ internal abstract class BaseActivity : AppCompatActivity(), ReferredContext {
         super.onStart()
         foregroundLifecycleOwner = this
         enableNetworkCallbacks?.invoke()
-        commit(START, this)
+        commitStartActivity(this)
     }
 
     override fun onRestart() {
         super.onRestart()
-        commit(RESTART, this)
+        commitRestartActivity(this)
     }
 
     override fun onResume() {
         super.onResume()
-        commit(RESUME, this)
+        commitResumeActivity(this)
     }
 
     override fun onPause() {
         super.onPause()
-        commit(PAUSE, this)
+        commitPauseActivity(this)
     }
 
     override fun onStop() {
         disableNetworkCallbacks?.invoke()
-        commit(STOP, this)
+        commitStopActivity(this)
         foregroundLifecycleOwner = null
         super.onStop()
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        commit(DESTROY, this)
+        commitDestroyActivity(this)
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
         // write to bundle
         super.onSaveInstanceState(outState)
-        commit(SAVE, this)
+        commitSaveActivity(this)
     }
 
     override var ref: WeakContext? = null
