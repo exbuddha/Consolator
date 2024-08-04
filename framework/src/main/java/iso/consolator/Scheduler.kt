@@ -45,8 +45,7 @@ fun commitStartApp(component: KClass<out Service>) {
         startService(
         intendFor(component.asType()!!)
         .putExtra(START_TIME_KEY,
-            startTime()))
-    } }
+            startTime())) } }
 
 fun commitStartActivity(instance: Activity) {}
 
@@ -348,37 +347,34 @@ fun implicit(work: Work) = when {
     else -> work }
 
 internal fun attach(step: AnyCoroutineStep, vararg args: Any?): Any? {
-    fun launch(step: AnyCoroutineStep) = Scheduler.launch { step() }
-    val enlist: AnyCoroutineFunction? = (
-        args.firstOrNull()
+    val enlist: AnyCoroutineFunction =
+        args.firstOrNull().asType()
         ?: if (SchedulerScope.isClockPreferred)
             ::handle
-        else ::launch)
-        .asType()
-    val transfer: AnyCoroutineFunction? = (
-        args.secondOrNull()
-        ?: ::reattach)
-        .asType()
-    return when (val result = trySafelyForResult { enlist?.invoke(step) }) {
+        else ::launch
+    val transfer: AnyCoroutineFunction =
+        args.secondOrNull().asType()
+        ?: ::reattach
+    return when (val result = trySafelyForResult { enlist(step) }) {
         null, false ->
-            transfer?.invoke(@Unlisted step)
+            transfer(@Unlisted step)
         true, is Job ->
             result
         else -> if (!Clock.isRunning)
-            transfer?.invoke(@Enlisted step)
+            transfer(@Enlisted step)
         else
             result } }
 
-private fun reattach(step: CoroutineStep, handler: CoroutineFunction = ::launch) =
+private fun reattach(step: AnyCoroutineStep) =
     try {
         if (step.isEnlisted)
             trySafelyForResult { detach(step) }
-            ?.run(handler)
-        else handler(step) }
+            ?.run(::launch)
+        else launch(step) }
     catch (_: Throwable) {
-        repost(step) }
+        repost { step() } }
 
-private fun detach(step: CoroutineStep) =
+private fun detach(step: AnyCoroutineStep) =
     @Unlisted with(Clock) {
         ::isRunning.then {
         getRunnable(step)?.detach()
@@ -386,7 +382,7 @@ private fun detach(step: CoroutineStep) =
     ?.asCoroutine()
     ?: step
 
-private fun launch(it: CoroutineStep) =
+private fun launch(it: AnyCoroutineStep) =
     Scheduler.launch(SchedulerContext, block = {
         it.markTagForSchLaunch()
         .afterTrackingTagsForJobLaunch()() })
@@ -2036,9 +2032,9 @@ internal open class Clock(
         private fun Clock.register(callback: Runnable) {
             queue.add(callback) }
 
-        fun getMessage(step: CoroutineStep): Message? = null
+        fun getMessage(step: AnyCoroutineStep): Message? = null
 
-        fun getRunnable(step: CoroutineStep): Runnable? = null
+        fun getRunnable(step: AnyCoroutineStep): Runnable? = null
 
         fun getCoroutine(callback: Runnable): CoroutineStep? = null
 
@@ -2048,11 +2044,11 @@ internal open class Clock(
 
         fun getStep(callback: Runnable): Step? = null
 
-        fun getEstimatedDelay(step: CoroutineStep): Long? = null
+        fun getEstimatedDelay(step: AnyCoroutineStep): Long? = null
 
-        fun getDelay(step: CoroutineStep): Long? = null
+        fun getDelay(step: AnyCoroutineStep): Long? = null
 
-        fun getTime(step: CoroutineStep): Long? = null
+        fun getTime(step: AnyCoroutineStep): Long? = null
 
         fun getEstimatedDelay(step: Step): Long? = null
 
