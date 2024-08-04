@@ -77,7 +77,12 @@ fun commit(vararg context: Any?): Any? =
             is Fragment -> { /* notify fragment-stop listener */ }
             else -> Unit } }
         (task === DESTROY) -> { when (val component = context.secondOrNull()) {
-            is Fragment -> {}
+            is Activity -> { /* notify activity-destroy listener */ }
+            is Fragment -> { /* notify fragment-destroy listener */ }
+            else -> Unit } }
+        (task === SAVE) -> { when (val component = context.secondOrNull()) {
+            is Activity -> { /* notify activity-save listener */ }
+            is Fragment -> { /* notify fragment-save listener */ }
             else -> Unit } }
         else -> Unit }
 
@@ -346,11 +351,12 @@ fun implicit(work: Work) = when {
     else -> work }
 
 internal fun attach(step: AnyCoroutineStep, vararg args: Any?): Any? {
+    fun launch(step: AnyCoroutineStep) = Scheduler.launch { step() }
     val enlist: AnyCoroutineFunction? = (
         args.firstOrNull()
         ?: if (SchedulerScope.isClockPreferred)
             ::handle
-        else CoroutineScope::launch)
+        else ::launch)
         .asType()
     val transfer: AnyCoroutineFunction? = (
         args.secondOrNull()
@@ -457,10 +463,10 @@ private fun Job.saveNewElement(step: AnyCoroutineStep) {}
 
 private inline fun Job.attachToElement(crossinline statement: CoroutinePointer): AnyCoroutineStep = TODO()
 
-private fun Job.attachConjunctionToElement(operator: KFunction<CoroutineStep?>, target: SchedulerStep): AnyCoroutineStep =
+private fun Job.attachConjunctionToElement(operator: CoroutineKFunction, target: SchedulerStep): AnyCoroutineStep =
     attachToElement { operator.call(this@attachConjunctionToElement.markedCoroutineStep(), target) }
 
-private fun Job.attachPredictionToElement(operator: KFunction<CoroutineStep?>, predicate: JobPredicate): AnyCoroutineStep =
+private fun Job.attachPredictionToElement(operator: CoroutineKFunction, predicate: JobPredicate): AnyCoroutineStep =
     attachToElement { operator.call(this@attachPredictionToElement.markedCoroutineStep(), predicate) }
 
 private fun Job.markedCoroutineStep(): AnyCoroutineStep = TODO()
@@ -2608,6 +2614,7 @@ internal fun Context.registerReceiver(filter: IntentFilter) =
         clock?.alsoStartAsync()?.handler,
         RECEIVER_EXPORTED)
 
+private typealias CoroutineKFunction = KFunction<CoroutineStep?>
 private typealias JobKFunction = KFunction<Job?>
 private typealias JobKProperty = KMutableProperty<Job?>
 private typealias ResolverKClass = KClass<out Resolver>

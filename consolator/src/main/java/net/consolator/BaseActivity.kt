@@ -53,6 +53,17 @@ internal abstract class BaseActivity : AppCompatActivity(), ReferredContext {
         super.onStop()
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        commit(DESTROY, this)
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        // write to bundle
+        super.onSaveInstanceState(outState)
+        commit(SAVE, this)
+    }
+
     override var ref: WeakContext? = null
         get() = field.unique(this).also { field = it }
 

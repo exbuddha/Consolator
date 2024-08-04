@@ -458,6 +458,7 @@ const val RESUME = "resume"
 const val PAUSE = "pause"
 const val STOP = "stop"
 const val DESTROY = "destroy"
+const val SAVE = "save"
 
 internal const val APP = "app"
 internal const val ACTIVITY = "activity"

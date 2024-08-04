@@ -123,6 +123,12 @@ internal abstract class BaseFragment : Fragment(contentLayoutId) {
         commit(DESTROY, this)
     }
 
+    override fun onSaveInstanceState(outState: Bundle) {
+        // write to bundle
+        super.onSaveInstanceState(outState)
+        commit(SAVE, this)
+    }
+
     @Retention(SOURCE)
     @Target(EXPRESSION)
     annotation class MainViewGroup
