@@ -27,7 +27,7 @@ import androidx.core.content.ContextCompat.RECEIVER_EXPORTED
 import kotlinx.coroutines.Dispatchers.Default
 import kotlinx.coroutines.Dispatchers.IO
 
-fun commitStartApp(component: KClass<out Service>) {
+fun commitStartApp() {
     SchedulerScope {
         init()
         preferClock()
@@ -37,12 +37,15 @@ fun commitStartApp(component: KClass<out Service>) {
         @Synchronous @Tag(CLOCK_INIT) {
             // turn clock until scope is active
             log(info, SVC_TAG, "Clock is detected.") }
-            .alsoStart()
+        .alsoStart() }
+
+fun commitStartApp(component: KClass<out Service>) {
+    commitStartApp()
     with(foregroundContext) {
         startService(
-            intendFor(component.asType()!!)
-                .putExtra(START_TIME_KEY,
-                    startTime()))
+        intendFor(component.asType()!!)
+        .putExtra(START_TIME_KEY,
+            startTime()))
     } }
 
 fun commitStartActivity(instance: Activity) {}
