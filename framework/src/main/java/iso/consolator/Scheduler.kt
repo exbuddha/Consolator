@@ -1485,17 +1485,17 @@ private fun getTag(what: Int): TagType? = TODO()
 
 internal fun markTags(vararg function: Any?) {
     when (val context = function.firstOrNull()) {
-        JOB_LAUNCH ->
+        (context === JOB_LAUNCH) ->
             markTagsForJobLaunch(*function, i = 1)
-        SEQ_LAUNCH ->
+        (context === SEQ_LAUNCH) ->
             markTagsForSeqLaunch(*function, i = 1)
-        JOB_REPEAT ->
+        (context === JOB_REPEAT) ->
             markTagsForJobRepeat(*function, i = 1)
-        CLK_ATTACH ->
+        (context === CLK_ATTACH) ->
             markTagsForClkAttach(*function, i = 1)
-        SEQ_ATTACH ->
+        (context === SEQ_ATTACH) ->
             markTagsForSeqAttach(*function, i = 1)
-        CTX_REFORM ->
+        (context === CTX_REFORM) ->
             markTagsForCtxReform(*function, i = 1)
         else ->
             function.map(Any?::asCallable)
@@ -1504,9 +1504,9 @@ internal fun markTags(vararg function: Any?) {
 private fun markTagsForJobLaunch(vararg function: Any?, i: Int = 0) =
     function[i + 4].asTag()?.also { tag ->
     val stepTag = tag.id
+    /* notify pre-save listener */
     jobs?.save(function[i + 3].asCallable(), tag) /* step */
     function[i].let { owner ->
-        /* notify pre-save listener */
         jobs?.save(owner.asCallable(), reduceTags(stepTag, TAG_AT, when (owner) {
             is Activity ->
                 owner::class.tag?.id
@@ -1531,7 +1531,7 @@ private fun markTagsForJobLaunch(vararg function: Any?, i: Int = 0) =
     function[i + 2]?.let { start ->
         jobs?.save(start.asCallable(),
             reduceTags(stepTag, TAG_AT, jobId!!.toTagType(), TAG_DOT, START), false) } /* start */
-        /* notify post-save listener */ }
+    /* notify post-save listener */ }
 
 private fun markTagsForJobRepeat(vararg function: Any?, i: Int = 0) =
     function[i + 2]?.markTag()?.also { blockTag ->
