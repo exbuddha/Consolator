@@ -23,19 +23,22 @@ internal open class MainActivity : BaseActivity(), ObjectProvider, FunctionProvi
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
-        defer<ConfigurationChangeManager>(::onConfigurationChanged, newConfig)
+        defer<iso.consolator.activity.ConfigurationChangeManager>(
+            ::onConfigurationChanged, newConfig)
         @Implicit {
             super.onConfigurationChanged(newConfig) }
     }
 
     override fun onNightModeChanged(mode: Int) {
-        defer<NightModeChangeManager>(::onNightModeChanged, mode)
+        defer<iso.consolator.activity.NightModeChangeManager>(
+            ::onNightModeChanged, mode)
         @Implicit {
             super.onNightModeChanged(mode) }
     }
 
     override fun onLocalesChanged(locales: LocaleListCompat) {
-        defer<LocalesChangeManager>(::onLocalesChanged, locales)
+        defer<iso.consolator.activity.LocalesChangeManager>(
+            ::onLocalesChanged, locales)
         @Implicit {
             super.onLocalesChanged(locales) }
     }
@@ -45,11 +48,11 @@ internal open class MainActivity : BaseActivity(), ObjectProvider, FunctionProvi
     inner class LocalesChangeManager : BaseActivity.LocalesChangeManager()
 
     override fun invoke(type: AnyKClass): Resolver = when (type) {
-        ConfigurationChangeManager::class ->
+        iso.consolator.activity.ConfigurationChangeManager::class ->
             ConfigurationChangeManager()
-        NightModeChangeManager::class ->
+        iso.consolator.activity.NightModeChangeManager::class ->
             NightModeChangeManager()
-        LocalesChangeManager::class ->
+        iso.consolator.activity.LocalesChangeManager::class ->
             LocalesChangeManager()
         else ->
             throw BaseImplementationRestriction() }

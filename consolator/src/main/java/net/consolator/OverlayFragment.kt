@@ -13,21 +13,20 @@ internal open class OverlayFragment(
 ) : MainFragment(), OnContextClickListener {
     init {
         previous?.view?.apply {
-        /* rebind to previous view */ }
+        /* save previous view */ }
         transit = {} }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?) =
         if (savedInstanceState == null)
-            inflater.inflate(contentLayoutId, container)
+            inflater.inflate(contentLayoutId, container).apply {
+            /* rebind to previous view */ }
         else
             super.onCreateView(inflater, container, savedInstanceState)
 
     override fun onContextClick(event: MotionEvent) =
         intercept(
             OnContextClickListener::onContextClick, event) {
-                /* process event internal to overlay view.
-                // translation for finding the event receiver view may be required sometimes.
-                // optionally, other/all event listener functionality can be given to this class. */
+                /* process event internal to overlay view */
                 true
             }
 
