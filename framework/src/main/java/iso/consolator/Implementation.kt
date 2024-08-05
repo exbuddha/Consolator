@@ -358,6 +358,7 @@ internal typealias CharsFunction = Any?.() -> CharSequence
 internal typealias StringPointer = () -> String?
 internal typealias CharsPointer = () -> CharSequence?
 internal typealias ThrowableFunction = (Throwable?) -> Unit
+internal typealias BooleanPointer = () -> Boolean?
 internal typealias Predicate = () -> Boolean
 internal typealias AnyPredicate = (Any?) -> Boolean
 internal typealias ObjectPredicate = (Any) -> Boolean
@@ -464,6 +465,7 @@ const val SAVE = "save"
 internal const val APP = "app"
 internal const val ACTIVITY = "activity"
 internal const val FRAGMENT = "fragment"
+internal const val OVERLAY = "overlay"
 internal const val VIEW = "view"
 internal const val CONTEXT = "context"
 internal const val CTX = "ctx"
@@ -483,6 +485,7 @@ internal const val DB = "db"
 
 const val MAIN_ACTIVITY = "$MAIN-$ACTIVITY"
 const val MAIN_FRAGMENT = "$MAIN-$FRAGMENT"
+const val OVERLAY_FRAGMENT = "$OVERLAY-$FRAGMENT"
 
 internal const val APP_DB = "$APP-$DB"
 internal const val LOG_DB = "$LOG-$DB"

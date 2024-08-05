@@ -2638,12 +2638,12 @@ sealed interface State {
 
     sealed interface Resolved : State {
         companion object : Resolved {
-            inline infix fun where(predicate: Predicate) =
-                if (predicate()) this
+            inline infix fun where(predicate: BooleanPointer) =
+                if (predicate() == true) this
                 else Unresolved
 
-            inline infix fun unless(predicate: Predicate) =
-                if (predicate()) Unresolved
+            inline infix fun unless(predicate: BooleanPointer) =
+                if (predicate() == true) Unresolved
                 else this
     } }
 

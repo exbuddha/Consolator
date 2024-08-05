@@ -13,7 +13,8 @@ import net.consolator.BaseApplication.Companion.COMMIT_NAV_MAIN_UI
 @Tag(MAIN_FRAGMENT)
 internal open class MainFragment : BaseFragment(), ObjectProvider, FunctionProvider {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        if (State[3] is Resolved) return
+        if (this is OverlayFragment)
+            return super.onViewCreated(view, savedInstanceState)
         if (savedInstanceState === null)
             transit = fun(action: Short) { when (action) {
                 COMMIT_NAV_MAIN_UI ->
@@ -24,12 +25,10 @@ internal open class MainFragment : BaseFragment(), ObjectProvider, FunctionProvi
                             this@MainFragment.id,
                             OverlayFragment(this@MainFragment, ::screenEventInterceptor)
                             .apply {
-                                /* renew main view */
-                            })
-                        State[3] = Resolved } }
+                            /* renew main view */
+                            }) } }
                 ABORT_NAV_MAIN_UI -> {
-                    /* continue animation or alternatives */
-                    State[3] = Ambiguous }
+                    /* continue animation or alternatives */ }
                 else ->
                     throw BaseImplementationRestriction()
         } }

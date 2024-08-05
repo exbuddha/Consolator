@@ -7,17 +7,17 @@ import iso.consolator.*
 import kotlin.reflect.*
 import kotlin.reflect.jvm.*
 
+@Tag(OVERLAY_FRAGMENT)
 internal open class OverlayFragment(
     previous: MainFragment? = null,
     private var interceptor: InterceptFunction? = null
 ) : MainFragment(), OnContextClickListener {
     init {
         previous?.view?.apply {
-        /* save previous view */ }
-        transit = {} }
+        /* save previous view */ } }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?) =
-        if (savedInstanceState == null)
+        if (savedInstanceState === null)
             inflater.inflate(contentLayoutId, container).apply {
             /* rebind to previous view */ }
         else
