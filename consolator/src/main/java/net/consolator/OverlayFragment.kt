@@ -1,5 +1,6 @@
 package net.consolator
 
+import android.os.*
 import android.view.*
 import android.view.GestureDetector.*
 import iso.consolator.*
@@ -12,7 +13,14 @@ internal open class OverlayFragment(
 ) : MainFragment(), OnContextClickListener {
     init {
         previous?.view?.apply {
-        /* rebind to previous view */ } }
+        /* rebind to previous view */ }
+        transit = {} }
+
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?) =
+        if (savedInstanceState == null)
+            inflater.inflate(contentLayoutId, container)
+        else
+            super.onCreateView(inflater, container, savedInstanceState)
 
     override fun onContextClick(event: MotionEvent) =
         intercept(
