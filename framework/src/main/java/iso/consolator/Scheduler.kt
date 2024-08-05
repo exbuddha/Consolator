@@ -1432,6 +1432,8 @@ private fun JobFunctionSet.save(function: AnyKCallable, tag: TagType) =
 
 private fun JobFunctionSet.save(function: AnyKCallable, vararg tag: TagType?) {}
 
+private fun JobFunctionSet.save(coordinator: (AnyArray?) -> Any?, vararg args: Any?) {}
+
 private fun JobFunctionSet.save(self: AnyKCallable, tag: Tag?) =
     if (tag !== null)
         with(tag) { save(self, id, keep) }
