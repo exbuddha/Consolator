@@ -1453,13 +1453,13 @@ internal fun reduceTags(vararg tag: TagType) =
         tag.map(TagType::toString)
             .reduce(String::concat)).asTagType()!!
 
-private fun returnTag(it: Any?) = it.asNullable().tag?.id
+private fun returnTag(it: Any?) = it.asCallable().tag?.id
 
 internal fun AnyKCallable.markTag() = tag.also { jobs?.save(this, it) }
 
 internal fun Any.markTag() = asCallable().markTag()
 
-internal fun Any?.markTag(tag: TagType) = jobs?.save(asNullable(), tag)
+internal fun Any?.markTag(tag: TagType) = jobs?.save(asCallable(), tag)
 
 internal fun Any?.markSequentialTag(vararg tag: TagType?): TagType? =
     tag.first()?.let { tag ->
@@ -1498,7 +1498,7 @@ internal fun markTags(vararg function: Any?) {
         CTX_REFORM ->
             markTagsForCtxReform(*function, i = 1)
         else ->
-            function.map(Any?::asNullable)
+            function.map(Any?::asCallable)
                 .forEach(AnyKCallable::markTag) } }
 
 private fun markTagsForJobLaunch(vararg function: Any?, i: Int = 0) =
@@ -1507,7 +1507,7 @@ private fun markTagsForJobLaunch(vararg function: Any?, i: Int = 0) =
     jobs?.save(function[i + 3].asCallable(), tag) /* step */
     function[i].let { owner ->
         /* notify pre-save listener */
-        jobs?.save(owner.asNullable(), reduceTags(stepTag, TAG_AT, when (owner) {
+        jobs?.save(owner.asCallable(), reduceTags(stepTag, TAG_AT, when (owner) {
             is Activity ->
                 owner::class.tag?.id
                 ?: owner::class.hashTag()
@@ -1577,7 +1577,7 @@ private fun markTagsForSeqLaunch(vararg function: Any?, i: Int = 0) =
     val index = function[i + 1]?.asInt()!! // optionally, readjust by remarks or from seq here instead
     val jobId = function[i + 3].toJobId()
     function[i + 2]?.let { context ->
-        jobs?.save(context.asNullable(),
+        jobs?.save(context.asCallable(),
             reduceTags(stepTag, TAG_HASH, index.toTagType(), TAG_AT, jobId.toTagType(), TAG_DOT, CONTEXT), false) } /* context */ }
 
 private fun markTagsForCtxReform(vararg function: Any?, i: Int = 0) =
@@ -1974,7 +1974,7 @@ internal open class Clock(
         msg.asCallable().isSynchronized()
 
     private fun isSynchronized(callback: Runnable) =
-        getCoroutine(callback).asNullable().isSynchronized() ||
+        getCoroutine(callback).asCallable().isSynchronized() ||
         callback.asCallable().isSynchronized() ||
         callback::run.isSynchronized()
 
@@ -2181,17 +2181,17 @@ annotation class Timeout(
 annotation class Pathwise(
     val route: SchedulerPath = [])
 
-private open class Item<out T>(override val obj: T) : ObjectReference<T> {
+private open class Item<out R>(override val obj: R) : ObjectReference<R>(obj) {
     companion object {
         fun <T> find(ref: Coordinate): T = TODO()
 
         fun <T> find(target: AnyKClass = Any::class, key: KeyType): T = TODO()
 
-        fun <T, I : Item<T>> Item<T>.reload(property: KCallable<T>): I = TODO()
+        fun <R, I : Item<R>> Item<R>.reload(property: KCallable<R>): I = TODO()
 
-        fun <T, I : Item<T>> Item<T>.reload(tag: TagType): I = TODO()
+        fun <R, I : Item<R>> Item<R>.reload(tag: TagType): I = TODO()
 
-        fun <T, I : Item<T>> Item<T>.reload(target: AnyKClass, key: KeyType): I = TODO()
+        fun <R, I : Item<R>> Item<R>.reload(target: AnyKClass, key: KeyType): I = TODO()
     }
 
     var tag: TagType? = null
@@ -2230,26 +2230,6 @@ private fun step(target: AnyKClass, key: KeyType) =
 
 private fun runnable(target: AnyKClass, key: KeyType) =
     SchedulerScope().get<Runnable>(target, key)
-
-private abstract class Node<out R>(override val obj: R) : Item<R>(obj), KCallable<R> {
-    abstract val visitor: Visitor<Node<R>>
-
-    override fun call(vararg args: Any?): R = ::obj.call(*args)
-
-    override fun callBy(args: Map<KParameter, Any?>) =
-        call(*parameters.map(args::get).toTypedArray())
-
-    override val annotations = ::obj.annotations
-    override val isAbstract = ::obj.isAbstract
-    override val isFinal = ::obj.isFinal
-    override val isOpen = ::obj.isOpen
-    override val isSuspend = ::obj.isSuspend
-    override val name = ::obj.name
-    override val parameters = ::obj.parameters
-    override val returnType = ::obj.returnType
-    override val typeParameters = ::obj.typeParameters
-    override val visibility = ::obj.visibility
-}
 
 interface FunctionProvider {
     operator fun <R> invoke(vararg tag: TagType): KCallable<R>
@@ -2454,21 +2434,30 @@ private typealias Lifetime = (AnyKMutableProperty) -> Boolean?
 
 fun AnyKMutableProperty.expire() = set(null)
 
-internal fun <T> T.asCallable(): KCallable<T> = asObjRef()::obj
-internal fun <T> T?.asNullable(): KCallable<T?> = asNullRef()::obj
+internal fun <R> R.asCallable(): KCallable<R> = asObjRef()::obj
 
-private interface ObjectReference<out R> { val obj: R }
-private interface NullReference<R> : ObjectReference<R?>
+private open class ObjectReference<out R>(open val obj: R) : KCallable<R> {
+    override fun call(vararg args: Any?) =
+        ::obj.call(*args)
+    override fun callBy(args: Map<KParameter, Any?>) =
+        call(*parameters.map(args::get).toTypedArray())
 
-private fun <T> T.asObjRef() =
-    asUniqueRef { object : ObjectReference<T> {
-        override var obj = this@asObjRef } }
+    override val annotations = ::obj.annotations
+    override val isAbstract = ::obj.isAbstract
+    override val isFinal = ::obj.isFinal
+    override val isOpen = ::obj.isOpen
+    override val isSuspend = ::obj.isSuspend
+    override val name = ::obj.name
+    override val parameters = ::obj.parameters
+    override val returnType = ::obj.returnType
+    override val typeParameters = ::obj.typeParameters
+    override val visibility = ::obj.visibility
+}
 
-private fun <T> T?.asNullRef() =
-    asUniqueRef { object : NullReference<T> {
-        override var obj = this@asNullRef } }
+private fun <R> R.asObjRef() =
+    asUniqueRef { ObjectReference(this@asObjRef) }
 
-private inline fun <T> T.asUniqueRef(block: () -> ObjectReference<T>) =
+private inline fun <R> R.asUniqueRef(block: () -> ObjectReference<R>) =
     if (this is ObjectReference<*>)
         this::obj.asType()!!
     else block()
@@ -2482,7 +2471,7 @@ internal val Any?.transit: Transit
     get() = when (this) {
         is Relay -> transit
         is Number -> toTransit()
-        else -> asNullable().event?.transit }
+        else -> asCallable().event?.transit }
 
 internal fun Number?.toTransit() = this?.asType<TransitType>()
 

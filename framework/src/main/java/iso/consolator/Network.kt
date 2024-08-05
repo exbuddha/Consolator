@@ -172,11 +172,11 @@ private fun <R> NetCall.commit(scope: Any?, block: () -> R) =
     lock(INET_CALL, block)
 
 private fun <R> NetCall.lock(cmd: String, block: () -> R) =
-    synchronized(asNullable(), block)
+    synchronized(asCallable(), block)
 
-private fun NetCall.asNullable() =
+private fun NetCall.asCallable() =
     if (this === ::netCall) ::netCall
-    else asProperty().get().asNullable()
+    else asProperty().get().asCallable()
 
 private fun NetCall.exec(cmd: String = INET_CALL, respond: Respond) {
     markTag()
