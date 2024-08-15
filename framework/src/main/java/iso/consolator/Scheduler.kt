@@ -175,7 +175,7 @@ object Scheduler : SchedulerScope, MutableLiveData<AnyStep?>(), AnyStepObserver,
         observeForever(this)
         SchedulerScope.isSchedulerObserved = true }
 
-    internal fun observeAsync() = commitAsync(this, hasObservers()::not, ::observe)
+    internal fun observeAsync() = commitAsync(this, ::hasObservers.not(), ::observe)
 
     internal fun observe(owner: LifecycleOwner) = observe(owner, this)
 

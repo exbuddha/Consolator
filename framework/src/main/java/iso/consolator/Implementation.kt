@@ -179,6 +179,8 @@ internal inline fun <R> Predicate.then(block: () -> R) =
 internal inline fun <R> Predicate.otherwise(block: () -> R) =
     this().not().then(block)
 
+internal fun Predicate.not(): Predicate = { this().not() }
+
 internal fun <R> Unit.type() = this as R
 
 internal inline fun <reified T : Throwable, R> tryCatching(block: () -> R, predicate: ThrowablePredicate = { it is T }, exit: ThrowableNothing = { throw it }) =
