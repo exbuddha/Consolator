@@ -28,7 +28,7 @@ import kotlinx.coroutines.Dispatchers.Default
 import kotlinx.coroutines.Dispatchers.IO
 
 fun commitStartApp() {
-    SchedulerScope {
+    SchedulerScope @Tag(SCH_CONFIG) {
         init()
         preferClock()
         preferScheduler() }
@@ -225,12 +225,12 @@ object Scheduler : SchedulerScope, MutableLiveData<AnyStep?>(), AnyStepObserver,
 
     override fun <R> synchronize(lock: AnyStep?, block: () -> R) =
         if (lock !== null) {
+            if (lock.isImplicit)
+                block()
+            else {
             fun AnyFunctionList.run() { map {
                 remove(it)
                 it() } }
-            if (lock.isImplicit)
-                block()
-            else
             if (lock.isScheduledLast) {
                 queue.run()
                 block() }
@@ -240,7 +240,7 @@ object Scheduler : SchedulerScope, MutableLiveData<AnyStep?>(), AnyStepObserver,
                 queue.run() }
             else {
                 queue.add(block)
-                Unit.type() } }
+                Unit.type() } } }
         else Unit.type()
 
     override var queue: AnyFunctionList = mutableListOf()
@@ -357,7 +357,7 @@ internal fun attach(step: AnyCoroutineStep, vararg args: Any?): Any? {
         ?: ::reattach
     return when (val result = trySafelyForResult { enlist(step) }) {
         null, false ->
-            transfer(@Unlisted step)
+            transfer(step)
         true, is Job ->
             result
         else -> if (!Clock.isRunning)
@@ -375,12 +375,12 @@ private fun reattach(step: AnyCoroutineStep) =
         repost { step() } }
 
 private fun detach(step: AnyCoroutineStep) =
-    @Unlisted with(Clock) {
+    (@Unlisted with(Clock) {
     run { synchronize {
         ::isRunning.then {
         getRunnable(step)?.detach()
         ?: getMessage(step)?.detach()?.asRunnable() } }
-    ?.asCoroutine() } }
+    ?.asCoroutine() } })
     ?: step
 
 private fun launch(it: AnyCoroutineStep) =
@@ -1418,7 +1418,7 @@ private var jobs: JobFunctionSet? = null
 
 internal operator fun Job.get(tag: TagType) =
     jobs?.find { tag == it.first() }
-        ?.second.asAnyArray()?.get(1)
+        ?.second.asAnyArray()?.get(0)
 
 internal operator fun Job.set(tag: TagType, value: Any?) {
     // addressable layer work
@@ -1484,24 +1484,6 @@ private fun SequencerStep.setTagTo(step: Step) = this
 private fun getTag(callback: Runnable): TagType? = TODO()
 private fun getTag(msg: Message): TagType? = TODO()
 private fun getTag(what: Int): TagType? = TODO()
-
-internal fun markTags(vararg function: Any?) {
-    when (val context = function.firstOrNull()) {
-        (context === JOB_LAUNCH) ->
-            markTagsForJobLaunch(*function, i = 1)
-        (context === SEQ_LAUNCH) ->
-            markTagsForSeqLaunch(*function, i = 1)
-        (context === JOB_REPEAT) ->
-            markTagsForJobRepeat(*function, i = 1)
-        (context === CLK_ATTACH) ->
-            markTagsForClkAttach(*function, i = 1)
-        (context === SEQ_ATTACH) ->
-            markTagsForSeqAttach(*function, i = 1)
-        (context === CTX_REFORM) ->
-            markTagsForCtxReform(*function, i = 1)
-        else ->
-            function.map(Any?::asCallable)
-                .forEach(AnyKCallable::markTag) } }
 
 private fun markTagsForJobLaunch(vararg function: Any?, i: Int = 0) =
     function[i + 4].asTag()?.also { tag ->
@@ -1755,16 +1737,17 @@ private fun repostByPreference(step: Step, post: AnyStepFunction, handle: Corout
         { post(step.markTagForSchPost()) },
         { handle(step.toCoroutine()) })
 
-private inline fun repostByPreference(post: Work, handle: Work) = when {
-    !SchedulerScope.isClockPreferred &&
-    SchedulerScope.isSchedulerObserved ->
+private inline fun repostByPreference(post: Work, handle: Work) = with(SchedulerScope) { when {
+    isSchedulerPreferred &&
+    isSchedulerObserved ->
         post()
+    isClockPreferred &&
     Clock.isRunning ->
         handle()
-    SchedulerScope.isSchedulerObserved ->
+    isSchedulerObserved ->
         post()
     else ->
-        currentThread.interrupt() }
+        currentThread.interrupt() } }
 
 private fun Step.toCoroutine(): CoroutineStep = { this@toCoroutine() }
 
