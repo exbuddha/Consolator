@@ -181,6 +181,7 @@ internal inline fun <R> Predicate.otherwise(block: () -> R) =
 
 internal fun Predicate.not(): Predicate = { this().not() }
 
+@Suppress("UNCHECKED_CAST")
 internal fun <R> Unit.type() = this as R
 
 internal inline fun <reified T : Throwable, R> tryCatching(block: () -> R, predicate: ThrowablePredicate = { it is T }, exit: ThrowableNothing = { throw it }) =

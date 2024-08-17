@@ -415,7 +415,7 @@ internal fun LifecycleOwner.relaunch(instance: JobKProperty, context: CoroutineC
     relaunch(::launch, instance, context, start, step)
 
 private fun relaunch(launcher: JobKFunction, instance: JobKProperty, context: CoroutineContext, start: CoroutineStart, step: CoroutineStep) =
-    instance.require({ !it.isActive }) {
+    instance.require(Job::isNotActive) {
         launcher.call(context, start, step) }
     .also { instance.markTag() }
 
@@ -455,12 +455,14 @@ private fun Job.saveNewElement(step: AnyCoroutineStep) {}
 private inline fun Job.attachToElement(crossinline statement: CoroutinePointer): AnyCoroutineStep = TODO()
 
 private fun Job.attachConjunctionToElement(operator: CoroutineKFunction, target: SchedulerStep): AnyCoroutineStep =
-    attachToElement { operator.call(this@attachConjunctionToElement.markedCoroutineStep(), target) }
+    attachToElement { operator.call(this@attachConjunctionToElement.lastMarkedCoroutineStep(), target) }
 
 private fun Job.attachPredictionToElement(operator: CoroutineKFunction, predicate: JobPredicate): AnyCoroutineStep =
-    attachToElement { operator.call(this@attachPredictionToElement.markedCoroutineStep(), predicate) }
+    attachToElement { operator.call(this@attachPredictionToElement.lastMarkedCoroutineStep(), predicate) }
 
 private fun Job.markedCoroutineStep(): AnyCoroutineStep = TODO()
+
+private fun Job.lastMarkedCoroutineStep(): AnyCoroutineStep = TODO()
 
 private fun Job.getTag() = markedCoroutineStep().asCallable().tag?.id
 
@@ -608,6 +610,8 @@ infix fun Job?.onTimeoutJob(action: Job) = this
 
 // from this point on, job controller handles the execution of each step and
 // following a structured form that was built they react to any other continuation
+
+private fun Job.currentCoroutineStep(): AnyCoroutineStep = TODO()
 
 infix fun CoroutineScope.diverge(step: SchedulerStep): CoroutineStep? = TODO()
 
@@ -1694,6 +1698,8 @@ internal fun Any?.toJobId() = asJob().hashCode()
 internal suspend fun currentJob() = currentCoroutineContext().job
 internal fun currentThreadJob() = ::currentJob.block()
 
+private val Job.isNotActive get() = !isActive
+
 internal fun <T> blockOf(step: suspend CoroutineScope.() -> T): () -> T = { runBlocking(block = step) }
 internal fun <T> runnableOf(step: suspend CoroutineScope.() -> T) = Runnable { runBlocking(block = step) }
 internal fun <T> safeRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { trySafely(blockOf(step)) }
@@ -1906,7 +1912,7 @@ internal open class Clock(
         return this }
 
     fun startAsync() =
-        commitAsync(this, { !isAlive }, ::start)
+        commitAsync(this, ::isAlive.not(), ::start)
 
     fun alsoStartAsync(): Clock {
         startAsync()

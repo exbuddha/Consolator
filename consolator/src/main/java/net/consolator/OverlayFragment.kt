@@ -24,11 +24,9 @@ internal open class OverlayFragment(
             super.onCreateView(inflater, container, savedInstanceState)
 
     override fun onContextClick(event: MotionEvent) =
-        intercept(
-            OnContextClickListener::onContextClick, event) {
-                /* process event internal to overlay view */
-                true
-            }
+        intercept(OnContextClickListener::onContextClick, event) {
+        /* process event internal to overlay view */
+        true }
 
     private inline fun <reified R> intercept(member: KFunction<R>, vararg args: Any, noinline postback: ((Interception) -> R)? = null): R =
         interceptor?.invoke(this, member, args, postback).let { result ->
@@ -38,11 +36,11 @@ internal open class OverlayFragment(
                 val (callback, isRequired) = result
                 if (isRequired == true)
                     if (callback !== null)
-                        callback.invoke().asType() ?:
-                        onNullInteraction(member.returnType())
+                        callback.invoke().asType()
+                        ?: onNullInteraction(member.returnType())
                     else onNullCallback(member.returnType())
-                else onCallbackNotRequired(member.returnType())
-            } } ?: onNullInterceptor(member.returnType())
+                else onCallbackNotRequired(member.returnType()) } }
+        ?: onNullInterceptor(member.returnType())
 }
 
 private inline fun <reified R> onNullInterceptor(cls: AnyKClass): R = postbackNegativeType()
