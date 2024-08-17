@@ -5,9 +5,6 @@ import android.os.*
 import android.view.*
 import androidx.annotation.*
 import androidx.fragment.app.*
-import kotlin.annotation.AnnotationRetention.*
-import kotlin.annotation.AnnotationTarget.*
-import kotlinx.coroutines.*
 import iso.consolator.*
 import iso.consolator.Delay
 import iso.consolator.Event.*
@@ -15,6 +12,9 @@ import iso.consolator.Event.Listening.*
 import iso.consolator.Path.*
 import iso.consolator.State.*
 import iso.consolator.application.*
+import kotlin.annotation.AnnotationRetention.*
+import kotlin.annotation.AnnotationTarget.*
+import kotlinx.coroutines.*
 import kotlinx.coroutines.CoroutineStart.LAZY
 import kotlinx.coroutines.Dispatchers.IO
 import net.consolator.BaseApplication.Companion.ACTION_MIGRATE_APP

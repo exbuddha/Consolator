@@ -4,7 +4,6 @@ import android.os.*
 import android.view.*
 import androidx.fragment.app.*
 import iso.consolator.*
-import iso.consolator.State.*
 import kotlin.reflect.*
 import androidx.fragment.app.FragmentTransaction.TRANSIT_FRAGMENT_OPEN
 import net.consolator.BaseApplication.Companion.ABORT_NAV_MAIN_UI

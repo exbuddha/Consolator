@@ -9,6 +9,10 @@ import androidx.lifecycle.*
 import androidx.room.*
 import ctx.consolator.*
 import data.consolator.*
+import iso.consolator.Scheduler.defer
+import iso.consolator.State.*
+import iso.consolator.activity.*
+import iso.consolator.application.*
 import java.io.*
 import java.lang.*
 import java.util.LinkedList
@@ -19,10 +23,6 @@ import kotlin.reflect.*
 import kotlin.reflect.full.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
-import iso.consolator.Scheduler.defer
-import iso.consolator.State.*
-import iso.consolator.activity.*
-import iso.consolator.application.*
 import androidx.core.content.ContextCompat.RECEIVER_EXPORTED
 import kotlinx.coroutines.Dispatchers.Default
 import kotlinx.coroutines.Dispatchers.IO
@@ -2190,7 +2190,7 @@ private open class Item<out R>(override val obj: R) : ObjectReference<R>(obj) {
 
     lateinit var type: Type
 
-    enum class Type { Coroutine, JobFunction, LiveStep, SchedulerStep, Step, Work, Runnable, Message, Lock, State }
+    enum class Type { Coroutine, JobFunction, ContextStep, LiveStep, SchedulerStep, Step, Work, Runnable, Message, Lock, State }
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
