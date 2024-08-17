@@ -382,11 +382,11 @@ internal open class InterruptedStepException(
     override val cause: Throwable? = null
 ) : InterruptedException()
 
-var log = fun(log: LogFunction, tag: String, msg: String) { if (log.isOn) log(tag, msg) }
+internal lateinit var log: Logger
 
-var info: LogFunction = fun(tag: String, msg: String) = Log.i(tag, msg)
-var debug: LogFunction = fun(tag: String, msg: String) = Log.d(tag, msg)
-var warning: LogFunction = fun(tag: String, msg: String) = Log.w(tag, msg)
+var info: LogFunction = { tag, msg -> Log.i(tag.toString(), msg.toString()) }
+var debug: LogFunction = { tag, msg -> Log.d(tag.toString(), msg.toString()) }
+var warning: LogFunction = { tag, msg -> Log.w(tag.toString(), msg.toString()) }
 private val bypass: LogFunction = { _, _ -> }
 
 private val LogFunction.isOn
@@ -394,7 +394,9 @@ private val LogFunction.isOn
 private val LogFunction.isOff
     get() = this === bypass
 
+fun enableLog() { log = { log, tag, msg -> if (log.isOn) log(tag, msg) } }
 fun disableLog() { log = { _, _, _ -> } }
+
 internal fun bypassInfoLog() { info = bypass }
 internal fun bypassDebugLog() { debug = bypass }
 internal fun bypassWarningLog() { info = bypass }
@@ -403,7 +405,23 @@ internal fun bypassAllLogs() {
     bypassDebugLog()
     bypassWarningLog() }
 
-private typealias LogFunction = (String, String) -> Any?
+internal typealias Logger = (LogFunction, CharSequence, CharSequence) -> Any?
+private typealias LogFunction = (CharSequence, CharSequence) -> Any?
+
+@JvmInline
+internal value class LogValue(private val value: Any) : CharSequence {
+    override fun toString() =
+        value.toString()
+
+    override fun get(index: Int) =
+        toString().get(index)
+
+    override fun subSequence(startIndex: Int, endIndex: Int) =
+        toString().subSequence(startIndex, endIndex)
+
+    override val length: Int
+        get() = toString().length
+}
 
 internal const val TAG_DOT = "."
 internal const val TAG_AT = "@"

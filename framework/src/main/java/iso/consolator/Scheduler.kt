@@ -28,6 +28,7 @@ import kotlinx.coroutines.Dispatchers.Default
 import kotlinx.coroutines.Dispatchers.IO
 
 fun commitStartApp() {
+    enableLog()
     SchedulerScope @Tag(SCH_CONFIG) {
         init()
         preferClock()
@@ -36,7 +37,7 @@ fun commitStartApp() {
         clock = Clock(SVC, Thread.MAX_PRIORITY)
         @Synchronous @Tag(CLOCK_INIT) {
             // turn clock until scope is active
-            log(info, SVC_TAG, "Clock is detected.") }
+            currentThread.log(info, SVC_TAG, "Clock is detected.") }
         .alsoStart() }
 
 fun commitStartApp(component: KClass<out Service>) {
@@ -299,7 +300,13 @@ sealed interface SchedulerScope : ResolverScope {
 
         internal operator fun <R> invoke(block: Companion.() -> R) = this.block()
     }
+
+    val log: Logger
+        get() = iso.consolator.log
 }
+
+internal val CoroutineScope.log
+    get() = iso.consolator.log
 
 interface ResolverScope : CoroutineScope, Transactor<AnyCoroutineStep, Any?> {
     override val coroutineContext: CoroutineContext
@@ -2509,6 +2516,7 @@ internal typealias LevelType = UByte
 
 internal fun Number?.toLevel() = this?.toByte()?.toUByte()
 
+internal fun Any?.asCoroutineScope() = asType<CoroutineScope>()
 private fun Any?.asMessage() = asType<Message>()
 private fun Any?.asRunnable() = asType<Runnable>()
 private fun Any?.asLiveWork() = asType<LiveWork>()
@@ -2571,10 +2579,13 @@ val emptyStep = suspend {}
 internal val processLifecycleScope
     get() = ProcessLifecycleOwner.get().lifecycleScope
 
-internal val currentThread get() = Thread.currentThread()
+val currentThread get() = Thread.currentThread()
 internal val mainThread = currentThread
 internal val onMainThread get() = currentThread.isMainThread()
 fun Thread.isMainThread() = this === mainThread
+
+val Thread.log
+    get() = iso.consolator.log
 
 private fun newThread(group: ThreadGroup, name: String, priority: Int, target: Runnable) = Thread(group, target, name).also { it.priority = priority }
 private fun newThread(name: String, priority: Int, target: Runnable) = Thread(target, name).also { it.priority = priority }

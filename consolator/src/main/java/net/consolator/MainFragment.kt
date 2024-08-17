@@ -36,7 +36,7 @@ internal open class MainFragment : BaseFragment(), ObjectProvider, FunctionProvi
             // show animation or progress bar
             parentFragmentManager.commit {
                 show(this@MainFragment) }
-            log(info, UI_TAG, "Main fragment view is created.") }
+            currentThread.log(info, UI_TAG, "Main fragment view is created.") }
     }
 
     override fun invoke(type: AnyKClass) = activity.asObjectProvider()!!(type)
