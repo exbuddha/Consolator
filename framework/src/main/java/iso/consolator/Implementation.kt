@@ -228,6 +228,18 @@ internal inline fun <R> trySafely(block: () -> R) =
 internal inline fun <R> trySafelyForResult(block: () -> R) =
     try { block() } catch (_: Throwable) { null }
 
+internal inline fun <R, S : R> tryFinally(block: () -> R, final: (R?) -> S): R {
+    var result: R? = null
+    return try { block().also { result = it } }
+    catch(ex: Throwable) { throw ex }
+    finally { final(result) } }
+
+internal inline fun <R, S : R> tryFinallyForResult(block: () -> R, final: (R?) -> S): R? {
+    var result: R? = null
+    return try { block().also { result = it } }
+    catch(_: Throwable) { null }
+    finally { final(result) } }
+
 inline fun <R> tryCanceling(block: () -> R) =
     try { block() } catch (ex: Throwable) { throw CancellationException(null, ex) }
 
