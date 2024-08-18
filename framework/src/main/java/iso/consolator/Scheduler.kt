@@ -485,7 +485,7 @@ private fun AnyCoroutineStep.markedJob(): Job = TODO()
 
 private fun AnyCoroutineStep.contextReferring(next: SchedulerStep?): Any? = TODO()
 
-private suspend fun CoroutineScope.take(next: AnyCoroutineStep) {}
+private suspend fun CoroutineScope.take(next: AnyCoroutineStep) { /* mark value (auto-register) */ }
 
 private suspend fun CoroutineScope.take(next: SchedulerStep, job: Job, context: Any?) {}
 
@@ -1454,7 +1454,11 @@ private fun JobFunctionSet.save(self: AnyKCallable, tag: Tag?) =
         save(self, null, false)
 
 private fun JobFunctionSet.save(function: AnyKCallable, tag: TagType?, keep: Boolean) =
-    add((tag?.let { { it } } ?: currentThreadJob()::hashTag) to arrayOf(function, keep))
+    add((tag?.let { { it } }
+        ?: currentThreadJob()::hashTag)
+        to if (function.isItemized)
+            arrayOf(function, MutableObjectReference<Any>(), keep)
+        else arrayOf(function, keep))
 
 private fun combineTags(tag: TagType, self: TagType?) =
     if (self === null) tag
@@ -1470,11 +1474,13 @@ internal fun reduceTags(vararg tag: TagType) =
 
 private fun returnTag(it: Any?) = it.asCallable().tag?.id
 
+private fun Any?.markValue(tag: TagType) {}
+
 internal fun AnyKCallable.markTag() = tag.also { jobs?.save(this, it) }
 
 internal fun Any.markTag() = asCallable().markTag()
 
-internal fun Any?.markTag(tag: TagType) = jobs?.save(asCallable(), tag)
+internal fun Any?.markTag(tag: TagType) = jobs?.save(@Itemize asCallable(), tag)
 
 internal fun Any?.markSequentialTag(vararg tag: TagType?): TagType? =
     tag.first()?.let { tag ->
@@ -2242,6 +2248,10 @@ annotation class Coordinate(
     @JvmField val key: KeyType = 0)
 
 @Retention(SOURCE)
+@Target(EXPRESSION)
+private annotation class Itemize
+
+@Retention(SOURCE)
 @Target(ANNOTATION_CLASS, CLASS, CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
 annotation class Tag(
     @JvmField val id: TagType,
@@ -2350,6 +2360,9 @@ private annotation class Enlisted
 @Target(EXPRESSION)
 private annotation class Unlisted
 
+private val AnyKCallable.isItemized
+    get() = annotations.any { it is Itemize }
+
 private val AnyKClass.tag
     get() = annotations.find { it is Tag } as? Tag
 
@@ -2430,9 +2443,11 @@ internal interface Expiry : MutableSet<Lifetime> {
     }
 }
 
-private typealias Lifetime = (AnyKMutableProperty) -> Boolean?
+private typealias Lifetime = (Any) -> Boolean?
 
 fun AnyKMutableProperty.expire() = set(null)
+
+private fun MutableObjectReference<*>.expire() = ::obj.expire()
 
 internal fun <R> R.asCallable(): KCallable<R> = asObjRef()::obj
 
@@ -2453,6 +2468,8 @@ private open class ObjectReference<out R>(open val obj: R) : KCallable<R> {
     override val typeParameters = ::obj.typeParameters
     override val visibility = ::obj.visibility
 }
+
+private open class MutableObjectReference<R>(override var obj: R? = null) : ObjectReference<R?>(obj)
 
 private fun <R> R.asObjRef() =
     asUniqueRef { ObjectReference(this@asObjRef) }
