@@ -8,16 +8,16 @@ data class NetworkCapabilitiesEntity(
     override val nid: Int,
 
     @ColumnInfo(name = CAPABILITIES)
-    var capabilities: String,
+    @JvmField var capabilities: String,
 
     @ColumnInfo(name = DOWNSTREAM)
-    var downstream: Int,
+    @JvmField var downstream: Int,
 
     @ColumnInfo(name = UPSTREAM)
-    var upstream: Int,
+    @JvmField var upstream: Int,
 
     @ColumnInfo(name = STRENGTH)
-    var strength: Int,
+    @JvmField var strength: Int,
 
     override var dbTime: String,
     override val id: Long,

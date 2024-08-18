@@ -10,19 +10,19 @@ data class RuntimeSessionEntity(
     override var startTime: Long,
 
     @ColumnInfo(name = INIT_TIME)
-    internal var initTime: Long = now(),
+    @JvmField internal var initTime: Long = now(),
 
     @ColumnInfo(name = DB_TIME, defaultValue = CURRENT_TIMESTAMP)
-    internal var dbTime: String,
+    @JvmField internal var dbTime: String,
 
     @ColumnInfo(name = APP_ID)
-    val appId: String?,
+    @JvmField val appId: String?,
 
     @ColumnInfo(name = BUILD_TYPE)
-    val buildType: String?,
+    @JvmField val buildType: String?,
 
     @ColumnInfo(name = BUILD_VERSION)
-    val buildVersion: String?,
+    @JvmField val buildVersion: String?,
 
     override val id: Long,
 ) : BaseEntity(id), UniqueContext {

@@ -1,3 +1,6 @@
+@file:JvmName(JVM_CLASS_NAME)
+@file:JvmMultifileClass
+
 package data.consolator
 
 import android.content.*
@@ -30,12 +33,12 @@ abstract class AppDatabase : RoomDatabase() {
     internal abstract fun runtimeDao(): RuntimeDao
 
     companion object {
-        var dateTimeFormat: DateFormat? = null
+        @JvmStatic var dateTimeFormat: DateFormat? = null
             get() = field ?: SimpleDateFormat(
                 "yyyy-MM-dd HH:mm:ss", Locale.US)
                 .also { field = it }
 
-        var dbTimeDiff: Long? = null
+        @JvmStatic var dbTimeDiff: Long? = null
             get() = field ?: session?.run {
                 dbTime.toLocalTime() - initTime }
                 ?.also { field = it }
@@ -67,7 +70,8 @@ fun clearObjects() {
 @Retention(SOURCE)
 @Target(CLASS)
 @Repeatable
-internal annotation class File(val name: String)
+internal annotation class File(
+    @JvmField val name: String)
 
 internal fun <T : Any> KClass<out T>.annotatedFiles() =
     annotations.filterIsInstance<File>()

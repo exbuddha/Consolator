@@ -6,16 +6,16 @@ import data.consolator.*
 @Entity(tableName = NetworkStateEntity.TABLE)
 data class NetworkStateEntity(
     @ColumnInfo(name = IS_CONNECTED)
-    var isConnected: Boolean,
+    @JvmField var isConnected: Boolean,
 
     @ColumnInfo(name = HAS_INTERNET)
-    var hasInternet: Boolean,
+    @JvmField var hasInternet: Boolean,
 
     @ColumnInfo(name = HAS_WIFI)
-    var hasWifi: Boolean,
+    @JvmField var hasWifi: Boolean,
 
     @ColumnInfo(name = HAS_MOBILE)
-    var hasMobile: Boolean,
+    @JvmField var hasMobile: Boolean,
 
     override var dbTime: String,
     override val id: Long,

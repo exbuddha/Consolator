@@ -1,3 +1,6 @@
+@file:JvmName(JVM_CLASS_NAME)
+@file:JvmMultifileClass
+
 package net.consolator
 
 import android.content.*

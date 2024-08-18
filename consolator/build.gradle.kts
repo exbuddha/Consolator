@@ -32,6 +32,14 @@ android {
     }
 }
 
+kotlin {
+    tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile::class.java).all {
+        compilerOptions {
+            freeCompilerArgs.add("-Xjvm-default=all")
+        }
+    }
+}
+
 dependencies {
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.appcompat:appcompat:1.7.0")

@@ -61,6 +61,6 @@ abstract class NetworkDao {
     abstract suspend fun dropNetworkCapabilities()
 
     companion object {
-        suspend operator fun <R> invoke(block: suspend NetworkDao.() -> R) =
+        @JvmStatic suspend operator fun <R> invoke(block: suspend NetworkDao.() -> R) =
             netDb!!.networkDao().block()
 } }

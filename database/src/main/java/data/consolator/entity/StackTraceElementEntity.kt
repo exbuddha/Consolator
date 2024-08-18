@@ -11,10 +11,10 @@ import data.consolator.*
     )])
 internal data class StackTraceElementEntity(
     @ColumnInfo(name = EXCEPTION_ID)
-    val exception: Long,
+    @JvmField val exception: Long,
 
     @ColumnInfo(name = ELEMENT)
-    val element: StackTraceElement,
+    @JvmField val element: StackTraceElement,
 
     override val id: Long,
 ) : BaseEntity(id) {

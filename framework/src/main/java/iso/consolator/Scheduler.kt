@@ -1,3 +1,6 @@
+@file:JvmName(JVM_CLASS_NAME)
+@file:JvmMultifileClass
+
 package iso.consolator
 
 import android.app.*
@@ -184,7 +187,7 @@ object Scheduler : SchedulerScope, MutableLiveData<AnyStep?>(), AnyStepObserver,
         removeObserver(this)
         SchedulerScope.isSchedulerObserved = false }
 
-    fun <T : Resolver> defer(resolver: KClass<out T>, provider: Any, vararg context: Any?): Any? {
+    @JvmStatic fun <T : Resolver> defer(resolver: KClass<out T>, provider: Any, vararg context: Any?): Any? {
         fun ResolverKProperty.setResolverThenCommit() =
             reconstruct(provider).get()?.commit(context)
         return when (resolver) {
@@ -255,10 +258,10 @@ sealed interface SchedulerScope : ResolverScope {
             invoke().asType<Scheduler>()
             ?.observeAsync() }
 
-        fun preferClock() {
+        @JvmStatic fun preferClock() {
             DEFAULT_RESOLVER = HandlerScope }
 
-        fun preferScheduler(callback: AnyFunction? = null) {
+        @JvmStatic fun preferScheduler(callback: AnyFunction? = null) {
             if (DEFAULT_RESOLVER === null)
                 DEFAULT_RESOLVER = Scheduler
             if (!isSchedulerObserved)
@@ -296,13 +299,12 @@ sealed interface SchedulerScope : ResolverScope {
                 // message queue reconfiguration
                 field = value }
 
-        operator fun invoke() = DEFAULT_RESOLVER ?: Scheduler
+        @JvmStatic operator fun invoke() = DEFAULT_RESOLVER ?: Scheduler
 
         internal operator fun <R> invoke(block: Companion.() -> R) = this.block()
     }
 
-    val log: Logger
-        get() = iso.consolator.log
+    val log get() = iso.consolator.log
 }
 
 internal val CoroutineScope.log
@@ -1892,7 +1894,7 @@ internal open class Clock(
     name: String,
     priority: Int = currentThread.priority
 ) : HandlerThread(name, priority), Synchronizer<Any>, Transactor<Message, Any?>, PriorityQueue<Runnable>, AdjustOperator<Runnable, Number> {
-    var handler: Handler? = null
+    @JvmField var handler: Handler? = null
     final override lateinit var queue: RunnableList
 
     init {
@@ -1927,7 +1929,7 @@ internal open class Clock(
 
     val isStarted get() = id != -1
     val isNotStarted get() = id == -1
-    var isRunning = false
+    @JvmField var isRunning = false
 
     override fun run() {
         hLock = Lock.Open()
@@ -2006,11 +2008,11 @@ internal open class Clock(
             // remark items in queue for adjustment
             markTagsForClkAttach(index, step) }
 
-    var post = fun(callback: Runnable) =
+    @JvmField var post = fun(callback: Runnable) =
         handler?.post(callback)
         ?: attach(callback)
 
-    var postAhead = fun(callback: Runnable) =
+    @JvmField var postAhead = fun(callback: Runnable) =
         handler?.postAtFrontOfQueue(callback)
         ?: attach(0, callback)
 
@@ -2028,40 +2030,40 @@ internal open class Clock(
         private fun Clock.register(callback: Runnable) {
             queue.add(callback) }
 
-        fun getMessage(step: AnyCoroutineStep): Message? = null
+        @JvmStatic fun getMessage(step: AnyCoroutineStep): Message? = null
 
-        fun getRunnable(step: AnyCoroutineStep): Runnable? = null
+        @JvmStatic fun getRunnable(step: AnyCoroutineStep): Runnable? = null
 
-        fun getCoroutine(callback: Runnable): CoroutineStep? = null
+        @JvmStatic fun getCoroutine(callback: Runnable): CoroutineStep? = null
 
-        fun getMessage(step: Step): Message? = null
+        @JvmStatic fun getMessage(step: Step): Message? = null
 
-        fun getRunnable(step: Step): Runnable? = null
+        @JvmStatic fun getRunnable(step: Step): Runnable? = null
 
-        fun getStep(callback: Runnable): Step? = null
+        @JvmStatic fun getStep(callback: Runnable): Step? = null
 
-        fun getEstimatedDelay(step: AnyCoroutineStep): Long? = null
+        @JvmStatic fun getEstimatedDelay(step: AnyCoroutineStep): Long? = null
 
-        fun getDelay(step: AnyCoroutineStep): Long? = null
+        @JvmStatic fun getDelay(step: AnyCoroutineStep): Long? = null
 
-        fun getTime(step: AnyCoroutineStep): Long? = null
+        @JvmStatic fun getTime(step: AnyCoroutineStep): Long? = null
 
-        fun getEstimatedDelay(step: Step): Long? = null
+        @JvmStatic fun getEstimatedDelay(step: Step): Long? = null
 
-        fun getDelay(step: Step): Long? = null
+        @JvmStatic fun getDelay(step: Step): Long? = null
 
-        fun getTime(step: Step): Long? = null
+        @JvmStatic fun getTime(step: Step): Long? = null
 
-        fun startSafely() = apply {
+        @JvmStatic fun startSafely() = apply {
             if (isNotStarted) start() }
 
-        val isRunning
+        @JvmStatic val isRunning
             get() = clock?.isRunning == true
 
-        fun quit() = clock?.quit()
+        @JvmStatic fun quit() = clock?.quit()
 
-        fun apply(block: Clock.() -> Unit) = clock?.apply(block)
-        fun <R> run(block: Clock.() -> R) = clock?.run(block)
+        @JvmStatic fun apply(block: Clock.() -> Unit) = clock?.apply(block)
+        @JvmStatic fun <R> run(block: Clock.() -> R) = clock?.run(block)
     }
 }
 
@@ -2103,7 +2105,7 @@ object EventBus : AbstractFlow<Any?>(), Transactor<ContextStep, Boolean>, Priori
     override fun commit(step: ContextStep) =
         queue.add(step)
 
-    fun commit(event: Transit) =
+    @JvmStatic fun commit(event: Transit) =
         queue.add(event)
 
     internal fun commit(vararg event: Event) =
@@ -2111,7 +2113,7 @@ object EventBus : AbstractFlow<Any?>(), Transactor<ContextStep, Boolean>, Priori
 
     override var queue: AnyMutableList = mutableListOf()
 
-    internal fun clear() {
+    @JvmStatic internal fun clear() {
         queue.clear() }
 }
 
@@ -2130,54 +2132,54 @@ open class Relay(val transit: Transit = null) : AnyStep {
 @Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
 @Repeatable
 annotation class Event(
-    val transit: TransitType = 0) {
+    @JvmField val transit: TransitType = 0) {
 
     @Retention(SOURCE)
     @Target(FUNCTION, EXPRESSION)
     @Repeatable
     annotation class Listening(
-        val channel: ChannelType = 0,
-        val timeout: Long = 0L) {
+        @JvmField val channel: ChannelType = 0,
+        @JvmField val timeout: Long = 0L) {
 
         @Retention(SOURCE)
         @Target(EXPRESSION)
         @Repeatable
         annotation class OnEvent(
-            val transit: TransitType)
+            @JvmField val transit: TransitType)
     }
 
     @Retention(SOURCE)
     @Target(FUNCTION, EXPRESSION)
     @Repeatable
     annotation class Committing(
-        val channel: ChannelType = 0)
+        @JvmField val channel: ChannelType = 0)
 
     @Retention(SOURCE)
     @Target(FUNCTION, EXPRESSION)
     annotation class Retrying(
-        val channel: ChannelType = 0)
+        @JvmField val channel: ChannelType = 0)
 
     @Retention(SOURCE)
     @Target(FUNCTION, EXPRESSION)
     annotation class Repeating(
-        val channel: ChannelType = 0,
-        val count: Int = 0)
+        @JvmField val channel: ChannelType = 0,
+        @JvmField val count: Int = 0)
 }
 
 @Retention(SOURCE)
 @Target(FUNCTION, EXPRESSION)
 annotation class Delay(
-    val millis: Long = 0L)
+    @JvmField val millis: Long = 0L)
 
 @Retention(SOURCE)
 @Target(FUNCTION, EXPRESSION)
 annotation class Timeout(
-    val millis: Long = -1L)
+    @JvmField val millis: Long = -1L)
 
 @Retention(SOURCE)
 @Target(FUNCTION, EXPRESSION)
 annotation class Pathwise(
-    val route: SchedulerPath = [])
+    @JvmField val route: SchedulerPath = [])
 
 private open class Item<out R>(override val obj: R) : ObjectReference<R>(obj) {
     companion object {
@@ -2236,14 +2238,14 @@ interface FunctionProvider {
 @Retention(SOURCE)
 @Target(ANNOTATION_CLASS, CLASS, CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
 annotation class Coordinate(
-    val target: AnyKClass = Any::class,
-    val key: KeyType = 0)
+    @JvmField val target: AnyKClass = Any::class,
+    @JvmField val key: KeyType = 0)
 
 @Retention(SOURCE)
 @Target(ANNOTATION_CLASS, CLASS, CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
 annotation class Tag(
-    val id: TagType,
-    val keep: Boolean = true)
+    @JvmField val id: TagType,
+    @JvmField val keep: Boolean = true)
 
 @Retention(SOURCE)
 @Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
@@ -2253,44 +2255,44 @@ internal annotation class Keep
 @Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
 @Repeatable
 annotation class Path(
-    val name: PathType,
-    val route: SchedulerPath = []) {
+    @JvmField val name: PathType,
+    @JvmField val route: SchedulerPath = []) {
 
     @Retention(SOURCE)
     @Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
     @Repeatable
     annotation class Adjacent(
-        val paths: PathArray = [])
+        @JvmField val paths: PathArray = [])
 
     @Retention(SOURCE)
     @Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
     @Repeatable
     annotation class Preceding(
-        val paths: PathArray = [])
+        @JvmField val paths: PathArray = [])
 
     @Retention(SOURCE)
     @Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
     @Repeatable
     annotation class Proceeding(
-        val paths: PathArray = [])
+        @JvmField val paths: PathArray = [])
 
     @Retention(SOURCE)
     @Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
     @Repeatable
     annotation class Parallel(
-        val paths: PathArray = [])
+        @JvmField val paths: PathArray = [])
 
     @Retention(SOURCE)
     @Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
     @Repeatable
     annotation class Diverging(
-        val paths: PathArray = [])
+        @JvmField val paths: PathArray = [])
 
     @Retention(SOURCE)
     @Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
     @Repeatable
     annotation class Converging(
-        val paths: PathArray = [])
+        @JvmField val paths: PathArray = [])
 }
 
 open class SchedulerIntent : Throwable()
@@ -2306,8 +2308,8 @@ annotation class WithContext
 @Retention(SOURCE)
 @Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
 internal annotation class JobTree(
-    val branch: PathType,
-    val level: LevelType = 0u)
+    @JvmField val branch: PathType,
+    @JvmField val level: LevelType = 0)
 
 @Retention(SOURCE)
 @Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
@@ -2316,8 +2318,8 @@ annotation class JobTreeRoot
 @Retention(SOURCE)
 @Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
 internal annotation class Scope(
-    val type: KClass<out CoroutineScope> = Scheduler::class,
-    val provider: AnyKClass = Any::class)
+    @JvmField val type: KClass<out CoroutineScope> = Scheduler::class,
+    @JvmField val provider: AnyKClass = Any::class)
 
 @Retention(SOURCE)
 @Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
@@ -2326,7 +2328,7 @@ annotation class LaunchScope
 @Retention(SOURCE)
 @Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
 private annotation class Synchronous(
-    val node: SchedulerNode = Annotation::class)
+    @JvmField val node: SchedulerNode = Annotation::class)
 
 @Retention(SOURCE)
 @Target(EXPRESSION)
@@ -2512,9 +2514,9 @@ private typealias PathArray = Array<PathType>
 
 internal fun Array<out Path>.mapToTagArray() = mapToTypedArray { it.name }
 
-internal typealias LevelType = UByte
+internal typealias LevelType = Byte
 
-internal fun Number?.toLevel() = this?.toByte()?.toUByte()
+internal fun Number.toLevel() = toByte()
 
 internal fun Any?.asCoroutineScope() = asType<CoroutineScope>()
 private fun Any?.asMessage() = asType<Message>()
@@ -2629,11 +2631,11 @@ sealed interface State {
 
     sealed interface Resolved : State {
         companion object : Resolved {
-            inline infix fun where(predicate: BooleanPointer) =
+            @JvmStatic inline infix fun where(predicate: BooleanPointer) =
                 if (predicate() == true) this
                 else Unresolved
 
-            inline infix fun unless(predicate: BooleanPointer) =
+            @JvmStatic inline infix fun unless(predicate: BooleanPointer) =
                 if (predicate() == true) Unresolved
                 else this
     } }
@@ -2642,15 +2644,15 @@ sealed interface State {
     sealed interface Ambiguous : State { companion object : Ambiguous }
 
     companion object : Synchronizer<State> {
-        fun of(vararg args: Any?): State = Ambiguous
+        @JvmStatic fun of(vararg args: Any?): State = Ambiguous
 
         internal fun of(property: AnyKProperty): State = Ambiguous
 
-        operator fun <R> invoke(block: Companion.(State) -> R): State = TODO()
+        @JvmStatic operator fun <R> invoke(block: Companion.(State) -> R): State = TODO()
 
-        fun State.register(vararg args: Any?): State = TODO()
+        @JvmStatic fun State.register(vararg args: Any?): State = TODO()
 
-        fun <R> State.onStateChanged(value: State, block: Companion.(State) -> R): R = TODO()
+        @JvmStatic fun <R> State.onStateChanged(value: State, block: Companion.(State) -> R): R = TODO()
 
         override fun <R> synchronize(lock: State?, block: () -> R) =
             synchronized(lock ?: this, block)
@@ -2674,7 +2676,6 @@ sealed interface State {
         internal operator fun rangeTo(lock: Any): State = Ambiguous
         internal operator fun not(): State = Ambiguous
         internal operator fun contains(lock: Any) = false
-        internal operator fun compareTo(lock: Any) = 1
     }
 
     operator fun invoke(vararg param: Any?): Lock = this as Lock
@@ -2685,7 +2686,6 @@ sealed interface State {
     operator fun rangeTo(state: Any) = this
     operator fun not(): State = this
     operator fun contains(state: Any) = state === this
-    operator fun compareTo(state: Any) = 0
 }
 
 internal val SVC_TAG get() = if (onMainThread) "SERVICE" else "CLOCK"

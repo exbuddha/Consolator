@@ -1,3 +1,6 @@
+@file:JvmName(JVM_CLASS_NAME)
+@file:JvmMultifileClass
+
 package iso.consolator
 
 import android.app.*
@@ -377,7 +380,7 @@ open class BaseImplementationRestriction(
 ) : UnsupportedOperationException(message, cause)
 
 internal open class InterruptedStepException(
-    val step: Any,
+    @JvmField val step: Any,
     override val message: String? = null,
     override val cause: Throwable? = null
 ) : InterruptedException()
@@ -414,7 +417,7 @@ internal value class LogValue(private val value: Any) : CharSequence {
         value.toString()
 
     override fun get(index: Int) =
-        toString().get(index)
+        toString()[index]
 
     override fun subSequence(startIndex: Int, endIndex: Int) =
         toString().subSequence(startIndex, endIndex)
@@ -542,3 +545,5 @@ internal const val STAGE_INIT_NET_DB = "$NET_DB.$INIT"
 internal const val START_TIME_KEY = "1"
 internal const val MODE_KEY = "2"
 internal const val ACTION_KEY = "3"
+
+const val JVM_CLASS_NAME = ctx.consolator.JVM_CLASS_NAME

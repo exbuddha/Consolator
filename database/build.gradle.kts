@@ -25,6 +25,14 @@ android {
     }
 }
 
+kotlin {
+    tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile::class.java).all {
+        compilerOptions {
+            freeCompilerArgs.add("-Xjvm-default=all")
+        }
+    }
+}
+
 dependencies {
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-paging:2.6.1")

@@ -19,19 +19,19 @@ import data.consolator.*
     )])
 internal data class ExceptionEntity(
     @ColumnInfo(name = TYPE)
-    val type: Long,
+    @JvmField val type: Long,
 
     @ColumnInfo(name = THREAD)
-    val thread: Long,
+    @JvmField val thread: Long,
 
     @ColumnInfo(name = CAUSE)
-    val cause: Long? = null,
+    @JvmField val cause: Long? = null,
 
     @ColumnInfo(name = MESSAGE)
-    val message: String? = null,
+    @JvmField val message: String? = null,
 
     @ColumnInfo(name = UNHANDLED)
-    val unhandled: Boolean = false,
+    @JvmField val unhandled: Boolean = false,
 
     override var dbTime: String,
     override val id: Long,

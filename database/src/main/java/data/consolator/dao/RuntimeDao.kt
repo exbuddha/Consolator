@@ -22,6 +22,6 @@ abstract class RuntimeDao {
     abstract suspend fun dropSessions()
 
     companion object {
-        suspend operator fun <R> invoke(block: suspend RuntimeDao.() -> R) =
+        @JvmStatic suspend operator fun <R> invoke(block: suspend RuntimeDao.() -> R) =
             db!!.runtimeDao().block()
 } }

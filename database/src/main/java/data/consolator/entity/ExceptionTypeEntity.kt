@@ -5,7 +5,7 @@ import androidx.room.*
 @Entity(tableName = ExceptionTypeEntity.TABLE)
 internal data class ExceptionTypeEntity(
     @ColumnInfo(name = TYPE)
-    val type: String,
+    @JvmField val type: String,
 
     override val id: Long,
 ) : BaseEntity(id) {

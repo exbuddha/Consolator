@@ -6,10 +6,10 @@ import data.consolator.*
 @Entity(tableName = ThreadEntity.TABLE)
 internal data class ThreadEntity(
     @ColumnInfo(name = RUNTIME_ID)
-    val rid: Long,
+    @JvmField val rid: Long,
 
     @ColumnInfo(name = MAIN)
-    val main: Boolean,
+    @JvmField val main: Boolean,
 
     override var dbTime: String,
     override val id: Long,
