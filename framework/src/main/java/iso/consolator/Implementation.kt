@@ -281,7 +281,7 @@ internal inline fun <reified T : Any> Any?.asTypeOf(instance: T): T? =
 inline fun <reified T : Any> Any?.asType(): T? =
     T::class.safeCast(this)
 
-internal inline fun <reified T : Any> T?.singleton(vararg args: Any?, lock: Any = T::class.lock()) =
+internal inline fun <reified T : Any> T?.singleton(vararg args: Any?, lock: Any = T::class.lock) =
     commitAsyncForResult(lock, { this === null }, { T::class.new(*args) }, { this }) as T
 
 internal inline fun <T> T?.require(constructor: () -> T) =
@@ -293,27 +293,27 @@ internal inline fun <reified T : Any> T?.reconstruct(constructor: KCallable<T?>,
 internal inline fun <reified T : Any> T?.reconstruct(vararg args: Any?) =
     this ?: T::class.new(*args)
 
-internal fun <T : Any> KClass<out T>.lock() =
-    objectInstance ?: this
+internal val <T : Any> KClass<out T>.lock
+    get() = objectInstance ?: this
 
 internal fun <T : Any> KClass<out T>.reconstruct(vararg args: Any?) =
     if (isCompanion) objectInstance!!
     else new(*args)
 
 internal fun <T : Any> KClass<out T>.new(vararg args: Any?) =
-    if (args.isEmpty()) emptyConstructor().call()
-    else firstConstructor().call(*args)
+    if (args.isEmpty()) emptyConstructor.call()
+    else firstConstructor.call(*args)
 
-internal fun <T : Any> KClass<out T>.emptyConstructor() =
-    constructors.first { it.parameters.isEmpty() }
+internal val <T : Any> KClass<out T>.emptyConstructor
+    get() = constructors.first { it.parameters.isEmpty() }
 
-internal fun <T : Any> KClass<out T>.firstConstructor() =
-    constructors.first()
+internal val <T : Any> KClass<out T>.firstConstructor
+    get() = constructors.first()
 
 internal inline fun <reified T> KMutableProperty<out T?>.reconstruct(provider: Any = T::class) =
     apply { renew {
     if (provider is AnyKClass)
-        provider.emptyConstructor().call()
+        provider.emptyConstructor.call()
     else
         provider.asObjectProvider()?.invoke(T::class) } }
 
