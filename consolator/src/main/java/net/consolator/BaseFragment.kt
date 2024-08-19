@@ -33,6 +33,7 @@ internal abstract class BaseFragment : Fragment(contentLayoutId) {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         if (State[1] is Resolved) return
+        trySafely {
         launch(start = LAZY) @MainViewGroup @Listening
         @OnEvent(ACTION_MIGRATE_APP) {
             defer<MigrationManager>(Fragment::onViewCreated, {
@@ -55,12 +56,13 @@ internal abstract class BaseFragment : Fragment(contentLayoutId) {
             error(job) }
         .then(
             CoroutineScope::enact
-    ) }
+    ) } }
 
     override fun onAttach(context: Context) {
         super.onAttach(context)
         if (State[1] is Resolved) return
         val context = context.asWeakReference()
+        trySafely {
         launch(IO, LAZY) @JobTreeRoot @MainViewGroup
         @Retrying @Pathwise([ FromLastCancellation::class ])
         @Delay(VIEW_MIN_DELAY)
@@ -92,7 +94,7 @@ internal abstract class BaseFragment : Fragment(contentLayoutId) {
                 when (err) {
                     is CancellationException -> State[1] = Ambiguous
                 } }
-    } }
+    } } }
 
     override fun onStart() {
         super.onStart()
@@ -128,8 +130,8 @@ internal abstract class BaseFragment : Fragment(contentLayoutId) {
 
     override fun onSaveInstanceState(outState: Bundle) {
         // write to bundle
+        commitSaveFragment(this, outState)
         super.onSaveInstanceState(outState)
-        commitSaveFragment(this)
     }
 
     @Retention(SOURCE)

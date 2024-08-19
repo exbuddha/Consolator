@@ -39,6 +39,11 @@ internal var receiver: BroadcastReceiver? = null
 internal val foregroundContext: Context
     get() = service.asContext() ?: instance
 
+internal val foregroundActivity: Activity?
+    get() = foregroundLifecycleOwner?.let {
+        if (it is Activity) it
+        else it.asFragment()?.activity }
+
 var foregroundLifecycleOwner: LifecycleOwner? = null
 
 const val VIEW_MIN_DELAY = 300L
@@ -222,7 +227,7 @@ internal inline fun <R, S : R> tryPropagating(block: () -> R, transform: (Throwa
     catch (ex: Propagate) { throw ex }
     catch (ex: Throwable) { transform(ex) }
 
-internal inline fun <R> trySafely(block: () -> R) =
+inline fun <R> trySafely(block: () -> R) =
     try { block() } catch (_: Throwable) {}
 
 internal inline fun <R> trySafelyForResult(block: () -> R) =

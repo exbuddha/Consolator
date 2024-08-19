@@ -73,9 +73,9 @@ fun commitDestroyActivity(instance: Activity) {}
 
 fun commitDestroyFragment(instance: Fragment) {}
 
-fun commitSaveActivity(instance: Activity) {}
+fun commitSaveActivity(instance: Activity, outState: Bundle) {}
 
-fun commitSaveFragment(instance: Fragment) {}
+fun commitSaveFragment(instance: Fragment, outState: Bundle) {}
 
 interface BaseServiceScope : ResolverScope, ReferredContext, UniqueContext {
     fun Intent.invoke(flags: Int, startId: Int, mode: Int): Int? {

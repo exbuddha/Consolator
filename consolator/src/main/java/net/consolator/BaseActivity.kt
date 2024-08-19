@@ -17,8 +17,9 @@ internal abstract class BaseActivity : AppCompatActivity(), ReferredContext {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (savedInstanceState === null) {
+        if (savedInstanceState === null)
             setContentView(layoutId)
+        if (savedInstanceState?.getBoolean(ENABLE_NETWORK_CALLBACKS_KEY) != false) {
             if (isNetworkStateAccessPermitted) {
                 enableNetworkCallbacks = ::registerNetworkCallback
                 disableNetworkCallbacks = ::unregisterNetworkCallback }
@@ -62,9 +63,11 @@ internal abstract class BaseActivity : AppCompatActivity(), ReferredContext {
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
-        // write to bundle
+        outState.putBoolean(
+            ENABLE_NETWORK_CALLBACKS_KEY,
+            enableNetworkCallbacks !== null)
+        commitSaveActivity(this, outState)
         super.onSaveInstanceState(outState)
-        commitSaveActivity(this)
     }
 
     override var ref: WeakContext? = null
@@ -73,4 +76,8 @@ internal abstract class BaseActivity : AppCompatActivity(), ReferredContext {
     abstract inner class ConfigurationChangeManager : iso.consolator.activity.ConfigurationChangeManager()
     abstract inner class NightModeChangeManager : iso.consolator.activity.NightModeChangeManager()
     abstract inner class LocalesChangeManager : iso.consolator.activity.LocalesChangeManager()
+
+    companion object {
+        const val ENABLE_NETWORK_CALLBACKS_KEY = "4"
+    }
 }
