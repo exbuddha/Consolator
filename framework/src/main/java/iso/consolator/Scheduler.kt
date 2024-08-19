@@ -430,16 +430,16 @@ private fun relaunch(launcher: JobKFunction, instance: JobKProperty, context: Co
 
 internal fun launch(context: CoroutineContext = SchedulerContext, start: CoroutineStart = CoroutineStart.DEFAULT, step: AnyCoroutineStep) =
     step.markTagForSchLaunch()
-        .afterTrackingTagsForJobLaunch(null, context, start).let { step ->
-    Scheduler.launch(context, start) { step() }
+        .afterTrackingTagsForJobLaunch(null, context, start).let { trackedStep ->
+    Scheduler.launch(context, start) { trackedStep() }
         .apply { saveNewElement(step) } }
 
 fun LifecycleOwner.launch(context: CoroutineContext = SchedulerContext, start: CoroutineStart = CoroutineStart.DEFAULT, step: AnyCoroutineStep): Job? {
     val scope = step.annotatedScope ?: lifecycleScope
     val (context, start, step) = scope.determineCoroutine(this, context, start, step)
     step.markTagForFloLaunch()
-        .afterTrackingTagsForJobLaunch(this, context, start).let { step ->
-    return scope.launch(context, start) { step() }
+        .afterTrackingTagsForJobLaunch(this, context, start).let { trackedStep ->
+    return scope.launch(context, start) { trackedStep() }
         .apply { saveNewElement(step) } } }
 
 private fun CoroutineScope.determineCoroutine(owner: LifecycleOwner, context: CoroutineContext, start: CoroutineStart, step: AnyCoroutineStep) =
@@ -1430,35 +1430,39 @@ private class Sequencer : Synchronizer<LiveWork>, Transactor<Int, Boolean?>, Pri
 private var jobs: JobFunctionSet? = null
 
 internal operator fun Job.get(tag: TagType) =
-    jobs?.find { tag == it.first() }
-        ?.second.asAnyArray()?.get(0)
+    jobs?.findByTag(tag)
+        ?.instance
 
 internal operator fun Job.set(tag: TagType, value: Any?) {
     // addressable layer work
     value.markTag(tag) }
 
-private fun JobFunctionSet.save(function: AnyKCallable, tag: TagType) =
-    function.tag.apply {
-        save(function,
-            combineTags(tag, this?.id),
-            this?.keep ?: true) }
+private val JobFunctionItem.instance
+    get() = second.asAnyToBooleanPair()?.first
 
-private fun JobFunctionSet.save(function: AnyKCallable, vararg tag: TagType?) {}
+private fun JobFunctionSet.findByTag(tag: TagType) =
+    find { tag == it.first() }
 
-private fun JobFunctionSet.save(coordinator: (AnyArray?) -> Any?, vararg args: Any?) {}
+private fun JobFunctionSet.save(function: AnyKMutableProperty, tag: TagType) =
+    function.tag?.apply {
+    save(function, combineTags(tag, id), keep) }
 
-private fun JobFunctionSet.save(self: AnyKCallable, tag: Tag?) =
-    if (tag !== null)
-        with(tag) { save(self, id, keep) }
-    else
-        save(self, null, false)
+private fun JobFunctionSet.save(self: AnyKMutableProperty, tag: Tag) =
+    with(tag) { save(self, id, keep) }
 
-private fun JobFunctionSet.save(function: AnyKCallable, tag: TagType?, keep: Boolean) =
-    add((tag?.let { { it } }
-        ?: currentThreadJob()::hashTag)
-        to if (function.isItemized)
-            arrayOf(function, MutableObjectReference<Any>(), keep)
-        else arrayOf(function, keep))
+private fun JobFunctionSet.save(function: AnyKMutableProperty, tag: TagType?, keep: Boolean) =
+    tag?.let(::findByTag)
+        ?.instance
+        ?.also { if (it is Item<*>) {
+            it.onSaved(FUNC, function)
+            it.onSaved(KEEP, keep) } }
+    ?: (if (function.isItemized)
+        Item(function).apply {
+            onSaved(KEEP, keep) }
+        else
+            function
+        ).also { instance ->
+        add((tag?.let { { it } } ?: currentThreadJob()::hashTag) to (instance to keep)) }
 
 private fun combineTags(tag: TagType, self: TagType?) =
     if (self === null) tag
@@ -1472,19 +1476,23 @@ internal fun reduceTags(vararg tag: TagType) =
         tag.map(TagType::toString)
             .reduce(String::concat)).asTagType()!!
 
-private fun returnTag(it: Any?) = it.asCallable().tag?.id
+private fun returnTag(it: Any?) =
+    it.asCallable().tag?.id
 
 private fun Any?.markValue(tag: TagType) {}
 
-internal fun AnyKCallable.markTag() = tag.also { jobs?.save(this, it) }
+internal fun AnyKMutableProperty.markTag() =
+    tag?.also { jobs?.save(@Itemize this, it) }
 
-internal fun Any.markTag() = asCallable().markTag()
+internal fun Any.markTag() =
+    asCallable().markTag()
 
-internal fun Any?.markTag(tag: TagType) = jobs?.save(@Itemize asCallable(), tag)
+internal fun Any?.markTag(tag: TagType) =
+    jobs?.save(@Itemize asCallable(), tag)
 
-internal fun Any?.markSequentialTag(vararg tag: TagType?): TagType? =
-    tag.first()?.let { tag ->
-    combineTags(tag, returnTag(this))
+internal fun Any.markSequentialTag(tag: TagType?, id: TagType): TagType? =
+    tag?.let { tag ->
+    reduceTags(tag, TAG_DASH, id)
     .also { this@markSequentialTag.markTag(it) } }
 
 private fun <T> T.applyMarkTag(tag: TagType) = apply { markTag(tag) }
@@ -1506,93 +1514,60 @@ private fun getTag(what: Int): TagType? = TODO()
 
 private fun markTagsForJobLaunch(vararg function: Any?, i: Int = 0) =
     function[i + 4].asTag()?.also { tag ->
-    val stepTag = tag.id
-    /* notify pre-save listener */
     jobs?.save(function[i + 3].asCallable(), tag) /* step */
-    function[i].let { owner ->
-        jobs?.save(owner.asCallable(), reduceTags(stepTag, TAG_AT, when (owner) {
-            is Activity ->
-                owner::class.tag?.id
-                ?: owner::class.hashTag()
-            is Fragment ->
-                owner.asFragment()?.let {
-                if (TagType::class.isNumber)
-                    it.id
-                else it.tag }
-                ?: owner::class.tag?.id
-                ?: owner::class.hashTag()
-            else ->
-                owner?.let { it::class.hashTag() } }
-        .asTagType()!!, TAG_DOT, OWNER)) } /* owner */
-    val jobId = function[i + 5]?.let { job ->
-        jobs?.save(job.asCallable(),
-            reduceTags(stepTag, TAG_DOT, JOB), tag.keep)
-        job.toJobId() } /* job */
-    function[i + 1]?.let { context ->
-        jobs?.save(context.asCallable(),
-            reduceTags(stepTag, TAG_AT, jobId!!.toTagType(), TAG_DOT, CONTEXT), false) } /* context */
-    function[i + 2]?.let { start ->
-        jobs?.save(start.asCallable(),
-            reduceTags(stepTag, TAG_AT, jobId!!.toTagType(), TAG_DOT, START), false) } /* start */
-    /* notify post-save listener */ }
+        ?.asItem()
+        ?.onSaved(JOB, function[i + 5])
+        ?.onSaved(OWNER, function[i])
+        ?.onSaved(CONTEXT, function[i + 1])
+        ?.onSaved(START, function[i + 2]) }
 
 private fun markTagsForJobRepeat(vararg function: Any?, i: Int = 0) =
-    function[i + 2]?.markTag()?.also { blockTag ->
-    val blockTag = blockTag.id
-    val jobId = function[i + 3].toJobId()
-    function[i + 1]?.let { delay ->
-        jobs?.save(delay.asCallable(),
-            reduceTags(blockTag, TAG_AT, jobId.toTagType(), TAG_DOT, DELAY)) } /* delay */
-    function[i]?.let { predicate ->
-        jobs?.save(predicate.asCallable(),
-            reduceTags(blockTag, TAG_AT, jobId.toTagType(), TAG_DOT, PREDICATE)) } /* predicate */ }
+    function[i + 2].asCallable().let { block ->
+    block.tag?.also { tag ->
+    jobs?.save(block, tag)
+        ?.asItem()
+        ?.onSaved(JOB, function[i + 3])
+        ?.onSaved(PREDICATE, function[i])
+        ?.onSaved(DELAY, function[i + 1]) } }
+
+private fun markTagsForSeqAttach(vararg function: Any?, i: Int = 0) =
+    function[i]?.asTagType()?.also { tag ->
+    (jobs?.findByTag(tag)
+        ?.instance
+        ?: Item<Unit>().also { jobs?.add({ tag } to (it to true)) }
+        ).asItem()
+        ?.onSaved(INDEX, function[i + 1])
+        ?.onSaved(WORK, function[i + 2]) }
+
+private fun markTagsForSeqLaunch(vararg function: Any?, i: Int = 0) =
+    function[i].asCallable().let { step ->
+    step.tag?.also { tag ->
+    jobs?.save(step, tag)
+        ?.asItem()
+        ?.onSaved(JOB, function[i + 3])
+        ?.onSaved(INDEX, function[i + 1]) // optionally, readjust by remarks or from seq here instead
+        ?.onSaved(CONTEXT, function[i + 2]) } }
+
+private fun markTagsForCtxReform(vararg function: Any?, i: Int = 0) =
+    function[i].asTagType()?.let { tag ->
+    jobs?.findByTag(tag)
+        ?.asItem()
+        ?.onSaved(JOB, function[i + 3])
+        ?.onSaved(CTX_STEP, function[i + 1])
+        ?.onSaved(FORM, function[i + 2]) }
 
 private fun markTagsForClkAttach(vararg function: Any?, i: Int = 0) =
     function[i + 1]?.let { step -> when (step) {
-    is Runnable -> {
-        val stepTag = getTag(step)
-        jobs?.save(step.asCallable(),
-            reduceTags(stepTag!!, TAG_DOT, CALLBACK)) /* callback */
-        function[i]?.let { index ->
-        jobs?.save(index.asCallable(),
-            reduceTags(stepTag!!, TAG_DOT, INDEX)) } /* index */ }
-    is Message -> {
-        jobs?.save(step.asCallable(),
-            reduceTags(getTag(step)!!, TAG_DOT, MSG)) /* message */ }
-    is Int ->
-        jobs?.save(step.asCallable(),
-            reduceTags(getTag(step)!!, TAG_DOT, WHAT) /* what */ )
-    else -> null } }
-
-private fun markTagsForSeqAttach(vararg function: Any?, i: Int = 0) =
-    function[i]?.asTagType().let { stepTag ->
-    val stepTag = stepTag ?: NULL_STEP
-    function[i + 1].asInt()?.let { index ->
-        jobs?.save(index.asCallable(),
-            reduceTags(stepTag, TAG_DOT, INDEX))
-    function[i + 2]?.asLiveWork()?.let { work ->
-        jobs?.save(work.asCallable(),
-            reduceTags(stepTag, TAG_HASH, index.toTagType(), TAG_DOT, WORK)) } } /* index & work */ }
-
-private fun markTagsForSeqLaunch(vararg function: Any?, i: Int = 0) =
-    function[i]?.markTag()?.also { stepTag ->
-    val stepTag = stepTag.id
-    val index = function[i + 1]?.asInt()!! // optionally, readjust by remarks or from seq here instead
-    val jobId = function[i + 3].toJobId()
-    function[i + 2]?.let { context ->
-        jobs?.save(context.asCallable(),
-            reduceTags(stepTag, TAG_HASH, index.toTagType(), TAG_AT, jobId.toTagType(), TAG_DOT, CONTEXT), false) } /* context */ }
-
-private fun markTagsForCtxReform(vararg function: Any?, i: Int = 0) =
-    returnTag(function[i + 1]).asTagType()?.let { stageTag ->
-    combineTags(stageTag, function[i].asTagType() /* id tag */) }?.also { stageTag ->
-    val jobId = function[i + 3]?.let { job ->
-        jobs?.save(job.asCallable(),
-            reduceTags(stageTag, TAG_DOT, JOB), false)
-        job.toJobId() } /* job */
-    function[i + 2]?.let { form ->
-        jobs?.save(form.asCallable(),
-            reduceTags(stageTag, TAG_AT, jobId!!.toTagType(), TAG_DOT, FORM), false) } /* form */ }
+    is Runnable ->
+        getTag(step)?.also { tag ->
+        jobs?.save(step.asCallable(), tag)
+            ?.asItem()
+            ?.onSaved(INDEX, function[i]) }
+    is Message ->
+        getTag(step)?.also { tag ->
+        jobs?.save(step.asCallable(), tag) }
+    else ->
+        null } }
 
 inline infix fun <R, S> (suspend () -> R)?.thenSuspended(crossinline next: suspend () -> S): (suspend () -> S)? = this?.let { {
     this@thenSuspended()
@@ -2187,7 +2162,27 @@ annotation class Timeout(
 annotation class Pathwise(
     @JvmField val route: SchedulerPath = [])
 
-private open class Item<out R>(override val obj: R) : ObjectReference<R>(obj) {
+private open class Item<R>(var ref: KMutableProperty<R>? = null) {
+    open fun onSaved(subtag: TagType, value: Any?) = this.also { when {
+        subtag === FUNC ->
+            ref = value.asType()!!
+    } }
+
+    var tag: TagType? = null
+        get() = ref?.tag?.id ?: field ?: ref.hashTag()
+
+    fun setTag(tag: TagType): Item<R> {
+        this.tag = tag
+        return this }
+
+    lateinit var type: Type
+
+    fun setType(type: Type): Item<R> {
+        this.type = type
+        return this }
+
+    enum class Type { Coroutine, JobFunction, ContextStep, SchedulerStep, LiveStep, Step, Work, Runnable, Message, Lock, State }
+
     companion object {
         fun <T> find(ref: Coordinate): T = TODO()
 
@@ -2200,22 +2195,15 @@ private open class Item<out R>(override val obj: R) : ObjectReference<R>(obj) {
         fun <R, I : Item<R>> Item<R>.reload(target: AnyKClass, key: KeyType): I = TODO()
     }
 
-    var tag: TagType? = null
-        get() = ::obj.tag?.id ?: field ?: obj.hashTag()
-
-    lateinit var type: Type
-
-    enum class Type { Coroutine, JobFunction, ContextStep, LiveStep, SchedulerStep, Step, Work, Runnable, Message, Lock, State }
-
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
-        if (other !is Item<*>) return other == obj
-        if (obj != other.obj) return false
+        if (other !is Item<*>) return other == ref
+        if (ref != other.ref) return false
         if (tag != other.tag) return false
         if (type != other.type) return false
         return true }
 
-    override fun hashCode() = obj.hashCode()
+    override fun hashCode() = ref.hashCode()
 
     override fun toString() = tag.toString()
 }
@@ -2443,17 +2431,14 @@ internal interface Expiry : MutableSet<Lifetime> {
     }
 }
 
-private typealias Lifetime = (Any) -> Boolean?
+private typealias Lifetime = (AnyKMutableProperty) -> Boolean?
 
 fun AnyKMutableProperty.expire() = set(null)
 
-private fun MutableObjectReference<*>.expire() = ::obj.expire()
-
-internal fun <R> R.asCallable(): KCallable<R> = asObjRef()::obj
-
-private open class ObjectReference<out R>(open val obj: R) : KCallable<R> {
+private open class ObjectReference<R>(open var obj: R) : KMutableProperty<R> {
     override fun call(vararg args: Any?) =
         ::obj.call(*args)
+
     override fun callBy(args: Map<KParameter, Any?>) =
         call(*parameters.map(args::get).toTypedArray())
 
@@ -2467,17 +2452,17 @@ private open class ObjectReference<out R>(open val obj: R) : KCallable<R> {
     override val returnType = ::obj.returnType
     override val typeParameters = ::obj.typeParameters
     override val visibility = ::obj.visibility
+    override val setter = ::obj.setter
+    override val getter = ::obj.getter
+    override val isConst = ::obj.isConst
+    override val isLateinit = ::obj.isLateinit
 }
 
-private open class MutableObjectReference<R>(override var obj: R? = null) : ObjectReference<R?>(obj)
-
-private fun <R> R.asObjRef() =
-    asUniqueRef { ObjectReference(this@asObjRef) }
-
-private inline fun <R> R.asUniqueRef(block: () -> ObjectReference<R>) =
+internal fun <R> R.asCallable(): KMutableProperty<R> =
     if (this is ObjectReference<*>)
         this::obj.asType()!!
-    else block()
+    else
+        ObjectReference(this)
 
 internal fun trueWhenNull(it: Any?) = it === null
 
@@ -2541,6 +2526,7 @@ private fun Any?.asRunnable() = asType<Runnable>()
 private fun Any?.asLiveWork() = asType<LiveWork>()
 private fun Any?.asJob() = asType<Job>()
 private fun Any?.asWork() = asType<Work>()
+private fun Any?.asItem() = asType<Item<*>>()
 private fun Any?.asTag() = asType<Tag>()
 
 private typealias SchedulerNode = KClass<out Annotation>

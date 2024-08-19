@@ -358,6 +358,7 @@ internal fun Any?.asInt() = asType<Int>()
 internal fun Any?.asLong() = asType<Long>()
 internal fun Any?.asAnyArray() = asType<AnyArray>()
 internal fun Any?.asAnyFunction() = asType<AnyFunction>()
+internal fun Any?.asAnyToBooleanPair() = asType<Pair<Any, Boolean>>()
 
 internal typealias ObjectPointer = () -> Any
 typealias ObjectProvider = (AnyKClass) -> Any
@@ -448,6 +449,7 @@ internal const val MIN = "min"
 internal const val NULL = "null"
 
 const val MAIN = "main"
+internal const val KEEP = "keep"
 internal const val JOB = "job"
 internal const val BUILD = "build"
 internal const val INIT = "init"
@@ -533,6 +535,7 @@ internal const val SCH_CONFIG = "$SCH.$CONFIG"
 internal const val CLOCK_INIT = "$CLOCK.$INIT"
 internal const val CLK_ATTACH = "$CLK.$ATTACH"
 internal const val CTX_REFORM = "$CTX.$REFORM"
+internal const val CTX_STEP = "$CTX.$STEP"
 internal const val JOB_LAUNCH = "$JOB.$LAUNCH"
 internal const val JOB_REPEAT = "$JOB.$REPEAT"
 internal const val FLO_LAUNCH = "$FLO.$LAUNCH"

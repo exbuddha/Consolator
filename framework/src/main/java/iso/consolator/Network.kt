@@ -195,27 +195,27 @@ private fun JobThrowableFunction.commit(scope: Any?, ex: Throwable) {
     markTag()
     invoke(scope, ex) }
 
-internal operator fun NetCall.get(cmd: String): Any? = when {
-    cmd === INET_CALL -> this
-    cmd === INET_FUNCTION -> networkCallFunction
-    cmd === INET_SUCCESS -> reactToNetCallResponseReceived
-    cmd === INET_ERROR -> reactToNetCallRequestFailed
-    cmd === INET_DELAY -> netCallDelayTime
-    cmd === INET_INTERVAL -> netCallTimeInterval
-    cmd === INET_MIN_INTERVAL -> minNetCallTimeInterval
+internal operator fun NetCall.get(id: TagType): Any? = when {
+    id === INET_CALL -> this
+    id === INET_FUNCTION -> networkCallFunction
+    id === INET_SUCCESS -> reactToNetCallResponseReceived
+    id === INET_ERROR -> reactToNetCallRequestFailed
+    id === INET_DELAY -> netCallDelayTime
+    id === INET_INTERVAL -> netCallTimeInterval
+    id === INET_MIN_INTERVAL -> minNetCallTimeInterval
     else -> null }
 
-internal operator fun NetCall.set(cmd: String, value: Any?) {
+internal operator fun NetCall.set(id: TagType, value: Any?) {
     if (value !== null && value.isKept) {
-        value.markSequentialTag(INET_CALL, cmd) }
-    lock(cmd) { when {
-        cmd === INET_CALL -> netCall = take(value)
-        cmd === INET_FUNCTION -> networkCallFunction = take(value)
-        cmd === INET_SUCCESS -> reactToNetCallResponseReceived = take(value)
-        cmd === INET_ERROR -> reactToNetCallRequestFailed = take(value)
-        cmd === INET_DELAY -> netCallDelayTime = take(value)
-        cmd === INET_INTERVAL -> netCallTimeInterval = take(value)
-        cmd === INET_MIN_INTERVAL -> minNetCallTimeInterval = take(value) } } }
+        value.markSequentialTag(INET_CALL, id) }
+    lock(id) { when {
+        id === INET_CALL -> netCall = take(value)
+        id === INET_FUNCTION -> networkCallFunction = take(value)
+        id === INET_SUCCESS -> reactToNetCallResponseReceived = take(value)
+        id === INET_ERROR -> reactToNetCallRequestFailed = take(value)
+        id === INET_DELAY -> netCallDelayTime = take(value)
+        id === INET_INTERVAL -> netCallTimeInterval = take(value)
+        id === INET_MIN_INTERVAL -> minNetCallTimeInterval = take(value) } } }
 
 private fun NetCall.asProperty() = this as KProperty
 
