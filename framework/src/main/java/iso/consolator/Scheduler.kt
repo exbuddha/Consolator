@@ -130,7 +130,7 @@ interface BaseServiceScope : ResolverScope, ReferredContext, UniqueContext {
         returnTag(identifier)?.let { tag ->
         buildDatabaseOrResetByTag(instance, tag)
         condition(instance, tag,
-            formAfterMarkingTagsForCtxReform(tag, stage, post, currentJob())) }
+            formAfterMarkingTagsForCtxReform(tag, currentJob(), stage, post)) }
 
     private suspend inline fun <reified D : RoomDatabase> SequencerScope.buildDatabaseOrResetByTag(instance: KMutableProperty<out D?>, tag: TagType) {
         ref?.get()?.run<Context, D?> {
@@ -159,8 +159,8 @@ interface BaseServiceScope : ResolverScope, ReferredContext, UniqueContext {
 
     private fun SequencerScope.form(stage: ContextStep, vararg step: AnyStep) = step.first() thenSuspended form(stage)
 
-    private fun formAfterMarkingTagsForCtxReform(tag: TagType, stage: ContextStep?, form: AnyStep, job: Job) =
-        (form afterSuspended { markTagsForCtxReform(tag, stage, form, job) })!!
+    private fun formAfterMarkingTagsForCtxReform(tag: TagType, job: Job, stage: ContextStep?, form: AnyStep) =
+        (form afterSuspended { markTagsForCtxReform(tag, job, stage, form) })!!
 
     private suspend inline fun whenNotNullOrResetByTag(instance: AnyKProperty, stage: TagType, step: AnyStep) =
         if (instance.isNotNull())
@@ -456,7 +456,7 @@ private fun CoroutineContext.isSchedulerContext() =
 
 private fun AnyCoroutineStep.afterTrackingTagsForJobLaunch(owner: LifecycleOwner? = null, context: CoroutineContext? = null, start: CoroutineStart? = null) =
     returnTag(this)?.let { tag ->
-    (after { job, _ -> markTagsForJobLaunch(owner, context, start, this, tag, job) })!! }
+    (after { job, _ -> markTagsForJobLaunch(tag, this@afterTrackingTagsForJobLaunch, job, owner, context, start,) })!! }
     ?: this
 
 private fun Job.saveNewElement(step: AnyCoroutineStep) {}
@@ -697,7 +697,7 @@ internal fun <R> CoroutineScope.change(ref: WeakContext, owner: LifecycleOwner, 
     EventBus.commit(stage)
 
 internal suspend fun CoroutineScope.repeatSuspended(scope: CoroutineScope = this, predicate: PredicateFunction = @Tag(IS_ACTIVE) { isActive }, delayTime: DelayFunction = @Tag(YIELD) { 0L }, block: JobFunction) {
-    markTagsForJobRepeat(predicate, delayTime, block, currentJob())
+    markTagsForJobRepeat(block, currentJob(), predicate, delayTime)
     while (predicate()) {
         block(scope)
         if (isActive)
@@ -1089,7 +1089,7 @@ private class Sequencer : Synchronizer<LiveWork>, Transactor<Int, Boolean?>, Pri
         synchronize { with(seq) {
             attach(step)
             size - 1 }.also { index ->
-            markTagsForSeqAttach(args.firstOrNull(), index, step) } }
+            markTagsForSeqAttach(args.firstOrNull() /* tag */, step, index) } }
 
     fun attachOnce(work: LiveWork) =
         synchronize {
@@ -1114,7 +1114,7 @@ private class Sequencer : Synchronizer<LiveWork>, Transactor<Int, Boolean?>, Pri
     override fun attach(index: Int, step: LiveWork, vararg args: Any?) =
         synchronize { with(seq) {
             attach(index, step)
-            markTagsForSeqAttach(args.firstOrNull(), index, step)
+            markTagsForSeqAttach(args.firstOrNull() /* tag */, step, index)
             // remark proceeding work in sequence for adjustment
             index } }
 
@@ -1155,7 +1155,7 @@ private class Sequencer : Synchronizer<LiveWork>, Transactor<Int, Boolean?>, Pri
 
     private fun stepAfterTrackingTagsForSeqLaunch(step: SequencerStep, index: IntFunction, context: CoroutineContext? = null) =
         (step after { currentJob().let { job ->
-            synchronize { markTagsForSeqLaunch(step, adjust(index()), context, job) } } })!!
+            synchronize { markTagsForSeqLaunch(step, job, adjust(index()), context) } } })!!
 
     fun attach(async: Boolean = false, step: SequencerStep): LiveWork {
         var index = -1
@@ -1512,62 +1512,62 @@ private fun getTag(callback: Runnable): TagType? = TODO()
 private fun getTag(msg: Message): TagType? = TODO()
 private fun getTag(what: Int): TagType? = TODO()
 
-private fun markTagsForJobLaunch(vararg function: Any?, i: Int = 0) =
-    function[i + 4].asTag()?.also { tag ->
-    jobs?.save(function[i + 3].asCallable(), tag) /* step */
+private fun markTagsForJobLaunch(tag: TagType, step: AnyCoroutineStep, job: Job, owner: LifecycleOwner?, context: CoroutineContext?, start: CoroutineStart?) =
+    tag.asTag()?.also { tag ->
+    jobs?.save(step.asCallable(), tag) /* step */
         ?.asItem()
-        ?.onSaved(JOB, function[i + 5])
-        ?.onSaved(OWNER, function[i])
-        ?.onSaved(CONTEXT, function[i + 1])
-        ?.onSaved(START, function[i + 2]) }
+        ?.onSaved(JOB, job)
+        ?.onSaved(OWNER, owner)
+        ?.onSaved(CONTEXT, context)
+        ?.onSaved(START, start) }
 
-private fun markTagsForJobRepeat(vararg function: Any?, i: Int = 0) =
-    function[i + 2].asCallable().let { block ->
+private fun markTagsForJobRepeat(block: JobFunction, job: Job, predicate: PredicateFunction?, delay: DelayFunction?) =
+    block.asCallable().let { block ->
     block.tag?.also { tag ->
     jobs?.save(block, tag)
         ?.asItem()
-        ?.onSaved(JOB, function[i + 3])
-        ?.onSaved(PREDICATE, function[i])
-        ?.onSaved(DELAY, function[i + 1]) } }
+        ?.onSaved(JOB, job)
+        ?.onSaved(PREDICATE, predicate)
+        ?.onSaved(DELAY, delay) } }
 
-private fun markTagsForSeqAttach(vararg function: Any?, i: Int = 0) =
-    function[i]?.asTagType()?.also { tag ->
+private fun markTagsForSeqAttach(tag: Any?, step: LiveWork, index: Int) =
+    tag?.asTagType()?.also { tag ->
     (jobs?.findByTag(tag)
         ?.instance
         ?: Item<Unit>().also { jobs?.add({ tag } to (it to true)) }
         ).asItem()
-        ?.onSaved(INDEX, function[i + 1])
-        ?.onSaved(WORK, function[i + 2]) }
+        ?.onSaved(LIVEWORK, step)
+        ?.onSaved(INDEX, index) }
 
-private fun markTagsForSeqLaunch(vararg function: Any?, i: Int = 0) =
-    function[i].asCallable().let { step ->
+private fun markTagsForSeqLaunch(step: SequencerStep, job: Job, index: Int, context: CoroutineContext?) =
+    step.asCallable().let { step ->
     step.tag?.also { tag ->
     jobs?.save(step, tag)
         ?.asItem()
-        ?.onSaved(JOB, function[i + 3])
-        ?.onSaved(INDEX, function[i + 1]) // optionally, readjust by remarks or from seq here instead
-        ?.onSaved(CONTEXT, function[i + 2]) } }
+        ?.onSaved(JOB, job)
+        ?.onSaved(INDEX, index) // optionally, readjust by remarks or from seq here instead
+        ?.onSaved(CONTEXT, context) } }
 
-private fun markTagsForCtxReform(vararg function: Any?, i: Int = 0) =
-    function[i].asTagType()?.let { tag ->
+private fun markTagsForCtxReform(tag: TagType?, job: Job, stage: ContextStep?, form: AnyStep) =
+    tag?.also { tag ->
     jobs?.findByTag(tag)
         ?.asItem()
-        ?.onSaved(JOB, function[i + 3])
-        ?.onSaved(CTX_STEP, function[i + 1])
-        ?.onSaved(FORM, function[i + 2]) }
+        ?.onSaved(JOB, job)
+        ?.onSaved(CTX_STEP, stage)
+        ?.onSaved(FORM, form) }
 
-private fun markTagsForClkAttach(vararg function: Any?, i: Int = 0) =
-    function[i + 1]?.let { step -> when (step) {
+private fun markTagsForClkAttach(step: Any, index: Number) =
+    when (step) {
     is Runnable ->
         getTag(step)?.also { tag ->
         jobs?.save(step.asCallable(), tag)
             ?.asItem()
-            ?.onSaved(INDEX, function[i]) }
+            ?.onSaved(INDEX, index) }
     is Message ->
         getTag(step)?.also { tag ->
         jobs?.save(step.asCallable(), tag) }
     else ->
-        null } }
+        null }
 
 inline infix fun <R, S> (suspend () -> R)?.thenSuspended(crossinline next: suspend () -> S): (suspend () -> S)? = this?.let { {
     this@thenSuspended()
@@ -1981,13 +1981,13 @@ internal open class Clock(
     override fun attach(step: Runnable, vararg args: Any?) =
         synchronized<Unit>(sLock) { with(queue) {
             add(step)
-            markTagsForClkAttach(size, step) } }
+            markTagsForClkAttach(step, size) } }
 
     override fun attach(index: Number, step: Runnable, vararg args: Any?) =
         synchronized<Unit>(sLock) {
             queue.add(index.toInt(), step)
             // remark items in queue for adjustment
-            markTagsForClkAttach(index, step) }
+            markTagsForClkAttach(step, index) }
 
     @JvmField var post = fun(callback: Runnable) =
         handler?.post(callback)
