@@ -456,7 +456,7 @@ private fun CoroutineContext.isSchedulerContext() =
 
 private fun AnyCoroutineStep.afterTrackingTagsForJobLaunch(owner: LifecycleOwner? = null, context: CoroutineContext? = null, start: CoroutineStart? = null) =
     returnTag(this)?.let { tag ->
-    (after { job, _ -> markTagsForJobLaunch(tag, this@afterTrackingTagsForJobLaunch, job, owner, context, start,) })!! }
+    (after { job, _ -> markTagsForJobLaunch(tag, this@afterTrackingTagsForJobLaunch, job, owner, context, start) })!! }
     ?: this
 
 private fun Job.saveNewElement(step: AnyCoroutineStep) {}
@@ -932,7 +932,7 @@ private class Sequencer : Synchronizer<LiveWork>, Transactor<Int, Boolean?>, Pri
             (step >= 0 && step < seq.size &&
             (!isObserving || seq[step].isAsynchronous()))
             .also { allowed ->
-                if (allowed) queue.add(step) } }
+            if (allowed) queue.add(step) } }
 
     override fun commit(step: Int): Boolean? {
         var step = step
@@ -1443,22 +1443,23 @@ private val JobFunctionItem.instance
 private fun JobFunctionSet.findByTag(tag: TagType) =
     find { tag == it.first() }
 
+private fun JobFunctionSet.save(self: AnyKMutableProperty, tag: Tag) =
+    with(tag) { save(self, id, keep) }
+
 private fun JobFunctionSet.save(function: AnyKMutableProperty, tag: TagType) =
     function.tag?.apply {
     save(function, combineTags(tag, id), keep) }
 
-private fun JobFunctionSet.save(self: AnyKMutableProperty, tag: Tag) =
-    with(tag) { save(self, id, keep) }
-
+@Suppress("IMPLICIT_CAST_TO_ANY")
 private fun JobFunctionSet.save(function: AnyKMutableProperty, tag: TagType?, keep: Boolean) =
     tag?.let(::findByTag)
         ?.instance
         ?.also { if (it is Item<*>) {
             it.onSaved(FUNC, function)
             it.onSaved(KEEP, keep) } }
-    ?: (if (function.isItemized)
-        Item(function).apply {
-            onSaved(KEEP, keep) }
+    ?: (if (function.asReference().isItemized)
+        Item(function)
+            .onSaved(KEEP, keep)
         else
             function
         ).also { instance ->
@@ -1490,7 +1491,7 @@ internal fun Any.markTag() =
 internal fun Any?.markTag(tag: TagType) =
     jobs?.save(@Itemize asCallable(), tag)
 
-internal fun Any.markSequentialTag(tag: TagType?, id: TagType): TagType? =
+internal fun Any.markSequentialTag(tag: TagType?, id: TagType) =
     tag?.let { tag ->
     reduceTags(tag, TAG_DASH, id)
     .also { this@markSequentialTag.markTag(it) } }
@@ -1658,18 +1659,27 @@ internal fun <R> KCallable<R>.with(vararg args: Any?): () -> R = {
 internal fun <R> call(vararg args: Any?): (KCallable<R>) -> R = {
     it.call(*args) }
 
+internal fun <R> KCallable<R>.with(args: Map<KParameter, Any?>): () -> R = {
+    this@with.callBy(args) }
+
+internal fun <R> callBy(args: Map<KParameter, Any?>): (KCallable<R>) -> R = {
+    it.call(*it.mapToTypedArray(args)) }
+
+private fun <R> KCallable<R>.mapToTypedArray(args: Map<KParameter, Any?>) =
+    parameters.map(args::get).toTypedArray()
+
 internal inline fun <L : Any, R, S : R> transact(noinline lock: () -> L, predicate: (L?) -> Boolean = { true }, block: (L) -> R, fallback: () -> S? = { null }): R? {
     if (predicate(null))
         lock().let { key ->
-            synchronized(key) {
-                if (predicate(key)) return block(key) } }
+        synchronized(key) {
+            if (predicate(key)) return block(key) } }
     return fallback() }
 
 internal inline fun <R, S : R> transact(state: State, predicate: StatePredicate, block: (Any) -> R, fallback: () -> S? = { null }): R? {
     if (predicate(state, null))
         state().let { lock ->
-            synchronized(lock) {
-                if (predicate(state, lock)) return block(lock) } }
+        synchronized(lock) {
+            if (predicate(state, lock)) return block(lock) } }
     return fallback() }
 
 internal inline fun <R> commitAsync(lock: Any, predicate: Predicate, block: () -> R) {
@@ -1931,14 +1941,14 @@ internal open class Clock(
     private fun RunnableList.run(msg: Message? = null, isIdle: Boolean = true) =
         with(precursorOf(msg)) {
             forEach {
-                var ln = it
-                synchronized(sLock) {
-                    ln = adjust(ln)
-                    queue[ln]
-                }.exec(isIdle)
-                synchronized(sLock) {
-                    removeAt(adjust(ln))
-                } }
+            var ln = it
+            synchronized(sLock) {
+                ln = adjust(ln)
+                queue[ln]
+            }.exec(isIdle)
+            synchronized(sLock) {
+                removeAt(adjust(ln))
+            } }
             hasNotTraversed(msg) }
 
     private fun precursorOf(msg: Message?) = queue.indices
@@ -2078,8 +2088,8 @@ private fun HandlerScope.windDown() {
 object EventBus : AbstractFlow<Any?>(), Transactor<ContextStep, Boolean>, PriorityQueue<Any?> {
     override suspend fun collectSafely(collector: AnyFlowCollector) {
         queue.forEach { event ->
-            if (event.canBeCollectedBy(collector))
-                collector.emit(event) } }
+        if (event.canBeCollectedBy(collector))
+            collector.emit(event) } }
 
     private fun Any?.canBeCollectedBy(collector: AnyFlowCollector) = true
 
@@ -2412,9 +2422,9 @@ internal interface Expiry : MutableSet<Lifetime> {
     fun unsetAll(property: AnyKMutableProperty) {
         // must be strengthened by connecting to other expiry sets
         forEach { alive ->
-            if (alive(property) == false && State.of(property) !== Lock.Closed)
-                property.expire()
-    } }
+        if (alive(property) == false && State.of(property) !== Lock.Closed)
+            property.expire() } }
+
     companion object : Expiry {
         override fun add(element: Lifetime) = false
         override fun addAll(elements: Collection<Lifetime>) = false
@@ -2440,7 +2450,7 @@ private open class ObjectReference<R>(open var obj: R) : KMutableProperty<R> {
         ::obj.call(*args)
 
     override fun callBy(args: Map<KParameter, Any?>) =
-        call(*parameters.map(args::get).toTypedArray())
+        call(*mapToTypedArray(args))
 
     override val annotations = ::obj.annotations
     override val isAbstract = ::obj.isAbstract
@@ -2462,7 +2472,10 @@ internal fun <R> R.asCallable(): KMutableProperty<R> =
     if (this is ObjectReference<*>)
         this::obj.asType()!!
     else
-        ObjectReference(this)
+        asReference()
+
+private fun <R> R.asReference() =
+    ObjectReference(this)
 
 internal fun trueWhenNull(it: Any?) = it === null
 
@@ -2521,11 +2534,11 @@ internal typealias LevelType = Byte
 internal fun Number.toLevel() = toByte()
 
 internal fun Any?.asCoroutineScope() = asType<CoroutineScope>()
-private fun Any?.asMessage() = asType<Message>()
-private fun Any?.asRunnable() = asType<Runnable>()
 private fun Any?.asLiveWork() = asType<LiveWork>()
-private fun Any?.asJob() = asType<Job>()
 private fun Any?.asWork() = asType<Work>()
+private fun Any?.asJob() = asType<Job>()
+private fun Any?.asRunnable() = asType<Runnable>()
+private fun Any?.asMessage() = asType<Message>()
 private fun Any?.asItem() = asType<Item<*>>()
 private fun Any?.asTag() = asType<Tag>()
 
