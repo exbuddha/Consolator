@@ -21,7 +21,7 @@ data class NetworkCapabilitiesEntity(
 
     override var dbTime: String,
     override val id: Long,
-    override var sid: Long? = session?.startTime,
+    override var sid: Long? = session?.id,
 ) : NetworkEntity(nid, dbTime, id, sid) {
     internal companion object {
         const val CAPABILITIES = "capabilities"

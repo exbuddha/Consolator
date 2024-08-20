@@ -292,7 +292,7 @@ internal inline fun <reified T : Any> T?.singleton(vararg args: Any?, lock: Any 
 internal inline fun <T> T?.require(constructor: () -> T) =
     this ?: constructor()
 
-internal inline fun <reified T : Any> T?.reconstruct(constructor: KCallable<T?>, vararg args: Any?) =
+internal inline fun <reified T : Any> T?.reconstruct(vararg args: Any?, constructor: KCallable<T?> = T::class::new) =
     this ?: constructor.call(*args)
 
 internal inline fun <reified T : Any> T?.reconstruct(vararg args: Any?) =

@@ -19,7 +19,7 @@ data class NetworkStateEntity(
 
     override var dbTime: String,
     override val id: Long,
-    override var sid: Long? = session?.startTime,
+    override var sid: Long? = session?.id,
 ) : TimeSensitiveSessionEntity(dbTime, id, sid) {
     internal companion object {
         const val IS_CONNECTED = "is_connected"

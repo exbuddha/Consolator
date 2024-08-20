@@ -35,7 +35,7 @@ internal data class ExceptionEntity(
 
     override var dbTime: String,
     override val id: Long,
-    override var sid: Long? = session?.startTime,
+    override var sid: Long? = session?.id,
 ) : TimeSensitiveSessionEntity(dbTime, id, sid) {
     companion object {
         const val TYPE = "type_id"

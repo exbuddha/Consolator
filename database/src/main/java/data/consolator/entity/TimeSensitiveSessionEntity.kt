@@ -9,5 +9,5 @@ open class TimeSensitiveSessionEntity(
     internal open var dbTime: String,
 
     override val id: Long,
-    override var sid: Long? = session?.startTime,
+    override var sid: Long? = session?.id,
 ) : BaseSessionEntity(id, sid)
