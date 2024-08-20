@@ -906,7 +906,8 @@ private class Sequencer : Synchronizer<LiveWork>, Transactor<Int, Boolean?>, Pri
     fun resumeAsync() =
         synchronize { resume() }
 
-    fun resumeAsyncByTag(tag: TagType) {}
+    fun resumeAsyncByTag(tag: TagType) =
+        synchronize { resumeByTag(tag) }
 
     var activate = fun() = prepare()
     var next = fun(step: Int) = jump(step)
@@ -1458,7 +1459,7 @@ private fun JobFunctionSet.save(function: AnyKMutableProperty, tag: TagType?, ke
             onSaved(FUNC, function)
             onSaved(KEEP, keep) } } }
     ?: (if (function.asReference().isItemized)
-        Item(function)
+            Item(function)
             .onSaved(KEEP, keep)
         else
             function
