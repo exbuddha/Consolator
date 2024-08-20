@@ -34,14 +34,14 @@ internal abstract class BaseFragment : Fragment(contentLayoutId) {
         super.onViewCreated(view, savedInstanceState)
         if (State[1] is Resolved) return
         trySafely {
-        launch(start = LAZY) @MainViewGroup @Listening
-        @OnEvent(ACTION_MIGRATE_APP) {
+        launch(start = LAZY) @MainViewGroup
+        @Listening @OnEvent(ACTION_MIGRATE_APP) {
             defer<MigrationManager>(Fragment::onViewCreated, {
                 // listen to db updates
                 // preload data
                 // reset function pointers
                 // repeat until stable
-                EventBus.commit(@JobTreeRoot COMMIT_NAV_MAIN_UI)
+                EventBus.commit(COMMIT_NAV_MAIN_UI)
             }) }
         .otherwise @OnEvent(COMMIT_NAV_MAIN_UI) { _, _ ->
             transit(COMMIT_NAV_MAIN_UI)
@@ -63,7 +63,7 @@ internal abstract class BaseFragment : Fragment(contentLayoutId) {
         if (State[1] is Resolved) return
         val context = context.asWeakReference()
         trySafely {
-        launch(IO, LAZY) @JobTreeRoot @MainViewGroup
+        launch(@JobTreeRoot IO, LAZY) @MainViewGroup
         @Retrying @Pathwise([ FromLastCancellation::class ])
         @Delay(VIEW_MIN_DELAY)
         @WithContext @Tag(VIEW_ATTACH) {
