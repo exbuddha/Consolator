@@ -638,23 +638,23 @@ fun CoroutineScope.enact(job: Job, exit: ThrowableFunction? = null) {}
 
 fun CoroutineScope.error(job: Job, context: Any?) {}
 
-internal fun CoroutineScope.error(job: Job, exit: ThrowableFunction? = null) {}
+fun CoroutineScope.error(job: Job, exit: ThrowableFunction? = null) {}
 
 fun CoroutineScope.retry(job: Job, context: Any?) {}
 
-internal fun CoroutineScope.retry(job: Job, exit: ThrowableFunction? = null) {}
+fun CoroutineScope.retry(job: Job, exit: ThrowableFunction? = null) {}
 
 fun CoroutineScope.close(job: Job, context: Any?) {}
 
-internal fun CoroutineScope.close(job: Job, exit: ThrowableFunction? = null) {}
+fun CoroutineScope.close(job: Job, exit: ThrowableFunction? = null) {}
 
-internal fun CoroutineScope.keepAlive(job: Job) = keepAliveNode(job.node)
+fun CoroutineScope.keepAlive(job: Job) = keepAliveNode(job.node)
 
 fun CoroutineScope.keepAliveOrClose(job: Job) = keepAliveOrCloseNode(job.node)
 
-internal fun CoroutineScope.keepAliveNode(node: SchedulerNode): Boolean = false
+fun CoroutineScope.keepAliveNode(node: SchedulerNode): Boolean = false
 
-internal fun CoroutineScope.keepAliveOrCloseNode(node: SchedulerNode) =
+fun CoroutineScope.keepAliveOrCloseNode(node: SchedulerNode) =
     keepAliveNode(node) || node.close()
 
 internal fun SchedulerNode.close(): Boolean = true
@@ -666,13 +666,13 @@ fun Job.close() {}
 internal val Job.node: SchedulerNode
     get() = TODO()
 
-internal fun LifecycleOwner.detach(job: Job? = null) {}
+fun LifecycleOwner.detach(job: Job? = null) {}
 
-internal fun LifecycleOwner.reattach(job: Job? = null) {}
+fun LifecycleOwner.reattach(job: Job? = null) {}
 
-internal fun LifecycleOwner.close(job: Job? = null) {}
+fun LifecycleOwner.close(job: Job? = null) {}
 
-internal fun LifecycleOwner.detach(node: SchedulerNode) {}
+fun LifecycleOwner.detach(node: SchedulerNode) {}
 
 fun LifecycleOwner.reattach(node: SchedulerNode) {}
 
