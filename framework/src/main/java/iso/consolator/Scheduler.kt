@@ -1438,6 +1438,12 @@ internal operator fun Job.set(tag: TagType, value: Any?) {
     // addressable layer work
     value.markTag(tag) }
 
+private fun JobFunctionSet.addFunction(function: Any, tag: TagType?, keep: Boolean) =
+    add(function.toJobFunctionItem(tag?.let { { it } } ?: currentThreadJob()::hashTag, keep))
+
+private fun Any.toJobFunctionItem(tag: TagTypePointer, keep: Boolean) =
+    JobFunctionItem(tag, this to keep)
+
 private val JobFunctionItem.instance
     get() = second.asAnyToBooleanPair()?.first
 
@@ -1462,9 +1468,9 @@ private fun JobFunctionSet.save(function: AnyKMutableProperty, tag: TagType?, ke
             Item(function)
             .onSaved(KEEP, keep)
         else
-            function
-        ).also { instance ->
-        add((tag?.let { { it } } ?: currentThreadJob()::hashTag) to (instance to keep)) }
+            function)
+        .also {
+        addFunction(it, tag, keep) }
 
 private fun combineTags(tag: TagType, self: TagType?) =
     if (self === null) tag
@@ -1536,7 +1542,7 @@ private fun markTagsForSeqAttach(tag: Any?, step: LiveWork, index: Int) =
     tag?.asTagType()?.also { tag ->
     (jobs?.findByTag(tag)
         ?.instance
-        ?: Item<Unit>().also { jobs?.add({ tag } to (it to true)) }
+        ?: Item<Unit>().also { jobs?.add(it.toJobFunctionItem({ tag }, true)) }
         ).asItem()
         ?.onSaved(LIVEWORK, step)
         ?.onSaved(INDEX, index) }
