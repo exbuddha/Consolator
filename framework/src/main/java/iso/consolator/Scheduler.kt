@@ -1454,9 +1454,9 @@ private fun JobFunctionSet.save(function: AnyKMutableProperty, tag: TagType) =
 private fun JobFunctionSet.save(function: AnyKMutableProperty, tag: TagType?, keep: Boolean) =
     tag?.let(::findByTag)
         ?.instance
-        ?.also { if (it is Item<*>) {
-            it.onSaved(FUNC, function)
-            it.onSaved(KEEP, keep) } }
+        ?.also { if (it is Item<*>) { with(it) {
+            onSaved(FUNC, function)
+            onSaved(KEEP, keep) } } }
     ?: (if (function.asReference().isItemized)
         Item(function)
             .onSaved(KEEP, keep)
@@ -2167,11 +2167,6 @@ annotation class Delay(
 annotation class Timeout(
     @JvmField val millis: Long = -1L)
 
-@Retention(SOURCE)
-@Target(FUNCTION, EXPRESSION)
-annotation class Pathwise(
-    @JvmField val route: SchedulerPath = [])
-
 private open class Item<R>(var ref: KMutableProperty<R>? = null) {
     open fun onSaved(subtag: TagType, value: Any?) = this.also { when {
         subtag === FUNC ->
@@ -2302,6 +2297,11 @@ annotation class Path(
     annotation class Converging(
         @JvmField val paths: PathArray = [])
 }
+
+@Retention(SOURCE)
+@Target(FUNCTION, EXPRESSION)
+annotation class Pathwise(
+    @JvmField val route: SchedulerPath = [])
 
 open class SchedulerIntent : Throwable()
 
