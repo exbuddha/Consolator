@@ -42,12 +42,9 @@ internal open class MainFragment : BaseFragment(), ObjectProvider, FunctionProvi
             currentThread.log(info, UI_TAG, "Main fragment view is created.") }
     }
 
+    internal inline fun <reified R> screenEventInterceptor(listener: Any, callback: KFunction<R>, vararg args: Any?, noinline postback: PostbackFunction?): Interception = null
+
     override fun invoke(type: AnyKClass) = activity.asObjectProvider()!!(type)
 
     override fun <R> invoke(vararg tag: TagType): KCallable<R> = activity.asFunctionProvider()!!(*tag)
 }
-
-internal inline fun <reified R> screenEventInterceptor(listener: Any, callback: KFunction<R>, vararg args: Any?, noinline postback: PostbackFunction?): Interception = null
-
-internal typealias Interception = Pair<AnyFunction?, Boolean?>?
-internal typealias PostbackFunction = (Interception) -> Any?
