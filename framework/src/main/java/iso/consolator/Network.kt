@@ -58,11 +58,11 @@ internal var reactToNetworkCapabilitiesChanged: (Network, NetworkCapabilities) -
 
 @Coordinate @Tag(INET_REGISTER)
 internal fun CoroutineScope.registerInternetCallback() {
-    relaunch(::networkCaller, IO, step = ::repeatNetworkCallFunction) }
+    relaunch(::networkCaller, calls, IO, step = ::repeatNetworkCallFunction) }
 
 @Coordinate @Tag(INET_REGISTER)
 fun LifecycleOwner.registerInternetCallback() {
-    relaunch(::networkCaller, IO, step = ::repeatNetworkCallFunction) }
+    relaunch(::networkCaller, calls, IO, step = ::repeatNetworkCallFunction) }
 
 internal fun pauseInternetCallback() {
     isNetCallbackResumed = false }
@@ -182,18 +182,20 @@ private fun NetCall.asCallable() =
     else asProperty().get().asCallable()
 
 private fun NetCall.exec(cmd: String = INET_CALL, respond: Respond) {
-    markTag()
+    markTag(calls)
     this[cmd].asType<NetCall>()?.call()
     ?.execute()
     ?.run(respond) }
 
 private fun JobResponseFunction.commit(scope: Any?, response: Response) {
-    markTag()
+    markTag(calls)
     invoke(scope, response) }
 
 private fun JobThrowableFunction.commit(scope: Any?, ex: Throwable) {
-    markTag()
+    markTag(calls)
     invoke(scope, ex) }
+
+private var calls: FunctionSet? = null
 
 internal operator fun NetCall.get(id: TagType): Any? = when {
     id === INET_CALL -> this
@@ -207,7 +209,7 @@ internal operator fun NetCall.get(id: TagType): Any? = when {
 
 internal operator fun NetCall.set(id: TagType, value: Any?) {
     if (value !== null && value.isKept) {
-        value.markSequentialTag(INET_CALL, id) }
+        value.markSequentialTag(calls, INET_CALL, id) }
     lock(id) { when {
         id === INET_CALL -> netCall = take(value)
         id === INET_FUNCTION -> networkCallFunction = take(value)

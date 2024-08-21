@@ -89,13 +89,15 @@ interface BaseServiceScope : ResolverScope, ReferredContext, UniqueContext {
                 if (isLogDbNull)
                     attach(IO, true)
                     @Tag(STAGE_BUILD_LOG_DB) { self ->
-                    coordinateBuildDatabase(self,
+                    coordinateBuildDatabase(
+                        self.applyMarkTag(SERVICE_INIT, items),
                         ::logDb,
                         stage = Context::stageLogDbCreated) }
                 if (isNetDbNull)
                     attach(IO, true)
                     @Tag(STAGE_BUILD_NET_DB) { self ->
-                    coordinateBuildDatabase(self,
+                    coordinateBuildDatabase(
+                        self.applyMarkTag(SERVICE_INIT, items),
                         ::netDb,
                         step = arrayOf(@Tag(STAGE_INIT_NET_DB) suspend {
                             updateNetworkCapabilities()
@@ -419,16 +421,16 @@ private interface SchedulerElement : CoroutineContext.Element {
 private interface SchedulerKey : CoroutineContext.Key<SchedulerElement> {
     companion object : SchedulerKey }
 
-internal fun CoroutineScope.relaunch(instance: JobKProperty, context: CoroutineContext = SchedulerContext, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep) =
-    relaunch(::launch, instance, context, start, step)
+internal fun CoroutineScope.relaunch(instance: JobKProperty, group: FunctionSet?, context: CoroutineContext = SchedulerContext, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep) =
+    relaunch(::launch, instance, group, context, start, step)
 
-internal fun LifecycleOwner.relaunch(instance: JobKProperty, context: CoroutineContext = SchedulerContext, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep) =
-    relaunch(::launch, instance, context, start, step)
+internal fun LifecycleOwner.relaunch(instance: JobKProperty, group: FunctionSet?, context: CoroutineContext = SchedulerContext, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep) =
+    relaunch(::launch, instance, group, context, start, step)
 
-private fun relaunch(launcher: JobKFunction, instance: JobKProperty, context: CoroutineContext, start: CoroutineStart, step: CoroutineStep) =
+private fun relaunch(launcher: JobKFunction, instance: JobKProperty, group: FunctionSet?, context: CoroutineContext, start: CoroutineStart, step: CoroutineStep) =
     instance.require(Job::isNotActive) {
         launcher.call(context, start, step) }
-    .also { instance.markTag() }
+    .also { instance.markTag(group) }
 
 internal fun launch(context: CoroutineContext = SchedulerContext, start: CoroutineStart = CoroutineStart.DEFAULT, step: AnyCoroutineStep) =
     step.markTagForSchLaunch()
@@ -723,7 +725,7 @@ internal operator fun Job.get(tag: TagType) =
 
 internal operator fun Job.set(tag: TagType, value: Any?) {
     // addressable layer work
-    value.markTag(tag) }
+    value.markTag(tag, jobs) }
 
 internal val SequencerScope.isActive
     get() = Sequencer { isCancelled } == false
@@ -2049,7 +2051,10 @@ annotation class Timeout(
 private open class Item<R>(var ref: KMutableProperty<R>? = null) {
     open fun onSaved(subtag: TagType, value: Any?) = this.also { when {
         subtag === FUNC ->
-            ref = value.asType()!!
+            if (ref === null)
+                ref = value.asType()!!
+            else {
+                /* save sub-function */ }
     } }
 
     var tag: TagType? = null
@@ -2113,16 +2118,16 @@ private fun step(target: AnyKClass, key: KeyType) =
 private fun runnable(target: AnyKClass, key: KeyType) =
     SchedulerScope().get<Runnable>(target, key)
 
-private fun FunctionSet.addFunction(function: Any, tag: TagType?, keep: Boolean) =
+internal fun FunctionSet.addFunction(function: Any, tag: TagType?, keep: Boolean) =
     add(function.toFunctionItem(tag?.let { { it } } ?: currentThreadJob()::hashTag, keep))
 
-private fun Any.toFunctionItem(tag: TagTypePointer, keep: Boolean) =
+internal fun Any.toFunctionItem(tag: TagTypePointer, keep: Boolean) =
     FunctionItem(tag, this to keep)
 
-private val FunctionItem.instance
+internal val FunctionItem.instance
     get() = second.asAnyToBooleanPair()?.first
 
-private fun FunctionSet.findByTag(tag: TagType) =
+internal fun FunctionSet.findByTag(tag: TagType) =
     find { tag == it.first() }
 
 private fun FunctionSet.save(self: AnyKMutableProperty, tag: Tag) =
@@ -2164,24 +2169,21 @@ private fun returnTag(it: Any?) =
 
 private fun Any?.markValue(tag: TagType) {}
 
-internal fun AnyKMutableProperty.markTag() =
-    tag?.also { jobs?.save(@Itemize this, it) }
+internal fun AnyKMutableProperty.markTag(group: FunctionSet?) =
+    tag?.also { group?.save(@Itemize this, it) }
 
-internal fun Any.markTag() =
-    asCallable().markTag()
+internal fun Any.markTag(group: FunctionSet?) =
+    asCallable().markTag(group)
 
-internal fun Any?.markTag(tag: TagType) = (when {
-    (tag === CLK_EXEC) ->
-        callbacks
-    else -> jobs })
-    ?.save(@Itemize asCallable(), tag)
+internal fun Any?.markTag(tag: TagType, group: FunctionSet?) =
+    group?.save(@Itemize asCallable(), tag)
 
-internal fun Any.markSequentialTag(tag: TagType?, id: TagType) =
+internal fun Any.markSequentialTag(group: FunctionSet?, tag: TagType?, id: TagType) =
     tag?.let { tag ->
     reduceTags(tag, TAG_DASH, id)
-    .also { this@markSequentialTag.markTag(it) } }
+    .also { this@markSequentialTag.markTag(it, group) } }
 
-private fun <T> T.applyMarkTag(tag: TagType) = apply { markTag(tag) }
+private fun <T> T.applyMarkTag(tag: TagType, group: FunctionSet? = jobs) = apply { markTag(tag, group) }
 
 private fun AnyStep?.markTagForSchExec() = applyMarkTag(SCH_EXEC)
 private fun AnyStep.markTagForSchPost() = applyMarkTag(SCH_POST)
@@ -2190,9 +2192,9 @@ private fun AnyCoroutineStep.markTagForFloLaunch() = applyMarkTag(FLO_LAUNCH)
 private fun AnyCoroutineStep.markTagForSchCommit() = applyMarkTag(SCH_COMMIT)
 private fun AnyCoroutineStep.markTagForSchLaunch() = applyMarkTag(SCH_LAUNCH)
 private fun AnyCoroutineStep.markTagForSchPost() = applyMarkTag(SCH_POST)
-private fun AnyCoroutineStep.markTagForSvcCommit() = applyMarkTag(SVC_COMMIT)
+private fun AnyCoroutineStep.markTagForSvcCommit() = applyMarkTag(SVC_COMMIT, items)
 
-private fun Runnable.markTagForClkExec() = applyMarkTag(CLK_EXEC)
+private fun Runnable.markTagForClkExec() = applyMarkTag(CLK_EXEC, callbacks)
 
 private fun SequencerStep.setTagTo(step: Step) = this
 
@@ -2594,7 +2596,7 @@ private typealias StepFunction = (Step) -> Any?
 private typealias AnyStepFunction = (AnyStep) -> Any?
 private typealias StepPointer = () -> Step
 
-private typealias FunctionSet = MutableSet<FunctionItem>
+internal typealias FunctionSet = MutableSet<FunctionItem>
 private typealias FunctionItem = TagTypeToAnyPair
 private typealias TagTypeToAnyPair = Pair<TagTypePointer, Any>
 
