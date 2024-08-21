@@ -302,6 +302,9 @@ sealed interface SchedulerScope : ResolverScope {
         internal operator fun <R> invoke(block: Companion.() -> R) = this.block()
     }
 
+    override fun commit(step: AnyCoroutineStep) =
+        Companion().commit(step)
+
     val log get() = iso.consolator.log
 }
 
@@ -2395,6 +2398,8 @@ private val Any.annotatedScope
             Activity::class,
             Fragment::class ->
                 foregroundLifecycleOwner.asObjectProvider()!!(annotation.type)
+            SchedulerScope::class ->
+                SchedulerScope()
             else ->
                 throw BaseImplementationRestriction()
         } as CoroutineScope } }
