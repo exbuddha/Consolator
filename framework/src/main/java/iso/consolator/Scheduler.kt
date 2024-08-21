@@ -715,6 +715,16 @@ suspend fun CoroutineScope.currentContext() =
 private suspend fun CoroutineScope.registerContext(context: WeakContext) {
     currentJob()[CONTEXT] = context }
 
+private var jobs: FunctionSet? = null
+
+internal operator fun Job.get(tag: TagType) =
+    jobs?.findByTag(tag)
+        ?.instance
+
+internal operator fun Job.set(tag: TagType, value: Any?) {
+    // addressable layer work
+    value.markTag(tag) }
+
 internal val SequencerScope.isActive
     get() = Sequencer { isCancelled } == false
 
@@ -1430,156 +1440,7 @@ private class Sequencer : Synchronizer<LiveWork>, Transactor<Int, Boolean?>, Pri
             else -> seq.size }
 }
 
-private var jobs: JobFunctionSet? = null
-
-internal operator fun Job.get(tag: TagType) =
-    jobs?.findByTag(tag)
-        ?.instance
-
-internal operator fun Job.set(tag: TagType, value: Any?) {
-    // addressable layer work
-    value.markTag(tag) }
-
-private fun JobFunctionSet.addFunction(function: Any, tag: TagType?, keep: Boolean) =
-    add(function.toJobFunctionItem(tag?.let { { it } } ?: currentThreadJob()::hashTag, keep))
-
-private fun Any.toJobFunctionItem(tag: TagTypePointer, keep: Boolean) =
-    JobFunctionItem(tag, this to keep)
-
-private val JobFunctionItem.instance
-    get() = second.asAnyToBooleanPair()?.first
-
-private fun JobFunctionSet.findByTag(tag: TagType) =
-    find { tag == it.first() }
-
-private fun JobFunctionSet.save(self: AnyKMutableProperty, tag: Tag) =
-    with(tag) { save(self, id, keep) }
-
-private fun JobFunctionSet.save(function: AnyKMutableProperty, tag: TagType) =
-    function.tag?.apply {
-    save(function, combineTags(tag, id), keep) }
-
-@Suppress("IMPLICIT_CAST_TO_ANY")
-private fun JobFunctionSet.save(function: AnyKMutableProperty, tag: TagType?, keep: Boolean) =
-    tag?.let(::findByTag)
-        ?.instance
-        ?.also { if (it is Item<*>) { with(it) {
-            onSaved(FUNC, function)
-            onSaved(KEEP, keep) } } }
-    ?: (if (function.asReference().isItemized)
-            Item(function)
-            .onSaved(KEEP, keep)
-        else
-            function)
-        .also {
-        addFunction(it, tag, keep) }
-
-private fun combineTags(tag: TagType, self: TagType?) =
-    if (self === null) tag
-    else reduceTags(tag, TAG_DOT, self.toTagType())
-
-internal fun reduceTags(vararg tag: TagType) =
-    (if (TagType::class.isNumber)
-        tag.map(TagType::toInt)
-            .reduce(Int::plus)
-    else
-        tag.map(TagType::toString)
-            .reduce(String::concat)).asTagType()!!
-
-private fun returnTag(it: Any?) =
-    it.asCallable().tag?.id
-
-private fun Any?.markValue(tag: TagType) {}
-
-internal fun AnyKMutableProperty.markTag() =
-    tag?.also { jobs?.save(@Itemize this, it) }
-
-internal fun Any.markTag() =
-    asCallable().markTag()
-
-internal fun Any?.markTag(tag: TagType) =
-    jobs?.save(@Itemize asCallable(), tag)
-
-internal fun Any.markSequentialTag(tag: TagType?, id: TagType) =
-    tag?.let { tag ->
-    reduceTags(tag, TAG_DASH, id)
-    .also { this@markSequentialTag.markTag(it) } }
-
-private fun <T> T.applyMarkTag(tag: TagType) = apply { markTag(tag) }
-
-private fun AnyStep?.markTagForSchExec() = applyMarkTag(SCH_EXEC)
-private fun AnyStep.markTagForSchPost() = applyMarkTag(SCH_POST)
-
-private fun AnyCoroutineStep.markTagForFloLaunch() = applyMarkTag(FLO_LAUNCH)
-private fun AnyCoroutineStep.markTagForSchCommit() = applyMarkTag(SCH_COMMIT)
-private fun AnyCoroutineStep.markTagForSchLaunch() = applyMarkTag(SCH_LAUNCH)
-private fun AnyCoroutineStep.markTagForSchPost() = applyMarkTag(SCH_POST)
-private fun AnyCoroutineStep.markTagForSvcCommit() = applyMarkTag(SVC_COMMIT)
-
-private fun Runnable.markTagForClkExec() = applyMarkTag(CLK_EXEC)
-
-private fun SequencerStep.setTagTo(step: Step) = this
-
-private fun getTag(callback: Runnable): TagType? = TODO()
-private fun getTag(msg: Message): TagType? = TODO()
-private fun getTag(what: Int): TagType? = TODO()
-
-private fun markTagsForJobLaunch(tag: TagType, step: AnyCoroutineStep, job: Job, owner: LifecycleOwner?, context: CoroutineContext?, start: CoroutineStart?) =
-    tag.asTag()?.also { tag ->
-    jobs?.save(step.asCallable(), tag) /* step */
-        ?.asItem()
-        ?.onSaved(JOB, job)
-        ?.onSaved(OWNER, owner)
-        ?.onSaved(CONTEXT, context)
-        ?.onSaved(START, start) }
-
-private fun markTagsForJobRepeat(block: JobFunction, job: Job, predicate: PredicateFunction?, delay: DelayFunction?) =
-    block.asCallable().let { block ->
-    block.tag?.also { tag ->
-    jobs?.save(block, tag)
-        ?.asItem()
-        ?.onSaved(JOB, job)
-        ?.onSaved(PREDICATE, predicate)
-        ?.onSaved(DELAY, delay) } }
-
-private fun markTagsForSeqAttach(tag: Any?, step: LiveWork, index: Int) =
-    tag?.asTagType()?.also { tag ->
-    (jobs?.findByTag(tag)
-        ?.instance
-        ?: Item<Unit>().also { jobs?.add(it.toJobFunctionItem({ tag }, true)) }
-        ).asItem()
-        ?.onSaved(LIVEWORK, step)
-        ?.onSaved(INDEX, index) }
-
-private fun markTagsForSeqLaunch(step: SequencerStep, job: Job, index: Int, context: CoroutineContext?) =
-    step.asCallable().let { step ->
-    step.tag?.also { tag ->
-    jobs?.save(step, tag)
-        ?.asItem()
-        ?.onSaved(JOB, job)
-        ?.onSaved(INDEX, index) // optionally, readjust by remarks or from seq here instead
-        ?.onSaved(CONTEXT, context) } }
-
-private fun markTagsForCtxReform(tag: TagType?, job: Job, stage: ContextStep?, form: AnyStep) =
-    tag?.also { tag ->
-    jobs?.findByTag(tag)
-        ?.asItem()
-        ?.onSaved(JOB, job)
-        ?.onSaved(CTX_STEP, stage)
-        ?.onSaved(FORM, form) }
-
-private fun markTagsForClkAttach(step: Any, index: Number) =
-    when (step) {
-    is Runnable ->
-        getTag(step)?.also { tag ->
-        jobs?.save(step.asCallable(), tag)
-            ?.asItem()
-            ?.onSaved(INDEX, index) }
-    is Message ->
-        getTag(step)?.also { tag ->
-        jobs?.save(step.asCallable(), tag) }
-    else ->
-        null }
+private var livesteps: FunctionSet? = null
 
 inline infix fun <R, S> (suspend () -> R)?.thenSuspended(crossinline next: suspend () -> S): (suspend () -> S)? = this?.let { {
     this@thenSuspended()
@@ -1678,6 +1539,8 @@ internal fun <R> callBy(args: Map<KParameter, Any?>): (KCallable<R>) -> R = {
 
 private fun <R> KCallable<R>.mapToTypedArray(args: Map<KParameter, Any?>) =
     parameters.map(args::get).toTypedArray()
+
+private val items: FunctionSet? = null
 
 internal inline fun <L : Any, R, S : R> transact(noinline lock: () -> L, predicate: (L?) -> Boolean = { true }, block: (L) -> R, fallback: () -> S? = { null }): R? {
     if (predicate(null))
@@ -2072,6 +1935,8 @@ internal open class Clock(
     }
 }
 
+private var callbacks: FunctionSet? = null
+
 private interface AttachOperator<in S> {
     fun attach(step: S, vararg args: Any?): Any?
 }
@@ -2227,6 +2092,10 @@ private open class Item<R>(var ref: KMutableProperty<R>? = null) {
     override fun toString() = tag.toString()
 }
 
+interface FunctionProvider {
+    operator fun <R> invoke(vararg tag: TagType): KCallable<R>
+}
+
 internal operator fun <T> ResolverScope.get(ref: Coordinate) =
     with(ref) { get<T>(target, key) }
 
@@ -2244,9 +2113,149 @@ private fun step(target: AnyKClass, key: KeyType) =
 private fun runnable(target: AnyKClass, key: KeyType) =
     SchedulerScope().get<Runnable>(target, key)
 
-interface FunctionProvider {
-    operator fun <R> invoke(vararg tag: TagType): KCallable<R>
-}
+private fun FunctionSet.addFunction(function: Any, tag: TagType?, keep: Boolean) =
+    add(function.toFunctionItem(tag?.let { { it } } ?: currentThreadJob()::hashTag, keep))
+
+private fun Any.toFunctionItem(tag: TagTypePointer, keep: Boolean) =
+    FunctionItem(tag, this to keep)
+
+private val FunctionItem.instance
+    get() = second.asAnyToBooleanPair()?.first
+
+private fun FunctionSet.findByTag(tag: TagType) =
+    find { tag == it.first() }
+
+private fun FunctionSet.save(self: AnyKMutableProperty, tag: Tag) =
+    with(tag) { save(self, id, keep) }
+
+private fun FunctionSet.save(function: AnyKMutableProperty, tag: TagType) =
+    function.tag?.apply {
+    save(function, combineTags(tag, id), keep) }
+
+@Suppress("IMPLICIT_CAST_TO_ANY")
+private fun FunctionSet.save(function: AnyKMutableProperty, tag: TagType?, keep: Boolean) =
+    tag?.let(::findByTag)
+        ?.instance
+        ?.also { if (it is Item<*>) { with(it) {
+            onSaved(FUNC, function)
+            onSaved(KEEP, keep) } } }
+    ?: (if (function.asReference().isItemized)
+            Item(function)
+            .onSaved(KEEP, keep)
+        else
+            function)
+        .also {
+        addFunction(it, tag, keep) }
+
+private fun combineTags(tag: TagType, self: TagType?) =
+    if (self === null) tag
+    else reduceTags(tag, TAG_DOT, self.toTagType())
+
+internal fun reduceTags(vararg tag: TagType) =
+    (if (TagType::class.isNumber)
+        tag.map(TagType::toInt)
+            .reduce(Int::plus)
+    else
+        tag.map(TagType::toString)
+            .reduce(String::concat)).asTagType()!!
+
+private fun returnTag(it: Any?) =
+    it.asCallable().tag?.id
+
+private fun Any?.markValue(tag: TagType) {}
+
+internal fun AnyKMutableProperty.markTag() =
+    tag?.also { jobs?.save(@Itemize this, it) }
+
+internal fun Any.markTag() =
+    asCallable().markTag()
+
+internal fun Any?.markTag(tag: TagType) = (when {
+    (tag === CLK_EXEC) ->
+        callbacks
+    else -> jobs })
+    ?.save(@Itemize asCallable(), tag)
+
+internal fun Any.markSequentialTag(tag: TagType?, id: TagType) =
+    tag?.let { tag ->
+    reduceTags(tag, TAG_DASH, id)
+    .also { this@markSequentialTag.markTag(it) } }
+
+private fun <T> T.applyMarkTag(tag: TagType) = apply { markTag(tag) }
+
+private fun AnyStep?.markTagForSchExec() = applyMarkTag(SCH_EXEC)
+private fun AnyStep.markTagForSchPost() = applyMarkTag(SCH_POST)
+
+private fun AnyCoroutineStep.markTagForFloLaunch() = applyMarkTag(FLO_LAUNCH)
+private fun AnyCoroutineStep.markTagForSchCommit() = applyMarkTag(SCH_COMMIT)
+private fun AnyCoroutineStep.markTagForSchLaunch() = applyMarkTag(SCH_LAUNCH)
+private fun AnyCoroutineStep.markTagForSchPost() = applyMarkTag(SCH_POST)
+private fun AnyCoroutineStep.markTagForSvcCommit() = applyMarkTag(SVC_COMMIT)
+
+private fun Runnable.markTagForClkExec() = applyMarkTag(CLK_EXEC)
+
+private fun SequencerStep.setTagTo(step: Step) = this
+
+private fun getTag(callback: Runnable): TagType? = TODO()
+private fun getTag(msg: Message): TagType? = TODO()
+private fun getTag(what: Int): TagType? = TODO()
+
+private fun markTagsForJobLaunch(tag: TagType, step: AnyCoroutineStep, job: Job, owner: LifecycleOwner?, context: CoroutineContext?, start: CoroutineStart?) =
+    tag.asTag()?.also { tag ->
+    jobs?.save(step.asCallable(), tag) /* step */
+        ?.asItem()
+        ?.onSaved(JOB, job)
+        ?.onSaved(OWNER, owner)
+        ?.onSaved(CONTEXT, context)
+        ?.onSaved(START, start) }
+
+private fun markTagsForJobRepeat(block: JobFunction, job: Job, predicate: PredicateFunction?, delay: DelayFunction?) =
+    block.asCallable().let { block ->
+    block.tag?.also { tag ->
+    jobs?.save(block, tag)
+        ?.asItem()
+        ?.onSaved(JOB, job)
+        ?.onSaved(PREDICATE, predicate)
+        ?.onSaved(DELAY, delay) } }
+
+private fun markTagsForSeqAttach(tag: Any?, step: LiveWork, index: Int) =
+    tag?.asTagType()?.also { tag ->
+    (livesteps?.findByTag(tag)
+        ?.instance
+        ?: Item<Unit>().also { livesteps?.add(it.toFunctionItem({ tag }, true)) }
+        ).asItem()
+        ?.onSaved(LIVEWORK, step)
+        ?.onSaved(INDEX, index) }
+
+private fun markTagsForSeqLaunch(step: SequencerStep, job: Job, index: Int, context: CoroutineContext?) =
+    step.asCallable().let { step ->
+    step.tag?.also { tag ->
+    livesteps?.save(step, tag)
+        ?.asItem()
+        ?.onSaved(JOB, job)
+        ?.onSaved(INDEX, index) // optionally, readjust by remarks or from seq here instead
+        ?.onSaved(CONTEXT, context) } }
+
+private fun markTagsForCtxReform(tag: TagType?, job: Job, stage: ContextStep?, form: AnyStep) =
+    tag?.also { tag ->
+    items?.findByTag(tag)
+        ?.asItem()
+        ?.onSaved(JOB, job)
+        ?.onSaved(CTX_STEP, stage)
+        ?.onSaved(FORM, form) }
+
+private fun markTagsForClkAttach(step: Any, index: Number) =
+    when (step) {
+    is Runnable ->
+        getTag(step)?.also { tag ->
+        callbacks?.save(step.asCallable(), tag)
+            ?.asItem()
+            ?.onSaved(INDEX, index) }
+    is Message ->
+        getTag(step)?.also { tag ->
+        callbacks?.save(step.asCallable(), tag) }
+    else ->
+        null }
 
 @Retention(SOURCE)
 @Target(ANNOTATION_CLASS, CLASS, CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
@@ -2488,9 +2497,8 @@ private open class ObjectReference<R>(open var obj: R) : KMutableProperty<R> {
 
 internal fun <R> R.asCallable(): KMutableProperty<R> =
     if (this is ObjectReference<*>)
-        this::obj.asType()!!
-    else
-        asReference()
+        asType()!!
+    else asReference()
 
 private fun <R> R.asReference() =
     ObjectReference(this)
@@ -2565,14 +2573,11 @@ private typealias SchedulerNode = KClass<out Annotation>
 private typealias SchedulerPath = Array<KClass<out Throwable>>
 private typealias SchedulerStep = suspend CoroutineScope.(Job, Any?) -> Unit
 internal typealias JobFunction = suspend (Any?) -> Unit
-private typealias JobFunctionSet = MutableSet<JobFunctionItem>
-private typealias JobFunctionItem = TagTypeToAnyPair
 private typealias JobPredicate = (Job) -> Boolean
 internal typealias CoroutineFunction = (CoroutineStep) -> Any?
 internal typealias AnyCoroutineFunction = (AnyCoroutineStep) -> Any?
 private typealias CoroutinePointer = () -> CoroutineStep?
 private typealias AnyCoroutinePointer = () -> AnyCoroutineStep?
-private typealias TagTypeToAnyPair = Pair<TagTypePointer, Any>
 
 private typealias SequencerScope = LiveDataScope<Step?>
 private typealias SequencerStep = suspend SequencerScope.(Any?) -> Unit
@@ -2588,6 +2593,10 @@ private typealias LiveWorkPredicate = (LiveWork) -> Boolean
 private typealias StepFunction = (Step) -> Any?
 private typealias AnyStepFunction = (AnyStep) -> Any?
 private typealias StepPointer = () -> Step
+
+private typealias FunctionSet = MutableSet<FunctionItem>
+private typealias FunctionItem = TagTypeToAnyPair
+private typealias TagTypeToAnyPair = Pair<TagTypePointer, Any>
 
 private typealias HandlerFunction = Clock.(Message) -> Unit
 private typealias MessageFunction = (Message) -> Any?
