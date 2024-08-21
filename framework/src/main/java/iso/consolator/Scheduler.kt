@@ -1516,6 +1516,8 @@ private fun AnyCoroutineStep.markTagForSchLaunch() = applyMarkTag(SCH_LAUNCH)
 private fun AnyCoroutineStep.markTagForSchPost() = applyMarkTag(SCH_POST)
 private fun AnyCoroutineStep.markTagForSvcCommit() = applyMarkTag(SVC_COMMIT)
 
+private fun Runnable.markTagForClkExec() = applyMarkTag(CLK_EXEC)
+
 private fun SequencerStep.setTagTo(step: Step) = this
 
 private fun getTag(callback: Runnable): TagType? = TODO()
@@ -1944,7 +1946,9 @@ internal open class Clock(
         if (isSynchronized(step))
             synchronize(step) {
                 if (queue.run(step, false))
-                    step.callback.run() }
+                    step.callback
+                        .markTagForClkExec()
+                        .run() }
         else step.callback.exec()
 
     private fun RunnableList.run(msg: Message? = null, isIdle: Boolean = true) =
@@ -1965,6 +1969,7 @@ internal open class Clock(
     private fun IntProgression.hasNotTraversed(msg: Message?) = true
 
     private fun Runnable.exec(isIdle: Boolean = true) {
+        markTagForClkExec()
         if (isIdle && isSynchronized(this))
             synchronize(block = ::run)
         else run() }
