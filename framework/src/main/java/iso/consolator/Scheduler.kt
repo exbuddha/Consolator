@@ -2048,7 +2048,7 @@ annotation class Delay(
 annotation class Timeout(
     @JvmField val millis: Long = -1L)
 
-private open class Item<R>(var ref: KMutableProperty<R>? = null) {
+private open class Item<R>(var ref: KCallable<R>? = null) {
     open fun onSaved(subtag: TagType, value: Any?) = this.also { when {
         subtag === FUNC ->
             if (ref === null)
@@ -2130,15 +2130,15 @@ internal val FunctionItem.instance
 internal fun FunctionSet.findByTag(tag: TagType) =
     find { tag == it.first() }
 
-private fun FunctionSet.save(self: AnyKMutableProperty, tag: Tag) =
+private fun FunctionSet.save(self: AnyKCallable, tag: Tag) =
     with(tag) { save(self, id, keep) }
 
-private fun FunctionSet.save(function: AnyKMutableProperty, tag: TagType) =
+private fun FunctionSet.save(function: AnyKCallable, tag: TagType) =
     function.tag?.apply {
     save(function, combineTags(tag, id), keep) }
 
 @Suppress("IMPLICIT_CAST_TO_ANY")
-private fun FunctionSet.save(function: AnyKMutableProperty, tag: TagType?, keep: Boolean) =
+private fun FunctionSet.save(function: AnyKCallable, tag: TagType?, keep: Boolean) =
     tag?.let(::findByTag)
         ?.instance
         ?.also { if (it is Item<*>) { with(it) {
@@ -2169,7 +2169,7 @@ private fun returnTag(it: Any?) =
 
 private fun Any?.markValue(tag: TagType) {}
 
-internal fun AnyKMutableProperty.markTag(group: FunctionSet?) =
+internal fun AnyKCallable.markTag(group: FunctionSet?) =
     tag?.also { group?.save(@Itemize this, it) }
 
 internal fun Any.markTag(group: FunctionSet?) =
@@ -2474,7 +2474,17 @@ private typealias Lifetime = (AnyKMutableProperty) -> Boolean?
 
 fun AnyKMutableProperty.expire() = set(null)
 
-private open class ObjectReference<R>(open var obj: R) : KMutableProperty<R> {
+private open class ObjectReference<R>(override var obj: R) : PropertyReference<R>(obj), KMutableProperty<R> {
+    override val setter = ::obj.setter
+}
+
+open class PropertyReference<R>(override var obj: R) : CallableReference<R>(obj), KProperty<R> {
+    override val getter = ::obj.getter
+    override val isConst = ::obj.isConst
+    override val isLateinit = ::obj.isLateinit
+}
+
+open class CallableReference<R>(open var obj: R) : KCallable<R> {
     override fun call(vararg args: Any?) =
         ::obj.call(*args)
 
@@ -2491,19 +2501,25 @@ private open class ObjectReference<R>(open var obj: R) : KMutableProperty<R> {
     override val returnType = ::obj.returnType
     override val typeParameters = ::obj.typeParameters
     override val visibility = ::obj.visibility
-    override val setter = ::obj.setter
-    override val getter = ::obj.getter
-    override val isConst = ::obj.isConst
-    override val isLateinit = ::obj.isLateinit
 }
 
-internal fun <R> R.asCallable(): KMutableProperty<R> =
+internal fun <R> R.asMutableProperty(): KMutableProperty<R> =
     if (this is ObjectReference<*>)
+        asType()!!
+    else ObjectReference(this)
+
+internal fun <R> R.asProperty(): KProperty<R> =
+    if (this is PropertyReference<*>)
+        asType()!!
+    else PropertyReference(this)
+
+internal fun <R> R.asCallable(): KCallable<R> =
+    if (this is CallableReference<*>)
         asType()!!
     else asReference()
 
-private fun <R> R.asReference() =
-    ObjectReference(this)
+internal fun <R> R.asReference() =
+    CallableReference(this)
 
 internal fun trueWhenNull(it: Any?) = it === null
 

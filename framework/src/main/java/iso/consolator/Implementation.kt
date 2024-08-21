@@ -447,7 +447,14 @@ internal typealias Logger = (LogFunction, CharSequence, CharSequence) -> Any?
 private typealias LogFunction = (CharSequence, CharSequence) -> Any?
 
 @JvmInline
-value class LogValue(private val value: Any) : CharSequence {
+value class LogValue<V>(private val value: PropertyReference<V>) : KProperty<V> by value, CharSequence {
+    constructor(value: V) : this(PropertyReference(value))
+
+    val type
+        get() = value.get()
+            ?.let { it::class }
+            ?: Nothing::class
+
     override fun toString() =
         value.toString()
 

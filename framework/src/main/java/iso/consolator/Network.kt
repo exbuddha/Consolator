@@ -179,7 +179,10 @@ private fun <R> NetCall.lock(cmd: String, block: () -> R) =
 
 private fun NetCall.asCallable() =
     if (this === ::netCall) ::netCall
-    else asProperty().get().asCallable()
+    else if (this is CallableReference<*>) asType()!!
+    else asProperty().get().asReference() // register lock
+
+private fun NetCall.asProperty() = this as KProperty
 
 private fun NetCall.exec(cmd: String = INET_CALL, respond: Respond) {
     markTag(calls)
@@ -218,8 +221,6 @@ internal operator fun NetCall.set(id: TagType, value: Any?) {
         id === INET_DELAY -> netCallDelayTime = take(value)
         id === INET_INTERVAL -> netCallTimeInterval = take(value)
         id === INET_MIN_INTERVAL -> minNetCallTimeInterval = take(value) } } }
-
-private fun NetCall.asProperty() = this as KProperty
 
 @Retention(SOURCE)
 @Target(FUNCTION, PROPERTY)
