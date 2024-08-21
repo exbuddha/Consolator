@@ -15,7 +15,7 @@ import kotlin.reflect.*
 internal var containerViewId = R.id.layout_background
 
 @Tag(MAIN_ACTIVITY)
-internal open class MainActivity : BaseActivity(), ObjectProvider, FunctionProvider {
+internal open class MainActivity : BaseActivity(), Provider {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (savedInstanceState === null)

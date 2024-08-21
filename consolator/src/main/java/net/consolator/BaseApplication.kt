@@ -33,8 +33,8 @@ internal open class BaseApplication : Application(), UniqueContext {
         putString(EXCEPTION, ex::class.qualifiedName)
         putString(EXCEPTION_MESSAGE, ex.message)
         ex.cause?.let { cause ->
-            putString(EXCEPTION_CAUSE, cause::class.qualifiedName)
-            putString(EXCEPTION_CAUSE_MESSAGE, cause.message) } }
+        putString(EXCEPTION_CAUSE, cause::class.qualifiedName)
+        putString(EXCEPTION_CAUSE_MESSAGE, cause.message) } }
 
     companion object {
         const val ACTION_MIGRATE_APP: Short = 1

@@ -187,22 +187,20 @@ object Scheduler : SchedulerScope, MutableLiveData<AnyStep?>(), AnyStepObserver,
         removeObserver(this)
         SchedulerScope.isSchedulerObserved = false }
 
-    @JvmStatic fun <T : Resolver> defer(resolver: KClass<out T>, provider: Any, vararg context: Any?): Any? {
-        fun ResolverKProperty.setResolverThenCommit() =
-            reconstruct(provider).get()?.commit(context)
-        return when (resolver) {
+    @JvmStatic fun <T : Resolver> defer(resolver: KClass<out T>, provider: Any, vararg context: Any?) =
+        when (resolver) {
             MigrationManager::class ->
-                ::applicationMigrationManager.setResolverThenCommit()
+                ::applicationMigrationManager
             ConfigurationChangeManager::class ->
-                ::activityConfigurationChangeManager.setResolverThenCommit()
+                ::activityConfigurationChangeManager
             NightModeChangeManager::class ->
-                ::activityNightModeChangeManager.setResolverThenCommit()
+                ::activityNightModeChangeManager
             LocalesChangeManager::class ->
-                ::activityLocalesChangeManager.setResolverThenCommit()
+                ::activityLocalesChangeManager
             MemoryManager::class ->
-                ::applicationMemoryManager.setResolverThenCommit()
+                ::applicationMemoryManager
             else -> null
-    } }
+        }?.reconstruct(provider)?.get()?.commit(context)
 
     private var activityConfigurationChangeManager: ConfigurationChangeManager? = null
     private var activityNightModeChangeManager: NightModeChangeManager? = null
@@ -341,13 +339,13 @@ fun ResolverScope.commit(vararg tag: Tag): Any? = TODO()
 fun ResolverScope.commit(vararg path: Path): Any? = TODO()
 
 inline fun <reified T : Resolver> LifecycleOwner.defer(member: UnitKFunction, vararg context: Any?) =
-    defer(T::class, T::class, member, *context)
-
-inline fun <reified T : Resolver> Context.defer(member: UnitKFunction, vararg context: Any?, noinline `super`: Work) =
-    defer(T::class, T::class, member, *context, implicit(`super`))
+    defer(T::class, this, member, *context)
 
 inline fun <reified T : Resolver> Activity.defer(member: UnitKFunction, vararg context: Any?, noinline `super`: Work) =
-    defer(T::class, this, member, *context, `super`)
+    defer(T::class, this, member, *context, implicit(`super`))
+
+inline fun <reified T : Resolver> Context.defer(member: UnitKFunction, vararg context: Any?, noinline `super`: Work) =
+    defer(T::class, this, member, *context, implicit(`super`))
 
 fun implicit(work: Work) = when {
     work.isImplicit -> {

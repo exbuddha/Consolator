@@ -13,7 +13,7 @@ import net.consolator.BaseApplication.Companion.ABORT_NAV_MAIN_UI
 import net.consolator.BaseApplication.Companion.COMMIT_NAV_MAIN_UI
 
 @Tag(MAIN_FRAGMENT)
-internal open class MainFragment : BaseFragment(), ObjectProvider, FunctionProvider {
+internal open class MainFragment : BaseFragment(), Provider {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         if (this is OverlayFragment)
             return super.onViewCreated(view, savedInstanceState)
