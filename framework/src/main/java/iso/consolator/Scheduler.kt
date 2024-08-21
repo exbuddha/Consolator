@@ -2284,7 +2284,7 @@ internal annotation class Keep
 @Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
 @Repeatable
 annotation class Path(
-    @JvmField val name: PathType,
+    @JvmField val id: PathType,
     @JvmField val route: SchedulerPath = []) {
 
     @Retention(SOURCE)
@@ -2562,6 +2562,9 @@ private fun String.toTagType() =
 
 private fun Any?.hashTag() = hashCode().toTagType()
 
+private typealias PathType = TagType
+private typealias PathArray = Array<PathType>
+
 private val KClass<TagType>.isNumber get() = TagType::class !== String::class
 private val KClass<TagType>.isString get() = TagType::class === String::class
 
@@ -2569,10 +2572,7 @@ private fun String.concat(it: String) = this + it
 
 internal fun Array<out Tag>.mapToTagArray() = mapToTypedArray { it.id }
 
-private typealias PathType = String
-private typealias PathArray = Array<PathType>
-
-internal fun Array<out Path>.mapToTagArray() = mapToTypedArray { it.name }
+internal fun Array<out Path>.mapToTagArray() = mapToTypedArray { it.id }
 
 internal typealias LevelType = Byte
 
