@@ -203,7 +203,8 @@ object Scheduler : SchedulerScope, MutableLiveData<AnyStep?>(), AnyStepObserver,
             MemoryManager::class ->
                 ::applicationMemoryManager
             else -> null
-        }?.reconstruct(provider)?.get()?.commit(context)
+        }?.reconstruct(provider)?.get()
+        ?.commit(context)
 
     private var activityConfigurationChangeManager: ConfigurationChangeManager? = null
     private var activityNightModeChangeManager: NightModeChangeManager? = null
@@ -626,13 +627,13 @@ infix fun Job?.onTimeoutJob(action: Job) = this
 
 private fun Job.currentCoroutineStep(): AnyCoroutineStep = TODO()
 
-infix fun CoroutineScope.diverge(step: SchedulerStep): CoroutineStep? = TODO()
+suspend infix fun CoroutineScope.diverge(step: SchedulerStep): CoroutineStep? = TODO()
 
-infix fun CoroutineScope.diverge(job: Job): Job? = TODO()
+suspend infix fun CoroutineScope.diverge(job: Job): Job? = TODO()
 
-infix fun CoroutineStep?.onConverge(action: SchedulerStep): CoroutineStep? = this
+suspend infix fun CoroutineStep?.onConverge(action: SchedulerStep): CoroutineStep? = this
 
-infix fun Job?.onConvergeJob(action: Job) = this
+suspend infix fun Job?.onConvergeJob(action: Job) = this
 
 fun CoroutineScope?.converge(job: Job, context: Any?) {}
 
