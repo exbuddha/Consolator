@@ -24,6 +24,7 @@ import java.util.*
 import kotlin.annotation.AnnotationRetention.*
 import kotlin.annotation.AnnotationTarget.*
 import kotlin.reflect.*
+import kotlin.reflect.jvm.*
 import kotlinx.coroutines.*
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -349,29 +350,31 @@ internal fun <T> KProperty<T?>.isTrue() = get() == true
 
 internal fun <T> KProperty<T?>.isFalse() = get() == false
 
+fun <R> KFunction<R>.returnType() = returnType.jvmErasure
+
 internal fun Byte.toPercentage() =
     (this * 100 / Byte.MAX_VALUE).toByte()
 
+fun Any?.asObjectProvider() = asType<ObjectProvider>()
+fun Any?.asFunctionProvider() = asType<FunctionProvider>()
 internal fun Any?.asActivity() = asType<Activity>()
 internal fun Any?.asFragment() = asType<Fragment>()
 internal fun Any?.asContext() = asType<Context>()
 internal fun Any?.asUniqueContext() = asType<UniqueContext>()
-fun Any?.asObjectProvider() = asType<ObjectProvider>()
-fun Any?.asFunctionProvider() = asType<FunctionProvider>()
 internal fun Any?.asString() = asType<String>()
 internal fun Any?.asInt() = asType<Int>()
 internal fun Any?.asLong() = asType<Long>()
 internal fun Any?.asAnyArray() = asType<AnyArray>()
-internal fun Any?.asAnyFunction() = asType<AnyFunction>()
 internal fun Any?.asAnyToBooleanPair() = asType<Pair<Any, Boolean>>()
+internal fun Any?.asAnyFunction() = asType<AnyFunction>()
 
-internal typealias ObjectPointer = () -> Any
 typealias ObjectProvider = (AnyKClass) -> Any
+internal typealias ObjectPointer = () -> Any
 
-typealias AnyArray = Array<*>
+internal typealias AnyArray = Array<*>
 internal typealias StringArray = Array<String>
 internal typealias AnyMutableList = MutableList<Any?>
-typealias AnyFunction = () -> Any?
+internal typealias AnyFunction = () -> Any?
 internal typealias AnyFunctionList = MutableList<AnyFunction>
 internal typealias AnyToAnyFunction = (Any?) -> Any?
 internal typealias IntMutableList = MutableList<Int>

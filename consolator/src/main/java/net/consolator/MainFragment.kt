@@ -6,9 +6,12 @@ package net.consolator
 import android.os.*
 import android.view.*
 import androidx.fragment.app.*
+import androidx.lifecycle.*
 import iso.consolator.*
 import kotlin.reflect.*
+import kotlinx.coroutines.*
 import androidx.fragment.app.FragmentTransaction.TRANSIT_FRAGMENT_OPEN
+import kotlinx.coroutines.Dispatchers.Default
 import net.consolator.BaseApplication.Companion.ABORT_NAV_MAIN_UI
 import net.consolator.BaseApplication.Companion.COMMIT_NAV_MAIN_UI
 
@@ -25,7 +28,7 @@ internal open class MainFragment : BaseFragment(), Provider {
                         setTransition(TRANSIT_FRAGMENT_OPEN)
                         replace(
                             this@MainFragment.id,
-                            OverlayFragment(this@MainFragment, ::screenEventInterceptor)
+                            OverlayFragment(this@MainFragment, ::viewEventInterceptor)
                             .apply {
                             /* renew main view */
                             }) } }
@@ -42,7 +45,10 @@ internal open class MainFragment : BaseFragment(), Provider {
             currentThread.log(info, UI_TAG, "Main fragment view is created.") }
     }
 
-    internal inline fun <reified R> screenEventInterceptor(listener: Any, callback: KFunction<R>, vararg args: Any?, noinline postback: PostbackFunction?): Interception = null
+    protected inline fun <reified R> viewEventInterceptor(listener: Any, callback: KFunction<R>, vararg args: Any?, noinline postback: PostbackFunction?): Interception =
+        (null to false)
+        .also { interception ->
+        lifecycleScope.launch(Default) { postback?.invoke(interception) } }
 
     override fun invoke(type: AnyKClass) = activity.asObjectProvider()!!(type)
 

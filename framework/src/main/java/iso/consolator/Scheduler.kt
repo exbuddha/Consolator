@@ -2538,6 +2538,7 @@ internal typealias LevelType = Byte
 
 internal fun Number.toLevel() = toByte()
 
+fun Any?.asLifecycleOwner() = asType<LifecycleOwner>()
 internal fun Any?.asCoroutineScope() = asType<CoroutineScope>()
 private fun Any?.asLiveWork() = asType<LiveWork>()
 private fun Any?.asWork() = asType<Work>()
