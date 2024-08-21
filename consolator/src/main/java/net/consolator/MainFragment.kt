@@ -42,7 +42,7 @@ internal open class MainFragment : BaseFragment(), Provider {
             // show animation or progress bar
             parentFragmentManager.commit {
                 show(this@MainFragment) }
-            currentThread.log(info, UI_TAG, "Main fragment view is created.") }
+            currentThread.log(info, VIEW_TAG, "Main fragment view is created.") }
     }
 
     protected inline fun <reified R> viewEventInterceptor(listener: Any, callback: KFunction<R>, vararg args: Any?, noinline postback: PostbackFunction?): Interception =

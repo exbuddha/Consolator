@@ -138,7 +138,7 @@ internal abstract class BaseFragment : Fragment(contentLayoutId) {
     @Target(EXPRESSION)
     annotation class MainViewGroup
 
-    companion object {
-        const val UI_TAG = "FRAGMENT"
+    protected companion object {
+        const val VIEW_TAG = "FRAGMENT"
     }
 }

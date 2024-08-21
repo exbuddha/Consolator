@@ -31,7 +31,8 @@ import kotlinx.coroutines.Dispatchers.Default
 import kotlinx.coroutines.Dispatchers.IO
 
 fun commitStartApp() {
-    enableLog()
+    enableLogger()
+    enableAllLogs()
     SchedulerScope @Tag(SCH_CONFIG) {
         init()
         preferClock()
@@ -308,7 +309,7 @@ sealed interface SchedulerScope : ResolverScope {
     val log get() = iso.consolator.log
 }
 
-internal val CoroutineScope.log
+val CoroutineScope.log
     get() = iso.consolator.log
 
 interface ResolverScope : CoroutineScope, Transactor<AnyCoroutineStep, Any?> {
@@ -316,7 +317,7 @@ interface ResolverScope : CoroutineScope, Transactor<AnyCoroutineStep, Any?> {
         get() = SchedulerContext
 }
 
-internal fun commit(step: CoroutineStep) =
+fun commit(step: CoroutineStep) =
     (step.annotatedScope ?:
     foregroundLifecycleOwner?.lifecycleScope ?:
     service ?:
@@ -2333,7 +2334,7 @@ annotation class JobTreeRoot
 
 @Retention(SOURCE)
 @Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
-internal annotation class Scope(
+annotation class Scope(
     @JvmField val type: KClass<out CoroutineScope> = Scheduler::class,
     @JvmField val provider: AnyKClass = Any::class)
 
@@ -2392,14 +2393,16 @@ private val AnyKCallable.launchScope
 
 private val Any.annotatedScope
     get() = trySafelyForResult { asCallable().schedulerScope!!.let { annotation ->
+        if (annotation.type === Scheduler::class ||
+            annotation.type === SchedulerScope::class)
+            SchedulerScope()
+        else
         when (annotation.provider) {
             Any::class ->
                 annotation.type.reconstruct(this)
             Activity::class,
             Fragment::class ->
                 foregroundLifecycleOwner.asObjectProvider()!!(annotation.type)
-            SchedulerScope::class ->
-                SchedulerScope()
             else ->
                 throw BaseImplementationRestriction()
         } as CoroutineScope } }

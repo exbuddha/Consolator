@@ -6,15 +6,12 @@ import iso.consolator.Scheduler.applicationMigrationManager
 
 class MigrationManager : Resolver {
     override fun commit(vararg context: Any?) {
+        super.commit(*context)
         when (context.firstOrNull()) {
-            Fragment::onViewCreated -> {
-                context.lastOrNull()?.asType<Work>()?.invoke()
+            Fragment::onViewCreated ->
                 ::applicationMigrationManager.expire()
-        } }
+        }
     }
-
-    var progress: Byte = 0
-        private set
 
     private companion object
 }

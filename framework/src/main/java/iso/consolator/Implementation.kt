@@ -52,16 +52,16 @@ const val VIEW_MIN_DELAY = 300L
 internal typealias ContextStep = suspend Context.(Any?) -> Any?
 
 internal fun Context.change(stage: ContextStep) =
-    commit { stage(null) }
+    commit { stage(this) }
 
 internal fun Context.changeLocally(owner: LifecycleOwner, stage: ContextStep) =
-    commit { stage(null) }
+    commit { stage(this) }
 
 internal fun Context.changeBroadly(ref: WeakContext = asWeakReference(), stage: ContextStep) =
-    commit { stage(null) }
+    commit { stage(this) }
 
 internal fun Context.changeGlobally(ref: WeakContext = asWeakReference(), owner: LifecycleOwner, stage: ContextStep) =
-    commit { stage(null) }
+    commit { stage(this) }
 
 @Diverging([STAGE_BUILD_APP_DB])
 fun Context.stageAppDbCreated(scope: Any?) {
@@ -408,23 +408,37 @@ internal open class InterruptedStepException(
 
 internal lateinit var log: Logger
 
-var info: LogFunction = { tag, msg -> Log.i(tag.toString(), msg.toString()) }
-var debug: LogFunction = { tag, msg -> Log.d(tag.toString(), msg.toString()) }
-var warning: LogFunction = { tag, msg -> Log.w(tag.toString(), msg.toString()) }
-private val bypass: LogFunction = { _, _ -> }
+lateinit var info: LogFunction
+lateinit var debug: LogFunction
+lateinit var warning: LogFunction
 
+operator fun LogFunction.plus(other: LogFunction): LogFunction = { tag, msg ->
+    this(tag, msg)
+    other(tag, msg) }
+
+operator fun LogFunction.times(other: LogFunction): LogFunction = { tag, msg ->
+    if (isOn) this(tag, msg)
+    if (other.isOn) other(tag, msg) }
+
+private val bypass: LogFunction = { _, _ -> }
 private val LogFunction.isOn
     get() = this !== bypass
-private val LogFunction.isOff
-    get() = this === bypass
 
-fun enableLog() { log = { log, tag, msg -> if (log.isOn) log(tag, msg) } }
-fun disableLog() { log = { _, _, _ -> } }
+fun enableLogger() { log = { log, tag, msg -> log(tag, msg) } }
+fun restrictLogger() { log = { log, tag, msg -> if (log.isOn) log(tag, msg) } }
+fun disableLogger() { log = { _, _, _ -> } }
 
-internal fun bypassInfoLog() { info = bypass }
-internal fun bypassDebugLog() { debug = bypass }
-internal fun bypassWarningLog() { info = bypass }
-internal fun bypassAllLogs() {
+fun enableInfoLog() { info = { tag, msg -> Log.i(tag.toString(), msg.toString()) } }
+fun enableDebugLog() { debug = { tag, msg -> Log.d(tag.toString(), msg.toString()) } }
+fun enableWarningLog() { warning = { tag, msg -> Log.w(tag.toString(), msg.toString()) } }
+fun enableAllLogs() {
+    enableInfoLog()
+    enableDebugLog()
+    enableWarningLog() }
+fun bypassInfoLog() { info = bypass }
+fun bypassDebugLog() { debug = bypass }
+fun bypassWarningLog() { info = bypass }
+fun bypassAllLogs() {
     bypassInfoLog()
     bypassDebugLog()
     bypassWarningLog() }
@@ -433,7 +447,7 @@ internal typealias Logger = (LogFunction, CharSequence, CharSequence) -> Any?
 private typealias LogFunction = (CharSequence, CharSequence) -> Any?
 
 @JvmInline
-internal value class LogValue(private val value: Any) : CharSequence {
+value class LogValue(private val value: Any) : CharSequence {
     override fun toString() =
         value.toString()
 
@@ -490,10 +504,10 @@ internal const val ERROR = "error"
 internal const val UPDATE = "update"
 const val EXCEPTION = "exception"
 internal const val CAUSE = "cause"
-internal const val MESSAGE = "message"
-const val EXCEPTION_CAUSE = "ex-cause"
-const val EXCEPTION_MESSAGE = "ex-msg"
-const val EXCEPTION_CAUSE_MESSAGE = "ex-cause-msg"
+internal const val MESSAGE = "msg"
+const val EXCEPTION_CAUSE = "ex-$CAUSE"
+const val EXCEPTION_MESSAGE = "ex-$MESSAGE"
+const val EXCEPTION_CAUSE_MESSAGE = "ex-$CAUSE-$MESSAGE"
 internal const val IGNORE = "ignore"
 const val UNCAUGHT = "uncaught"
 const val NOW = "now"
@@ -529,6 +543,8 @@ internal const val SEQ = "seq"
 internal const val LOG = "log"
 internal const val NET = "net"
 internal const val DB = "db"
+
+const val APP_INIT = "$APP-$INIT"
 
 const val MAIN_ACTIVITY = "$MAIN-$ACTIVITY"
 const val MAIN_FRAGMENT = "$MAIN-$FRAGMENT"
