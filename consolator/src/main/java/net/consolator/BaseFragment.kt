@@ -65,7 +65,7 @@ internal abstract class BaseFragment : Fragment(contentLayoutId) {
         trySafely {
         launch(@JobTreeRoot IO, LAZY) @MainViewGroup
         @Retrying @Pathwise([ FromLastCancellation::class ])
-        @Delay(VIEW_MIN_DELAY)
+        @Delay(view_min_delay)
         @WithContext @Tag(VIEW_ATTACH) {
             context } // auto-register
         .then @Parallel @Path(STAGE_BUILD_APP_DB) { _, _ ->

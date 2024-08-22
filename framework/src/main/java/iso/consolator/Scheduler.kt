@@ -39,7 +39,7 @@ fun commitStartApp() {
         preferScheduler() }
     if (SchedulerScope.isClockPreferred)
         clock = Clock(SVC, Thread.MAX_PRIORITY)
-        @Synchronous @Tag(CLOCK_INIT) {
+            @Synchronous(group = Clock::class) @Tag(CLOCK_INIT) {
             // turn clock until scope is active
             currentThread.log(info, SVC_TAG, "Clock is detected.") }
         .alsoStart() }
@@ -459,7 +459,7 @@ private fun CoroutineContext.isSchedulerContext() =
     this is SchedulerContext ||
     this[SchedulerKey] is SchedulerElement
 
-private fun AnyCoroutineStep.afterTrackingTagsForJobLaunch(owner: LifecycleOwner? = null, context: CoroutineContext? = null, start: CoroutineStart? = null) =
+private fun AnyCoroutineStep.afterTrackingTagsForJobLaunch(owner: LifecycleOwner? = null, context: CoroutineContext, start: CoroutineStart) =
     returnTag(this)?.let { tag ->
     (after { job, _ -> markTagsForJobLaunch(tag, this@afterTrackingTagsForJobLaunch, job, owner, context, start) })!! }
     ?: this
@@ -627,11 +627,11 @@ infix fun Job?.onTimeoutJob(action: Job) = this
 
 private fun Job.currentCoroutineStep(): AnyCoroutineStep = TODO()
 
-suspend infix fun CoroutineScope.diverge(step: SchedulerStep): CoroutineStep? = TODO()
+suspend inline fun CoroutineScope.diverge(step: SchedulerStep): CoroutineStep? = TODO()
 
-suspend infix fun CoroutineScope.diverge(job: Job): Job? = TODO()
+suspend fun CoroutineScope.diverge(job: Job): Job? = TODO()
 
-suspend infix fun CoroutineStep?.onConverge(action: SchedulerStep): CoroutineStep? = this
+suspend inline infix fun CoroutineStep?.onConverge(action: SchedulerStep): CoroutineStep? = this
 
 suspend infix fun Job?.onConvergeJob(action: Job) = this
 
@@ -2098,6 +2098,40 @@ private open class Item<R>(var ref: KCallable<R>? = null) {
     override fun toString() = tag.toString()
 }
 
+@JvmInline
+value class Value<V>(private val value: PropertyReference<V>) : KCallable<V> by value, CharSequence {
+    constructor(value: V) : this(PropertyReference(value)) {
+        tag?.let { register(it) } }
+
+    companion object : MutableMap<Tag, KCallable<*>> by mutableMapOf() {
+        private fun <V> Value<V>.register(tag: Tag) = set(tag, this)
+
+        @JvmStatic fun <V> Value<V>.setTarget(target: KCallable<V>) = this.also {
+            target.tag?.let { set(it, target) }
+        }
+    }
+
+    val target: KCallable<V>?
+        get() = TODO()
+
+    val type
+        get() = value.get()
+            ?.let { it::class }
+            ?: Nothing::class
+
+    override fun toString() =
+        value.get().toString()
+
+    override fun get(index: Int) =
+        toString()[index]
+
+    override fun subSequence(startIndex: Int, endIndex: Int) =
+        toString().subSequence(startIndex, endIndex)
+
+    override val length: Int
+        get() = toString().length
+}
+
 interface FunctionProvider {
     operator fun <R> invoke(vararg tag: TagType): KCallable<R>
 }
@@ -2203,7 +2237,7 @@ private fun getTag(callback: Runnable): TagType? = TODO()
 private fun getTag(msg: Message): TagType? = TODO()
 private fun getTag(what: Int): TagType? = TODO()
 
-private fun markTagsForJobLaunch(tag: TagType, step: AnyCoroutineStep, job: Job, owner: LifecycleOwner?, context: CoroutineContext?, start: CoroutineStart?) =
+private fun markTagsForJobLaunch(tag: TagType, step: AnyCoroutineStep, job: Job, owner: LifecycleOwner?, context: CoroutineContext, start: CoroutineStart) =
     tag.asTag()?.also { tag ->
     jobs?.save(step.asCallable(), tag) /* step */
         ?.asItem()
@@ -2212,7 +2246,7 @@ private fun markTagsForJobLaunch(tag: TagType, step: AnyCoroutineStep, job: Job,
         ?.onSaved(CONTEXT, context)
         ?.onSaved(START, start) }
 
-private fun markTagsForJobRepeat(block: JobFunction, job: Job, predicate: PredicateFunction?, delay: DelayFunction?) =
+private fun markTagsForJobRepeat(block: JobFunction, job: Job, predicate: PredicateFunction, delay: DelayFunction) =
     block.asCallable().let { block ->
     block.tag?.also { tag ->
     jobs?.save(block, tag)
@@ -2361,8 +2395,9 @@ annotation class LaunchScope
 
 @Retention(SOURCE)
 @Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
-private annotation class Synchronous(
-    @JvmField val node: SchedulerNode = Annotation::class)
+annotation class Synchronous(
+    @JvmField val node: SchedulerNode = Annotation::class,
+    @JvmField val group: AnyKClass = Any::class)
 
 @Retention(SOURCE)
 @Target(EXPRESSION)
@@ -2562,7 +2597,7 @@ private fun String.toTagType() =
 
 private fun Any?.hashTag() = hashCode().toTagType()
 
-private typealias PathType = TagType
+private typealias PathType = String
 private typealias PathArray = Array<PathType>
 
 private val KClass<TagType>.isNumber get() = TagType::class !== String::class
@@ -2674,9 +2709,11 @@ typealias AnyKFunction = KFunction<*>
 internal typealias AnyKProperty = KProperty<*>
 internal typealias AnyKMutableProperty = KMutableProperty<*>
 
-private operator fun AnyKCallable.plus(lock: AnyKCallable) = this
+private fun <R> AnyKCallable.receive(value: R) = this
 
 private fun <R> AnyKCallable.synchronize(block: () -> R) = synchronized(this, block)
+
+private operator fun AnyKCallable.plus(lock: AnyKCallable) = this
 
 private interface Synchronizer<L> {
     fun <R> synchronize(lock: L? = null, block: () -> R): R

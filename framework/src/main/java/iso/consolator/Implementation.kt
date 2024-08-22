@@ -47,7 +47,8 @@ internal val foregroundActivity: Activity?
 
 var foregroundLifecycleOwner: LifecycleOwner? = null
 
-const val VIEW_MIN_DELAY = 300L
+@Tag(VIEW_MIN_DELAY)
+const val view_min_delay = 300L
 
 internal typealias ContextStep = suspend Context.(Any?) -> Any?
 
@@ -372,6 +373,8 @@ typealias ObjectProvider = (AnyKClass) -> Any
 internal typealias ObjectPointer = () -> Any
 
 internal typealias AnyArray = Array<*>
+internal typealias IntArray = Array<Int>
+internal typealias ShortArray = Array<Short>
 internal typealias StringArray = Array<String>
 internal typealias AnyMutableList = MutableList<Any?>
 internal typealias AnyFunction = () -> Any?
@@ -446,28 +449,6 @@ fun bypassAllLogs() {
 internal typealias Logger = (LogFunction, CharSequence, CharSequence) -> Any?
 private typealias LogFunction = (CharSequence, CharSequence) -> Any?
 
-@JvmInline
-value class LogValue<V>(private val value: PropertyReference<V>) : KProperty<V> by value, CharSequence {
-    constructor(value: V) : this(PropertyReference(value))
-
-    val type
-        get() = value.get()
-            ?.let { it::class }
-            ?: Nothing::class
-
-    override fun toString() =
-        value.toString()
-
-    override fun get(index: Int) =
-        toString()[index]
-
-    override fun subSequence(startIndex: Int, endIndex: Int) =
-        toString().subSequence(startIndex, endIndex)
-
-    override val length: Int
-        get() = toString().length
-}
-
 internal const val TAG_DOT = "."
 internal const val TAG_AT = "@"
 internal const val TAG_HASH = "#"
@@ -496,6 +477,7 @@ internal const val REGISTER = "register"
 internal const val UNREGISTER = "unregister"
 internal const val REPEAT = "repeat"
 internal const val DELAY = "delay"
+internal const val MIN_DELAY = "$MIN-$DELAY"
 internal const val YIELD = "yield"
 internal const val CALL = "call"
 internal const val POST = "post"
@@ -510,11 +492,12 @@ internal const val SUCCESS = "success"
 internal const val ERROR = "error"
 internal const val UPDATE = "update"
 const val EXCEPTION = "exception"
+internal const val EX = "ex"
 internal const val CAUSE = "cause"
 internal const val MESSAGE = "msg"
-const val EXCEPTION_CAUSE = "ex-$CAUSE"
-const val EXCEPTION_MESSAGE = "ex-$MESSAGE"
-const val EXCEPTION_CAUSE_MESSAGE = "ex-$CAUSE-$MESSAGE"
+const val EXCEPTION_CAUSE = "$EX-$CAUSE"
+const val EXCEPTION_MESSAGE = "$EX-$MESSAGE"
+const val EXCEPTION_CAUSE_MESSAGE = "$EX-$CAUSE-$MESSAGE"
 internal const val IGNORE = "ignore"
 const val UNCAUGHT = "uncaught"
 const val NOW = "now"
@@ -563,6 +546,7 @@ internal const val NET_DB = "$NET-$DB"
 internal const val SESSION = "session"
 
 const val VIEW_ATTACH = "$VIEW.$ATTACH"
+const val VIEW_MIN_DELAY = "$VIEW.$MIN_DELAY"
 internal const val SCH_CONFIG = "$SCH.$CONFIG"
 internal const val CLOCK_INIT = "$CLOCK.$INIT"
 internal const val CLK_ATTACH = "$CLK.$ATTACH"

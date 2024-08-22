@@ -48,7 +48,8 @@ internal open class MainFragment : BaseFragment(), Provider {
     protected inline fun <reified R> viewEventInterceptor(listener: Any, callback: KFunction<R>, vararg args: Any?, noinline postback: PostbackFunction?): Interception =
         (null to false)
         .also { interception ->
-        lifecycleScope.launch(Default) { postback?.invoke(interception) } }
+        postback?.let { postback ->
+        lifecycleScope.launch(Default) { postback(interception) } } }
 
     override fun invoke(type: AnyKClass) = activity.asObjectProvider()!!(type)
 
