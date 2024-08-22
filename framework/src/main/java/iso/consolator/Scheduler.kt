@@ -206,10 +206,19 @@ object Scheduler : SchedulerScope, MutableLiveData<AnyStep?>(), AnyStepObserver,
         }?.reconstruct(provider)?.get()
         ?.commit(context)
 
+    @Key(1)
     private var activityConfigurationChangeManager: ConfigurationChangeManager? = null
+
+    @Key(2)
     private var activityNightModeChangeManager: NightModeChangeManager? = null
+
+    @Key(3)
     private var activityLocalesChangeManager: LocalesChangeManager? = null
+
+    @Key(4)
     internal var applicationMigrationManager: MigrationManager? = null
+
+    @Key(5)
     private var applicationMemoryManager: MemoryManager? = null
 
     internal fun clearResolverObjects() {
@@ -2074,15 +2083,15 @@ private open class Item<R>(var ref: KCallable<R>? = null) {
     enum class Type { Coroutine, JobFunction, ContextStep, SchedulerStep, LiveStep, Step, Work, Runnable, Message, Lock, State }
 
     companion object {
-        fun <T> find(ref: Coordinate): T = TODO()
+        @JvmStatic fun <T> find(ref: Coordinate): T = TODO()
 
-        fun <T> find(target: AnyKClass = Any::class, key: KeyType): T = TODO()
+        @JvmStatic fun <T> find(target: AnyKClass = Any::class, key: KeyType): T = TODO()
 
-        fun <R, I : Item<R>> Item<R>.reload(property: KCallable<R>): I = TODO()
+        @JvmStatic fun <R, I : Item<R>> Item<R>.reload(property: KCallable<R>): I = TODO()
 
-        fun <R, I : Item<R>> Item<R>.reload(tag: TagType): I = TODO()
+        @JvmStatic fun <R, I : Item<R>> Item<R>.reload(tag: TagType): I = TODO()
 
-        fun <R, I : Item<R>> Item<R>.reload(target: AnyKClass, key: KeyType): I = TODO()
+        @JvmStatic fun <R, I : Item<R>> Item<R>.reload(target: AnyKClass, key: KeyType): I = TODO()
     }
 
     override fun equals(other: Any?): Boolean {
@@ -2098,8 +2107,7 @@ private open class Item<R>(var ref: KCallable<R>? = null) {
     override fun toString() = tag.toString()
 }
 
-@JvmInline
-value class Value<V>(private val value: PropertyReference<V>) : KCallable<V> by value, CharSequence {
+@JvmInline value class Value<V>(private val value: PropertyReference<V>) : KCallable<V> by value, CharSequence {
     constructor(value: V) : this(PropertyReference(value)) {
         tag?.let { register(it) } }
 
@@ -2299,6 +2307,11 @@ private fun markTagsForClkAttach(step: Any, index: Number) =
 annotation class Coordinate(
     @JvmField val target: AnyKClass = Any::class,
     @JvmField val key: KeyType = 0)
+
+@Retention(SOURCE)
+@Target(ANNOTATION_CLASS, CLASS, CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+annotation class Key(
+    @JvmField val id: KeyType = 0)
 
 @Retention(SOURCE)
 @Target(EXPRESSION)
