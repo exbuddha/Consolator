@@ -2725,6 +2725,8 @@ internal typealias AnyKMutableProperty = KMutableProperty<*>
 
 private fun <R> AnyKCallable.receive(value: R) = this
 
+private fun <R> AnyKCallable.resolve(routine: KCallable<R>? = asType()) = this
+
 private fun <R> AnyKCallable.synchronize(block: () -> R) = synchronized(this, block)
 
 private operator fun AnyKCallable.plus(lock: AnyKCallable) = this
@@ -2734,6 +2736,8 @@ private interface Synchronizer<L> {
 }
 
 enum class Lock : State { Closed, Open }
+
+abstract class Routine : State, KCallable<State>
 
 private typealias ID = Short
 
