@@ -710,7 +710,7 @@ internal fun <R> CoroutineScope.change(ref: WeakContext, member: KFunction<R>, s
 internal fun <R> CoroutineScope.change(ref: WeakContext, owner: LifecycleOwner, member: KFunction<R>, stage: ContextStep) =
     EventBus.commit(stage)
 
-internal suspend fun CoroutineScope.repeatSuspended(scope: CoroutineScope = this, predicate: PredicateFunction = @Tag(IS_ACTIVE) { isActive }, delayTime: DelayFunction = @Tag(YIELD) { 0L }, block: JobFunction) {
+internal suspend fun CoroutineScope.repeatSuspended(scope: CoroutineScope = this, predicate: PredicateFunction = @Tag(IS_ACTIVE) { isActive }, delayTime: DelayFunction = yield, block: JobFunction) {
     markTagsForJobRepeat(block, currentJob(), predicate, delayTime)
     while (predicate()) {
         block(scope)
@@ -2688,6 +2688,7 @@ internal typealias Process = android.os.Process
 
 val emptyWork = {}
 val emptyStep = suspend {}
+private val yield = @Tag(YIELD) suspend { 0L }
 
 internal val processLifecycleScope
     get() = ProcessLifecycleOwner.get().lifecycleScope
