@@ -1543,13 +1543,13 @@ internal fun <R> KCallable<R>.with(vararg args: Any?): () -> R = {
 internal fun <R> call(vararg args: Any?): (KCallable<R>) -> R = {
     it.call(*args) }
 
-internal fun <R> KCallable<R>.with(args: Map<KParameter, Any?>): () -> R = {
+internal fun <R> KCallable<R>.with(args: KParameterMap): () -> R = {
     this@with.callBy(args) }
 
-internal fun <R> callBy(args: Map<KParameter, Any?>): (KCallable<R>) -> R = {
+internal fun <R> callBy(args: KParameterMap): (KCallable<R>) -> R = {
     it.call(*it.mapToTypedArray(args)) }
 
-private fun <R> KCallable<R>.mapToTypedArray(args: Map<KParameter, Any?>) =
+private fun <R> KCallable<R>.mapToTypedArray(args: KParameterMap) =
     parameters.map(args::get).toTypedArray()
 
 private val items: FunctionSet? = null
@@ -2058,7 +2058,7 @@ annotation class Delay(
 annotation class Timeout(
     @JvmField val millis: Long = -1L)
 
-private open class Item<R>(var ref: KCallable<R>? = null) {
+private open class Item<R>(var ref: KCallable<R>? = null) : KCallable<R> by ref ?: ref.lazy() {
     open fun onSaved(subtag: TagType, value: Any?) = this.also { when {
         subtag === FUNC ->
             if (ref === null)
@@ -2534,12 +2534,8 @@ open class PropertyReference<R>(override var obj: R) : CallableReference<R>(obj)
 }
 
 open class CallableReference<R>(open var obj: R) : KCallable<R> {
-    override fun call(vararg args: Any?) =
-        ::obj.call(*args)
-
-    override fun callBy(args: Map<KParameter, Any?>) =
-        call(*mapToTypedArray(args))
-
+    override fun call(vararg args: Any?) = ::obj.call(*args)
+    override fun callBy(args: KParameterMap) = call(*mapToTypedArray(args))
     override val annotations = ::obj.annotations
     override val isAbstract = ::obj.isAbstract
     override val isFinal = ::obj.isFinal
@@ -2550,6 +2546,21 @@ open class CallableReference<R>(open var obj: R) : KCallable<R> {
     override val returnType = ::obj.returnType
     override val typeParameters = ::obj.typeParameters
     override val visibility = ::obj.visibility
+}
+
+private fun <R> KCallable<R>?.lazy() = object : KCallable<R> {
+    override fun call(vararg args: Any?) = this@lazy!!.call(*args)
+    override fun callBy(args: KParameterMap) = this@lazy!!.callBy(args)
+    override val annotations = this@lazy!!.annotations
+    override val isAbstract = this@lazy!!.isAbstract
+    override val isFinal = this@lazy!!.isFinal
+    override val isOpen = this@lazy!!.isOpen
+    override val isSuspend = this@lazy!!.isSuspend
+    override val name = this@lazy!!.name
+    override val parameters = this@lazy!!.parameters
+    override val returnType = this@lazy!!.returnType
+    override val typeParameters = this@lazy!!.typeParameters
+    override val visibility = this@lazy!!.visibility
 }
 
 internal fun <R> R.asMutableProperty(): KMutableProperty<R> =
@@ -2716,6 +2727,7 @@ private typealias JobKProperty = KMutableProperty<Job?>
 private typealias ResolverKClass = KClass<out Resolver>
 private typealias ResolverKProperty = KMutableProperty<out Resolver?>
 private typealias UnitKFunction = KFunction<Unit>
+private typealias KParameterMap = Map<KParameter, Any?>
 
 typealias AnyKClass = KClass<*>
 internal typealias AnyKCallable = KCallable<*>
