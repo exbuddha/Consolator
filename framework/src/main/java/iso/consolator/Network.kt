@@ -230,6 +230,8 @@ internal operator fun NetCall.set(scope: Any?, id: TagType, value: Any?) {
         id === INET_INTERVAL -> netCallTimeInterval = take(value)
         id === INET_MIN_INTERVAL -> minNetCallTimeInterval = take(value) } } }
 
+internal interface NetworkContext : SchedulerContext
+
 @Retention(SOURCE)
 @Target(FUNCTION, PROPERTY)
 private annotation class NetworkListener

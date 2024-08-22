@@ -409,18 +409,20 @@ private fun detach(step: AnyCoroutineStep) =
 private fun launch(it: AnyCoroutineStep) =
     Scheduler.launch { it() }
 
-private object SchedulerContext : CoroutineContext {
-    override fun <R> fold(initial: R, operation: (R, CoroutineContext.Element) -> R): R {
-        // update continuation state
-        return operation(initial, SchedulerElement) }
+internal sealed interface SchedulerContext : CoroutineContext {
+    companion object : SchedulerContext {
+        override fun <R> fold(initial: R, operation: (R, CoroutineContext.Element) -> R): R {
+            // update continuation state
+            return operation(initial, SchedulerElement) }
 
-    override fun <E : CoroutineContext.Element> get(key: CoroutineContext.Key<E>): E? {
-        // notify element continuation
-        return null }
+        override fun <E : CoroutineContext.Element> get(key: CoroutineContext.Key<E>): E? {
+            // notify element continuation
+            return null }
 
-    override fun minusKey(key: CoroutineContext.Key<*>): CoroutineContext {
-        // reimpose continuation rules
-        return this }
+        override fun minusKey(key: CoroutineContext.Key<*>): CoroutineContext {
+            // reimpose continuation rules
+            return this }
+    }
 }
 
 private interface SchedulerElement : CoroutineContext.Element {
@@ -470,7 +472,7 @@ private fun CoroutineContext.isSchedulerContext() =
 
 private fun AnyCoroutineStep.afterTrackingTagsForJobLaunch(owner: LifecycleOwner? = null, context: CoroutineContext, start: CoroutineStart) =
     returnTag(this)?.let { tag ->
-    (after { job, _ -> markTagsForJobLaunch(tag, this@afterTrackingTagsForJobLaunch, job, owner, context, start) })!! }
+    (after { _, job -> markTagsForJobLaunch(tag, this@afterTrackingTagsForJobLaunch, job, owner, context, start) })!! }
     ?: this
 
 private fun Job.saveNewElement(step: AnyCoroutineStep) {}
@@ -501,7 +503,7 @@ private fun AnyCoroutineStep.contextReferring(next: SchedulerStep?): Any? = TODO
 
 private suspend fun CoroutineScope.take(next: AnyCoroutineStep) { /* mark value (auto-register) */ }
 
-private suspend fun CoroutineScope.take(next: SchedulerStep, job: Job, context: Any?) {}
+private suspend fun CoroutineScope.take(next: SchedulerStep, context: Any?, job: Job) {}
 
 private suspend fun AnyCoroutineStep.isCurrentlyTrueGiven(predicate: JobPredicate) =
     predicate(markedJob())
@@ -526,7 +528,7 @@ private suspend fun AnyCoroutineStep.acceptOnFalse() {}
 private suspend fun AnyCoroutineStep.acceptOnFalseReferring(target: SchedulerStep) {
     /* target may be switched in-place here */
     target.annotatedOrCurrentScope()
-        .take(target, markedJob(), contextReferring(target)) }
+        .take(target, contextReferring(target), markedJob()) }
 
 private suspend fun AnyCoroutineStep.reject() {}
 
@@ -582,12 +584,12 @@ infix fun AnyCoroutineStep?.then(next: SchedulerStep): CoroutineStep? = this?.le
         prev.annotatedOrCurrentScopeReferring(next)
             .take(prev)
         next.annotatedOrCurrentScope()
-            .take(next, currentJob(), prev.contextReferring(next)) } }
+            .take(next, prev.contextReferring(next), currentJob()) } }
 
 infix fun AnyCoroutineStep?.after(prev: SchedulerStep): CoroutineStep? = this?.let { next ->
     attachToContext {
         prev.annotatedOrCurrentScopeReferring(next)
-            .take(prev, currentJob(), next.contextReferring(prev))
+            .take(prev, next.contextReferring(prev), currentJob())
         next.annotatedOrCurrentScope()
             .take(next) } }
 
@@ -644,21 +646,21 @@ suspend inline infix fun CoroutineStep?.onConverge(action: SchedulerStep): Corou
 
 suspend infix fun Job?.onConvergeJob(action: Job) = this
 
-fun CoroutineScope?.converge(job: Job, context: Any?) {}
+fun CoroutineScope?.converge(context: Any?, job: Job) {}
 
-fun CoroutineScope.enact(job: Job, context: Any?) {}
+fun CoroutineScope.enact(context: Any?, job: Job) {}
 
 fun CoroutineScope.enact(job: Job, exit: ThrowableFunction? = null) {}
 
-fun CoroutineScope.error(job: Job, context: Any?) {}
+fun CoroutineScope.error(context: Any?, job: Job) {}
 
 fun CoroutineScope.error(job: Job, exit: ThrowableFunction? = null) {}
 
-fun CoroutineScope.retry(job: Job, context: Any?) {}
+fun CoroutineScope.retry(context: Any?, job: Job) {}
 
 fun CoroutineScope.retry(job: Job, exit: ThrowableFunction? = null) {}
 
-fun CoroutineScope.close(job: Job, context: Any?) {}
+fun CoroutineScope.close(context: Any?, job: Job) {}
 
 fun CoroutineScope.close(job: Job, exit: ThrowableFunction? = null) {}
 
@@ -2649,7 +2651,7 @@ private fun Any?.asTag() = asType<Tag>()
 
 private typealias SchedulerNode = KClass<out Annotation>
 private typealias SchedulerPath = Array<KClass<out Throwable>>
-private typealias SchedulerStep = suspend CoroutineScope.(Job, Any?) -> Unit
+private typealias SchedulerStep = suspend CoroutineScope.(Any?, Job) -> Unit
 internal typealias JobFunction = suspend (Any?) -> Unit
 private typealias JobPredicate = (Job) -> Boolean
 internal typealias CoroutineFunction = (CoroutineStep) -> Any?

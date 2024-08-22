@@ -47,11 +47,11 @@ internal abstract class BaseFragment : Fragment(contentLayoutId) {
             transit(COMMIT_NAV_MAIN_UI)
             State[1] = Succeeded
             close(MainViewGroup::class) }
-        .onError { job, _ ->
+        .onError { _, job ->
             transit(ABORT_NAV_MAIN_UI)
             State[1] = Failed
             keepAliveOrClose(job) }
-        .onTimeout { job, _ ->
+        .onTimeout { _, job ->
             State[1] = Unresolved
             error(job) }
         .then(
@@ -88,7 +88,7 @@ internal abstract class BaseFragment : Fragment(contentLayoutId) {
             State[1] = Ambiguous }
         .onCancel(
             CoroutineScope::retry)
-        .then { job, _ ->
+        .then { _, job ->
             enact(job) { err ->
                 // catch cancellation and/or error
                 when (err) {
