@@ -94,19 +94,16 @@ private suspend fun repeatNetworkCallFunction(scope: CoroutineScope) {
 
 private var networkCallFunction: JobFunction =
     @Tag(INET_FUNCTION) { scope ->
-    if (isNetCallbackResumed && isNetCallTimeIntervalExceeded) {
-        scope.asCoroutineScope()?.log?.invoke(info, INET_TAG, "Trying to send out http request for network caller...")
-        ::netCall.commit(scope) {
-            ::netCall[INET_CALL] = @Keep ::buildNetCallRequest
-                .with("https://httpbin.org/delay/1")
-            tryCancelingForResult({
-                ::netCall.exec { response ->
-                trySafelyCanceling {
-                    reactToNetCallResponseReceived.commit(scope, response) } }
-            }, { ex ->
-                trySafelyCanceling {
-                    reactToNetCallRequestFailed.commit(scope, ex) }
-            }) } } }
+    if (isNetCallbackResumed && isNetCallTimeIntervalExceeded)
+        scope.asCoroutineScope()?.run {
+        log(info, INET_TAG, "Trying to send out http request for network caller...")
+        with(::netCall) {
+        with(scope) {
+        commit(this) {
+            set(this, INET_CALL,
+                @Keep ::buildNetCallRequest
+                .with(this, "https://httpbin.org/delay/1"))
+            launch { send(this) } } } } } }
 
 private var reactToNetCallResponseReceived: JobResponseFunction =
     @Tag(INET_SUCCESS) { scope, response ->
@@ -116,12 +113,12 @@ private var reactToNetCallResponseReceived: JobResponseFunction =
             lastNetCallResponseTime = now()
         netCallDelayTime = -1L
         close() }
-    scope.asCoroutineScope()?.log?.invoke(info, INET_TAG, "Received response for internet availability.") }
+    scope.asCoroutineScope()?.log?.invoke(info, INET_TAG, "Received response for network caller.") }
 
 private var reactToNetCallRequestFailed: JobThrowableFunction =
     @Tag(INET_ERROR) { scope, _ ->
     hasInternet = false
-    scope.asCoroutineScope()?.log?.invoke(warning, INET_TAG, "Failed to send http request for internet availability.") }
+    scope.asCoroutineScope()?.log?.invoke(warning, INET_TAG, "Failed to send http request for network caller.") }
 
 @Tag(INET_DELAY)
 private var netCallDelayTime = -1L
@@ -147,7 +144,7 @@ private val isNetCallTimeIntervalExceeded
 
 private var isNetCallbackResumed = true
 
-internal fun buildNetCallRequest(cmd: Any) = buildHttpRequest(cmd)
+internal fun buildNetCallRequest(scope: Any?, cmd: Any) = buildHttpRequest(cmd)
 
 internal fun buildHttpRequest(
     cmd: Any,
@@ -172,9 +169,10 @@ private fun Any.asUrl() = toString()
 private fun NetCall.with(cmd: Any): Call? = call(cmd)
 
 private fun <R> NetCall.commit(scope: Any?, block: () -> R) =
-    lock(INET_CALL, block)
+    scope.asCoroutineScope()?.run {
+    lock(this, block) }
 
-private fun <R> NetCall.lock(cmd: String, block: () -> R) =
+private fun <R> NetCall.lock(scope: Any?, block: () -> R) =
     synchronized(asCallable(), block)
 
 private fun NetCall.asCallable() =
@@ -183,6 +181,16 @@ private fun NetCall.asCallable() =
     else asProperty().get().asReference() // register lock
 
 private fun NetCall.asProperty() = this as KProperty
+
+private suspend fun NetCall.send(scope: Any?) =
+    tryCancelingForResult({
+        exec { response ->
+        trySafelyCanceling {
+            reactToNetCallResponseReceived.commit(scope, response) } }
+    }, { ex ->
+        trySafelyCanceling {
+            reactToNetCallRequestFailed.commit(scope, ex) }
+    })
 
 private fun NetCall.exec(cmd: String = INET_CALL, respond: Respond) {
     markTag(calls)
@@ -210,7 +218,7 @@ internal operator fun NetCall.get(id: TagType): Any? = when {
     id === INET_MIN_INTERVAL -> minNetCallTimeInterval
     else -> null }
 
-internal operator fun NetCall.set(id: TagType, value: Any?) {
+internal operator fun NetCall.set(scope: Any?, id: TagType, value: Any?) {
     if (value !== null && value.isKept) {
         value.markSequentialTag(calls, INET_CALL, id) }
     lock(id) { when {
