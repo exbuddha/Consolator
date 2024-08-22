@@ -2107,7 +2107,7 @@ private open class Item<R>(var ref: KCallable<R>? = null) {
     override fun toString() = tag.toString()
 }
 
-@JvmInline value class Value<V>(private val value: PropertyReference<V>) : KCallable<V> by value, CharSequence {
+@JvmInline value class Value<V>(private val value: PropertyReference<V>) : KProperty<V> by value, CharSequence {
     constructor(value: V) : this(PropertyReference(value)) {
         tag?.let { register(it) } }
 
