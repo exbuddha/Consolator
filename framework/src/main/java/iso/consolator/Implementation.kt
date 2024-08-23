@@ -282,8 +282,11 @@ internal fun <T> Array<out T>.secondOrNull(): T? =
     if (size > 1) get(1)
     else null
 
-internal inline fun <reified T : Any> Any?.asTypeOf(instance: T): T? =
-    instance::class.safeCast(this)
+internal inline fun <reified T : Any> Any?.asTypeOf(instance: KCallable<T>): T? =
+    instance.call()::class.safeCast(this)
+
+internal inline fun <reified T : Any> Any?.asTypeOf(obj: T): T? =
+    obj::class.safeCast(this)
 
 inline fun <reified T : Any> Any?.asType(): T? =
     T::class.safeCast(this)

@@ -1903,13 +1903,13 @@ internal open class Clock(
         queue.clear() }
 
     companion object : RunnableGrid by mutableListOf() {
-        private var DEFAULT_HANDLER: HandlerFunction = { commit(it) }
+        @JvmStatic private var DEFAULT_HANDLER: HandlerFunction = { commit(it) }
 
-        private fun Clock.register() {
+        @JvmStatic private fun Clock.register() {
             queue = mutableListOf()
             add(queue) }
 
-        private fun Clock.register(callback: Runnable) {
+        @JvmStatic private fun Clock.register(callback: Runnable) {
             queue.add(callback) }
 
         @JvmStatic fun getMessage(step: AnyCoroutineStep): Message? = null
@@ -2060,19 +2060,23 @@ annotation class Delay(
 annotation class Timeout(
     @JvmField val millis: Long = -1L)
 
-private open class Item<R>(var ref: KCallable<R>? = null) : KCallable<R> by ref ?: ref.lazy() {
+private open class Item<R>(override var target: KCallable<R>? = null) : Addressed<R>, Tagged, KCallable<R> by target ?: target.lazy() {
     open fun onSaved(subtag: TagType, value: Any?) = this.also { when {
         subtag === FUNC ->
-            if (ref === null)
-                ref = value.asType()!!
+            if (target === null)
+                setTarget(value?.asType()!!)
             else {
                 /* save sub-function */ }
     } }
 
-    var tag: TagType? = null
-        get() = ref?.tag?.id ?: field ?: ref.hashTag()
+    override fun setTarget(target: KCallable<R>): Item<R> {
+        this.target = target
+        return this }
 
-    fun setTag(tag: TagType): Item<R> {
+    override var tag: TagType? = null
+        get() = target?.tag?.id ?: field ?: target.hashTag()
+
+    override fun setTag(tag: TagType): Item<R> {
         this.tag = tag
         return this }
 
@@ -2098,31 +2102,43 @@ private open class Item<R>(var ref: KCallable<R>? = null) : KCallable<R> by ref 
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
-        if (other !is Item<*>) return other == ref
-        if (ref != other.ref) return false
+        if (other !is Item<*>) return other == target
+        if (target != other.target) return false
         if (tag != other.tag) return false
         if (type != other.type) return false
         return true }
 
-    override fun hashCode() = ref.hashCode()
+    override fun hashCode() = target.hashCode()
 
     override fun toString() = tag.toString()
 }
 
-@JvmInline value class Value<V>(private val value: PropertyReference<V>) : KProperty<V> by value, CharSequence {
+@JvmInline value class Value<V>(private val value: PropertyReference<V>) : Addressed<V>, Tagged, KProperty<V> by value, CharSequence {
     constructor(value: V) : this(PropertyReference(value)) {
-        tag?.let { register(it) } }
+        this.value.tag?.let { register(it) } }
 
-    companion object : MutableMap<Tag, KCallable<*>> by mutableMapOf() {
-        private fun <V> Value<V>.register(tag: Tag) = set(tag, this)
+    companion object : MutableMap<Any, KCallable<*>> by mutableMapOf() {
+        @JvmStatic private fun <V> Value<V>.register(tag: Tag) = set(tag, this)
 
-        @JvmStatic fun <V> Value<V>.setTarget(target: KCallable<V>) = this.also {
+        @JvmStatic private fun <V> Value<V>.saveTag(tag: TagType) = set(tag, this)
+
+        @JvmStatic private fun <V> Value<V>.saveTarget(target: KCallable<V>) =
             target.tag?.let { set(it, target) }
-        }
     }
 
-    val target: KCallable<V>?
+    override val target: KCallable<V>?
         get() = TODO()
+
+    override fun setTarget(target: KCallable<V>): Value<V> {
+        saveTarget(target)
+        return this }
+
+    override val tag: TagType
+        get() = TODO()
+
+    override fun setTag(tag: TagType): Value<V> {
+        saveTag(tag)
+        return this }
 
     val type
         get() = value.get()
@@ -2140,6 +2156,16 @@ private open class Item<R>(var ref: KCallable<R>? = null) : KCallable<R> by ref 
 
     override val length: Int
         get() = toString().length
+}
+
+sealed interface Addressed<R> {
+    val target: KCallable<R>?
+    fun setTarget(target: KCallable<R>): Addressed<R>
+}
+
+sealed interface Tagged {
+    val tag: TagType?
+    fun setTag(tag: TagType): Tagged
 }
 
 interface FunctionProvider {
@@ -2167,7 +2193,7 @@ internal fun FunctionSet.addFunction(function: Any, tag: TagType?, keep: Boolean
     add(function.toFunctionItem(tag?.let { { it } } ?: currentThreadJob()::hashTag, keep))
 
 internal fun Any.toFunctionItem(tag: TagTypePointer, keep: Boolean) =
-    FunctionItem(tag, this to keep)
+    FunctionItem(tag, this to keep) /* provides extra filters */
 
 internal val FunctionItem.instance
     get() = second.asAnyToBooleanPair()?.first
@@ -2551,18 +2577,19 @@ open class CallableReference<R>(open var obj: R) : KCallable<R> {
 }
 
 private fun <R> KCallable<R>?.lazy() = object : KCallable<R> {
-    override fun call(vararg args: Any?) = this@lazy!!.call(*args)
-    override fun callBy(args: KParameterMap) = this@lazy!!.callBy(args)
-    override val annotations = this@lazy!!.annotations
-    override val isAbstract = this@lazy!!.isAbstract
-    override val isFinal = this@lazy!!.isFinal
-    override val isOpen = this@lazy!!.isOpen
-    override val isSuspend = this@lazy!!.isSuspend
-    override val name = this@lazy!!.name
-    override val parameters = this@lazy!!.parameters
-    override val returnType = this@lazy!!.returnType
-    override val typeParameters = this@lazy!!.typeParameters
-    override val visibility = this@lazy!!.visibility
+    override fun call(vararg args: Any?) = requireObject().call(*args)
+    override fun callBy(args: KParameterMap) = requireObject().callBy(args)
+    override val annotations = requireObject().annotations
+    override val isAbstract = requireObject().isAbstract
+    override val isFinal = requireObject().isFinal
+    override val isOpen = requireObject().isOpen
+    override val isSuspend = requireObject().isSuspend
+    override val name = requireObject().name
+    override val parameters = requireObject().parameters
+    override val returnType = requireObject().returnType
+    override val typeParameters = requireObject().typeParameters
+    override val visibility = requireObject().visibility
+    private fun requireObject() = this@lazy!!
 }
 
 internal fun <R> R.asMutableProperty(): KMutableProperty<R> =

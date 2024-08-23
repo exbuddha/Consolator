@@ -1,7 +1,6 @@
 package net.consolator
 
 import iso.consolator.*
-import iso.consolator.Value.Companion.setTarget
 import kotlin.reflect.*
 
 internal open class MainApplication : BaseApplication() {
@@ -19,5 +18,8 @@ internal open class MainApplication : BaseApplication() {
     companion object {
         @JvmStatic fun <V> registerValue(value: V, target: KProperty<V>) =
             Value(value).setTarget(target)
+
+        @JvmStatic fun <V> registerValueByTag(value: R, tag: TagType) =
+            Value(value).setTag(tag)
     }
 }
