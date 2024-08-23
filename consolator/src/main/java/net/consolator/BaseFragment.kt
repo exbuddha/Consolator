@@ -47,13 +47,13 @@ internal abstract class BaseFragment : Fragment(contentLayoutId), TransitionMana
                 fun(_: TransitionManager) {
                     State[1] = Succeeded
                     close(MainViewGroup::class)
-                    commit(destination = COMMIT_NAV_MAIN_UI) }) }
+                    transit(COMMIT_NAV_MAIN_UI) }) }
         .onError { _, job ->
             defer<TransitionManager>(Fragment::onViewCreated, this@BaseFragment,
                 fun(_: TransitionManager) {
                     State[1] = Failed
                     keepAliveOrClose(job)
-                    commit(destination = ABORT_NAV_MAIN_UI) }) }
+                    transit(ABORT_NAV_MAIN_UI) }) }
         .onTimeout { _, job ->
             State[1] = Unresolved
             error(job) }
@@ -136,6 +136,8 @@ internal abstract class BaseFragment : Fragment(contentLayoutId), TransitionMana
         commitSaveFragment(this, outState)
         super.onSaveInstanceState(outState)
     }
+
+    private fun transit(destination: Short) = commit(destination)
 
     override fun commit(vararg context: Any?) =
         context.lastOrNull()?.asTransitFunction()?.invoke(this)
