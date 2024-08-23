@@ -49,7 +49,10 @@ internal open class MainFragment : BaseFragment(), Provider {
         (null to false)
         .also { interception ->
         postback?.let { postback ->
-        lifecycleScope.launch(Default) { postback(interception) } } }
+        if (postback.asReference().isImplicit)
+            runBlocking { postback(interception) }
+        else
+            lifecycleScope.launch(Default) { postback(interception) } } }
 
     override fun invoke(type: AnyKClass) = activity.asObjectProvider()!!(type)
 

@@ -2508,7 +2508,7 @@ internal val AnyStep.isScheduledFirst
 internal val AnyStep.isScheduledLast
     get() = asCallable().annotations.find { it is Last } !== null
 
-internal val Any.isImplicit
+val Any.isImplicit
     get() = asCallable().annotations.find { it is Implicit } !== null
 
 private val Any.isEnlisted
@@ -2607,7 +2607,7 @@ internal fun <R> R.asCallable(): KCallable<R> =
         asType()!!
     else asReference()
 
-internal fun <R> R.asReference() =
+fun <R> R.asReference() =
     CallableReference(this)
 
 internal fun trueWhenNull(it: Any?) = it === null
