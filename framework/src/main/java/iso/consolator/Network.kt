@@ -144,30 +144,6 @@ private val isNetCallTimeIntervalExceeded
 
 private var isNetCallbackResumed = true
 
-internal fun buildNetCallRequest(scope: Any?, cmd: Any) = buildHttpRequest(cmd)
-
-internal fun buildHttpRequest(
-    cmd: Any,
-    method: String = "GET",
-    headers: Headers? = null,
-    body: RequestBody? = null,
-    retry: Boolean = false
-) = when (cmd) {
-    is Call -> cmd
-    else ->
-        OkHttpClient.Builder()
-        .retryOnConnectionFailure(retry)
-        .build()
-        .newCall(Request.Builder()
-            .url(cmd.asUrl())
-            .apply { if (headers !== null) headers(headers) }
-            .method(method, body)
-            .build()) }
-
-private fun Any.asUrl() = toString()
-
-private fun NetCall.with(cmd: Any): Call? = call(cmd)
-
 private fun <R> NetCall.commit(scope: Any?, block: () -> R) =
     scope.asCoroutineScope()?.run {
     lock(this, block) }
@@ -183,18 +159,19 @@ private fun NetCall.asCallable() =
 private fun NetCall.asProperty() = this as KProperty
 
 private suspend fun NetCall.send(scope: Any?) =
+    scope.asCoroutineScope()?.run {
     tryCancelingForResult({
-        exec { response ->
+        exec(this) { response ->
         trySafelyCanceling {
-            reactToNetCallResponseReceived.commit(scope, response) } }
+            reactToNetCallResponseReceived.commit(this, response) } }
     }, { ex ->
         trySafelyCanceling {
-            reactToNetCallRequestFailed.commit(scope, ex) }
-    })
+            reactToNetCallRequestFailed.commit(this, ex) }
+    }) }
 
-private fun NetCall.exec(cmd: String = INET_CALL, respond: Respond) {
+private fun NetCall.exec(scope: Any?, respond: Respond) {
     markTag(calls)
-    this[cmd].asType<NetCall>()?.call()
+    this[INET_CALL].asType<NetCall>()?.call()
     ?.execute()
     ?.run(respond) }
 
@@ -235,6 +212,31 @@ internal interface NetworkContext : SchedulerContext
 @Retention(SOURCE)
 @Target(FUNCTION, PROPERTY)
 private annotation class NetworkListener
+
+internal fun buildNetCallRequest(scope: Any?, cmd: Any) = buildHttpRequest(cmd)
+
+internal fun buildHttpRequest(cmd: Any, method: String = "GET", headers: Headers? = null, body: RequestBody? = null, retry: Boolean = false) =
+    when (cmd) {
+        is Call -> cmd
+        else ->
+            httpClient(retry)
+            .newCall { newRequest {
+                url(cmd.asUrl())
+                headers?.apply(::headers)
+                method(method, body) } } }
+
+private fun httpClient(retry: Boolean = false) =
+    OkHttpClient.Builder()
+    .retryOnConnectionFailure(retry)
+    .build()
+
+private inline fun OkHttpClient.newCall(block: Request.Builder.() -> Request) =
+    newCall(Request.Builder().block())
+
+private inline fun Request.Builder.newRequest(block: Request.Builder.() -> Request.Builder) =
+    block().build()
+
+private fun Any.asUrl() = toString()
 
 private var connectivityRequest: NetworkRequest? = null
     get() = field ?: buildNetworkRequest {
