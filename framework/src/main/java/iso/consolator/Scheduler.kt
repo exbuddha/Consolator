@@ -2060,7 +2060,7 @@ annotation class Delay(
 annotation class Timeout(
     @JvmField val millis: Long = -1L)
 
-private open class Item<R>(override var target: KCallable<R>? = null) : Addressed<R>, Tagged, KCallable<R> by target ?: target.lazy() {
+private open class Item<R>(override var target: KCallable<R>? = null) : Addressed<R>, Tagged, KCallable<R> by target ?: CallableReference.Lateinit({ target }) {
     open fun onSaved(subtag: TagType, value: Any?) = this.also { when {
         subtag === FUNC ->
             if (target === null)
@@ -2208,7 +2208,6 @@ private fun FunctionSet.save(function: AnyKCallable, tag: TagType) =
     function.tag?.apply {
     save(function, combineTags(tag, id), keep) }
 
-@Suppress("IMPLICIT_CAST_TO_ANY")
 private fun FunctionSet.save(function: AnyKCallable, tag: TagType?, keep: Boolean) =
     tag?.let(::findByTag)
         ?.instance
@@ -2562,34 +2561,36 @@ open class PropertyReference<R>(override var obj: R) : CallableReference<R>(obj)
 }
 
 open class CallableReference<R>(open var obj: R) : KCallable<R> {
+    protected open fun requireInstance(): KCallable<R> = ::obj
     override fun call(vararg args: Any?) = ::obj.call(*args)
     override fun callBy(args: KParameterMap) = call(*mapToTypedArray(args))
-    override val annotations = ::obj.annotations
-    override val isAbstract = ::obj.isAbstract
-    override val isFinal = ::obj.isFinal
-    override val isOpen = ::obj.isOpen
-    override val isSuspend = ::obj.isSuspend
-    override val name = ::obj.name
-    override val parameters = ::obj.parameters
-    override val returnType = ::obj.returnType
-    override val typeParameters = ::obj.typeParameters
-    override val visibility = ::obj.visibility
-}
-
-private fun <R> KCallable<R>?.lazy() = object : KCallable<R> {
-    override fun call(vararg args: Any?) = requireObject().call(*args)
-    override fun callBy(args: KParameterMap) = requireObject().callBy(args)
-    override val annotations = requireObject().annotations
-    override val isAbstract = requireObject().isAbstract
-    override val isFinal = requireObject().isFinal
-    override val isOpen = requireObject().isOpen
-    override val isSuspend = requireObject().isSuspend
-    override val name = requireObject().name
-    override val parameters = requireObject().parameters
-    override val returnType = requireObject().returnType
-    override val typeParameters = requireObject().typeParameters
-    override val visibility = requireObject().visibility
-    private fun requireObject() = this@lazy!!
+    override val annotations = requireInstance().annotations
+    override val isAbstract = requireInstance().isAbstract
+    override val isFinal = requireInstance().isFinal
+    override val isOpen = requireInstance().isOpen
+    override val isSuspend = requireInstance().isSuspend
+    override val name = requireInstance().name
+    override val parameters = requireInstance().parameters
+    override val returnType = requireInstance().returnType
+    override val typeParameters = requireInstance().typeParameters
+    override val visibility = requireInstance().visibility
+    internal object Lateinit {
+        operator fun <R> invoke(pointer: () -> KCallable<R>?) = object : KCallable<R> {
+            private fun requireInstance() = pointer()!!
+            override fun call(vararg args: Any?) = requireInstance().call(*args)
+            override fun callBy(args: KParameterMap) = requireInstance().callBy(args)
+            override val annotations = requireInstance().annotations
+            override val isAbstract = requireInstance().isAbstract
+            override val isFinal = requireInstance().isFinal
+            override val isOpen = requireInstance().isOpen
+            override val isSuspend = requireInstance().isSuspend
+            override val name = requireInstance().name
+            override val parameters = requireInstance().parameters
+            override val returnType = requireInstance().returnType
+            override val typeParameters = requireInstance().typeParameters
+            override val visibility = requireInstance().visibility
+        }
+    }
 }
 
 internal fun <R> R.asMutableProperty(): KMutableProperty<R> =
