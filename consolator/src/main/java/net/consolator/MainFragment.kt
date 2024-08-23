@@ -31,7 +31,7 @@ internal open class MainFragment : BaseFragment(), Provider {
 
     override fun commit(source: Short, destination: Short) { when (destination) {
         COMMIT_NAV_MAIN_UI ->
-            schedule @Implicit {
+            schedule @Ahead {
             parentFragmentManager.commit {
                 setTransition(TRANSIT_FRAGMENT_OPEN)
                 replace(
@@ -51,7 +51,7 @@ internal open class MainFragment : BaseFragment(), Provider {
         (null to false)
         .also { interception ->
         postback?.let { postback ->
-        if (postback.asReference().isImplicit)
+        if (postback.asReference().isScheduledAhead)
             runBlocking { postback(interception) }
         else
             lifecycleScope.launch(Default) { postback(interception) } } }

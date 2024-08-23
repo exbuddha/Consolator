@@ -28,21 +28,21 @@ internal open class MainActivity : BaseActivity(), Provider {
     override fun onConfigurationChanged(newConfig: Configuration) {
         defer<iso.consolator.activity.ConfigurationChangeManager>(
             ::onConfigurationChanged, newConfig)
-        @Implicit {
+        @Ahead {
             super.onConfigurationChanged(newConfig) }
     }
 
     override fun onNightModeChanged(mode: Int) {
         defer<iso.consolator.activity.NightModeChangeManager>(
             ::onNightModeChanged, mode)
-        @Implicit {
+        @Ahead {
             super.onNightModeChanged(mode) }
     }
 
     override fun onLocalesChanged(locales: LocaleListCompat) {
         defer<iso.consolator.activity.LocalesChangeManager>(
             ::onLocalesChanged, locales)
-        @Implicit {
+        @Ahead {
             super.onLocalesChanged(locales) }
     }
 

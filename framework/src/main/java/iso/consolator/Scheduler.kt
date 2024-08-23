@@ -240,7 +240,7 @@ object Scheduler : SchedulerScope, MutableLiveData<AnyStep?>(), AnyStepObserver,
 
     override fun <R> synchronize(lock: AnyStep?, block: () -> R) =
         if (lock !== null) {
-            if (lock.isImplicit)
+            if (lock.isScheduledAhead)
                 block()
             else {
             fun AnyFunctionList.run() { map {
@@ -364,7 +364,7 @@ inline fun <reified T : Resolver> Context.defer(member: UnitKFunction, vararg co
     defer(T::class, this, member, *context, implicit(`super`))
 
 fun implicit(work: Work) = when {
-    work.isImplicit -> {
+    work.isScheduledAhead -> {
         work()
         emptyWork }
     else -> work }
@@ -2450,7 +2450,7 @@ annotation class Last
 
 @Retention(SOURCE)
 @Target(EXPRESSION)
-annotation class Implicit
+annotation class Ahead
 
 @Retention(SOURCE)
 @Target(EXPRESSION)
@@ -2508,8 +2508,8 @@ internal val AnyStep.isScheduledFirst
 internal val AnyStep.isScheduledLast
     get() = asCallable().annotations.find { it is Last } !== null
 
-val Any.isImplicit
-    get() = asCallable().annotations.find { it is Implicit } !== null
+val Any.isScheduledAhead
+    get() = asCallable().annotations.find { it is Ahead } !== null
 
 private val Any.isEnlisted
     get() = asCallable().annotations.find { it is Enlisted } !== null
