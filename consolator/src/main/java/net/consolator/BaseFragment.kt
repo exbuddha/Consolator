@@ -14,7 +14,6 @@ import iso.consolator.Event.*
 import iso.consolator.Event.Listening.*
 import iso.consolator.Path.*
 import iso.consolator.State.*
-import iso.consolator.application.*
 import kotlin.annotation.AnnotationRetention.*
 import kotlin.annotation.AnnotationTarget.*
 import kotlinx.coroutines.*
@@ -133,6 +132,8 @@ internal abstract class BaseFragment : Fragment(contentLayoutId) {
         commitSaveFragment(this, outState)
         super.onSaveInstanceState(outState)
     }
+
+    protected inner class MigrationManager : iso.consolator.fragment.MigrationManager()
 
     @Retention(SOURCE)
     @Target(EXPRESSION)

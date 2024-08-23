@@ -54,7 +54,11 @@ internal open class MainFragment : BaseFragment(), Provider {
         else
             lifecycleScope.launch(Default) { postback(interception) } } }
 
-    override fun invoke(type: AnyKClass) = activity.asObjectProvider()!!(type)
+    override fun invoke(type: AnyKClass) = when (type) {
+        MigrationManager::class ->
+            MigrationManager()
+        else ->
+            activity.asObjectProvider()!!(type) }
 
     override fun <R> invoke(vararg tag: TagType): KCallable<R> = activity.asFunctionProvider()!!(*tag)
 }
