@@ -215,15 +215,15 @@ private annotation class NetworkListener
 
 internal fun buildNetCallRequest(scope: Any?, cmd: Any) = buildHttpRequest(cmd)
 
-internal fun buildHttpRequest(cmd: Any, method: String = "GET", headers: Headers? = null, body: RequestBody? = null, retry: Boolean = false) =
+internal fun buildHttpRequest(cmd: Any, method: String = "GET", body: RequestBody? = null, headers: Headers? = null, retry: Boolean = false) =
     when (cmd) {
         is Call -> cmd
         else ->
             httpClient(retry)
             .newCall { newRequest {
-                url(cmd.asUrl())
-                headers?.apply(::headers)
-                method(method, body) } } }
+                url(cmd.asUrl()).also {
+                method(method, body)
+                headers?.run(::headers) } } } }
 
 private fun httpClient(retry: Boolean = false) =
     OkHttpClient.Builder()
