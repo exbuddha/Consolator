@@ -101,8 +101,7 @@ private var networkCallFunction: JobFunction =
         with(scope) {
         commit(this) {
             set(this, INET_CALL,
-                @Keep ::buildNetCallRequest
-                .with("https://httpbin.org/delay/1"))
+                @Keep ::buildNetCall.with("https://httpbin.org/delay/1")) // convert to contextual function
             launch { send(this) } } } } } }
 
 private var reactToNetCallResponseReceived: JobResponseFunction =
@@ -213,17 +212,17 @@ internal interface NetworkContext : SchedulerContext
 @Target(FUNCTION, PROPERTY)
 private annotation class NetworkListener
 
-internal fun buildNetCallRequest(scope: Any?, cmd: Any) = buildHttpRequest(cmd)
+internal fun buildNetCall(scope: Any?, key: Any) = buildHttpCall(key)
 
-private fun NetCall.with(cmd: Any): Call? = call(cmd)
+private fun NetCall.with(key: Any): Call? = call(key)
 
-internal fun buildHttpRequest(cmd: Any, method: String = "GET", body: RequestBody? = null, headers: Headers? = null, retry: Boolean = false) =
-    when (cmd) {
-        is Call -> cmd
+internal fun buildHttpCall(key: Any, method: String = "GET", body: RequestBody? = null, headers: Headers? = null, retry: Boolean = false) =
+    when (key) {
+        is Call -> key
         else ->
             httpClient(retry)
             .newCall { newRequest {
-                url(cmd.asUrl()).also {
+                url(key.asUrl()).also {
                 method(method, body)
                 headers?.run(::headers) } } } }
 
