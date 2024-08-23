@@ -8,12 +8,14 @@ import android.os.*
 import android.view.*
 import androidx.annotation.*
 import androidx.fragment.app.*
+import androidx.lifecycle.*
 import iso.consolator.*
 import iso.consolator.Delay
 import iso.consolator.Event.*
 import iso.consolator.Event.Listening.*
 import iso.consolator.Path.*
 import iso.consolator.State.*
+import iso.consolator.fragment.*
 import kotlin.annotation.AnnotationRetention.*
 import kotlin.annotation.AnnotationTarget.*
 import kotlinx.coroutines.*
@@ -26,14 +28,12 @@ import net.consolator.BaseApplication.Companion.COMMIT_NAV_MAIN_UI
 @LayoutRes
 internal var contentLayoutId = R.layout.background
 
-internal abstract class BaseFragment : Fragment(contentLayoutId) {
-    lateinit var transit: (Short) -> Unit
-
+internal abstract class BaseFragment : Fragment(contentLayoutId), TransitionManager {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         if (State[1] is Resolved) return
-        trySafely {
-        launch(start = LAZY) @MainViewGroup
+        trySafely { (this as LifecycleOwner)
+       .launch(start = LAZY) @MainViewGroup
         @Listening @OnEvent(ACTION_MIGRATE_APP) {
             defer<MigrationManager>(Fragment::onViewCreated, {
                 // listen to db updates
@@ -43,13 +43,17 @@ internal abstract class BaseFragment : Fragment(contentLayoutId) {
                 EventBus.commit(COMMIT_NAV_MAIN_UI)
             }) }
         .otherwise @OnEvent(COMMIT_NAV_MAIN_UI) { _, _ ->
-            transit(COMMIT_NAV_MAIN_UI)
-            State[1] = Succeeded
-            close(MainViewGroup::class) }
+            defer<TransitionManager>(Fragment::onViewCreated, this@BaseFragment,
+                fun(_: TransitionManager) {
+                    State[1] = Succeeded
+                    close(MainViewGroup::class)
+                    commit(destination = COMMIT_NAV_MAIN_UI) }) }
         .onError { _, job ->
-            transit(ABORT_NAV_MAIN_UI)
-            State[1] = Failed
-            keepAliveOrClose(job) }
+            defer<TransitionManager>(Fragment::onViewCreated, this@BaseFragment,
+                fun(_: TransitionManager) {
+                    State[1] = Failed
+                    keepAliveOrClose(job)
+                    commit(destination = ABORT_NAV_MAIN_UI) }) }
         .onTimeout { _, job ->
             State[1] = Unresolved
             error(job) }
@@ -61,8 +65,8 @@ internal abstract class BaseFragment : Fragment(contentLayoutId) {
         super.onAttach(context)
         if (State[1] is Resolved) return
         val context = context.asWeakReference()
-        trySafely {
-        launch(@JobTreeRoot IO, LAZY) @MainViewGroup
+        trySafely { (this as LifecycleOwner)
+        .launch(@JobTreeRoot IO, LAZY) @MainViewGroup
         @Retrying @Pathwise([ FromLastCancellation::class ])
         @Delay(view_min_delay)
         @WithContext @Tag(VIEW_ATTACH) {
@@ -133,11 +137,14 @@ internal abstract class BaseFragment : Fragment(contentLayoutId) {
         super.onSaveInstanceState(outState)
     }
 
+    override fun commit(vararg context: Any?) =
+        context.lastOrNull()?.asTransitFunction()?.invoke(this)
+
     protected inner class MigrationManager : iso.consolator.fragment.MigrationManager()
 
     @Retention(SOURCE)
     @Target(EXPRESSION)
-    annotation class MainViewGroup
+    protected annotation class MainViewGroup
 
     protected companion object {
         const val VIEW_TAG = "FRAGMENT"
