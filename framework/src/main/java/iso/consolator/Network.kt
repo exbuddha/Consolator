@@ -89,6 +89,7 @@ internal var netCall: Call? = null
 
 private suspend fun repeatNetworkCallFunction(scope: CoroutineScope) {
     scope.repeatSuspended(
+        group = calls,
         block = networkCallFunction,
         delayTime = @Tag(INET_DELAY) { netCallDelayTime }) }
 

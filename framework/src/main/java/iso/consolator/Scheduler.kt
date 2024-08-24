@@ -434,14 +434,14 @@ private interface SchedulerKey : CoroutineContext.Key<SchedulerElement> {
     companion object : SchedulerKey }
 
 internal fun CoroutineScope.relaunch(instance: JobKProperty, group: FunctionSet?, context: CoroutineContext = SchedulerContext, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep) =
-    relaunch(::launch, instance, group, context, start, step)
+    relaunch(::launch, instance, context, start, step)
     .also { job -> markTagsInGroupForJobRelaunch(instance, step, group, job, null, context, start) }
 
 internal fun LifecycleOwner.relaunch(instance: JobKProperty, group: FunctionSet?, context: CoroutineContext = SchedulerContext, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep) =
-    relaunch(::launch, instance, group, context, start, step)
+    relaunch(::launch, instance, context, start, step)
     .also { job -> markTagsInGroupForJobRelaunch(instance, step, group, job, this, context, start) }
 
-private fun relaunch(launcher: JobKFunction, instance: JobKProperty, group: FunctionSet?, context: CoroutineContext, start: CoroutineStart, step: CoroutineStep) =
+private fun relaunch(launcher: JobKFunction, instance: JobKProperty, context: CoroutineContext, start: CoroutineStart, step: CoroutineStep) =
     instance.require(Job::isNotActive) {
         launcher.call(context, start, step) }
 
@@ -478,6 +478,14 @@ private fun AnyCoroutineStep.afterTrackingTagsForJobLaunch(owner: LifecycleOwner
 
 private fun Job.saveNewElement(step: AnyCoroutineStep) {}
 
+// process tag to identify parent/relative job block
+private fun FunctionSet.relateByTag(tag: Tag): FunctionItem? =
+    tag.id.let { tag ->
+    findByTag(tag) ?:
+    when {
+        (tag === INET_FUNCTION) -> findByTag(INET)
+        else -> null } }
+
 private fun FunctionSet.saveCoroutine(self: AnyKCallable, tag: Tag) =
     save(self, tag, Item.Type.Coroutine)
 
@@ -496,6 +504,13 @@ private open class CoroutineItem<R>(override var target: KCallable<R>?) : Item<R
 
     open fun onJobRelaunched(job: Job, owner: LifecycleOwner?, context: CoroutineContext, start: CoroutineStart) =
         onJobLaunched(job, owner, context, start)
+
+    open fun onJobFunctionRepeated(block: JobFunction, self: AnyKCallable, tag: Tag, job: Job, predicate: PredicateFunction, delay: DelayFunction) {
+        // optionally, replace target with self
+        self.asType<KCallable<R>>()?.apply(::setTarget)
+        onSaved(JOB, job)
+        onSaved(PREDICATE, predicate)
+        onSaved(DELAY, delay) }
 }
 
 private fun Any?.asCoroutineItem() = asType<CoroutineItem<*>>()
@@ -735,8 +750,8 @@ internal fun <R> CoroutineScope.change(ref: WeakContext, member: KFunction<R>, s
 internal fun <R> CoroutineScope.change(ref: WeakContext, owner: LifecycleOwner, member: KFunction<R>, stage: ContextStep) =
     EventBus.commit(stage)
 
-internal suspend fun CoroutineScope.repeatSuspended(scope: CoroutineScope = this, predicate: PredicateFunction = @Tag(IS_ACTIVE) { isActive }, delayTime: DelayFunction = yield, block: JobFunction) {
-    markTagsForJobRepeat(block, currentJob(), predicate, delayTime)
+internal suspend fun CoroutineScope.repeatSuspended(scope: CoroutineScope = this, predicate: PredicateFunction = @Tag(IS_ACTIVE) { isActive }, delayTime: DelayFunction = yield, group: FunctionSet? = null, block: JobFunction) {
+    markTagsForJobRepeat(block, group, currentJob(), predicate, delayTime)
     while (predicate()) {
         block(scope)
         if (isActive)
@@ -2124,10 +2139,15 @@ private open class Item<R>(override var target: KCallable<R>? = null) : Addresse
     open fun onSaved(subtag: TagType, value: Any?) = this.also { when {
         subtag === FUNC ->
             if (target === null)
-                setTarget(value?.asType()!!)
+                value?.asType<KCallable<R>>()?.apply(::setTarget)
             else {
                 /* save sub-function */ }
     } }
+
+    open fun onContextReform(job: Job, stage: ContextStep?, form: AnyStep) {
+        onSaved(JOB, job)
+        onSaved(CTX_STEP, stage)
+        onSaved(FORM, form) }
 
     override fun setTarget(target: KCallable<R>): Item<R> {
         this.target = target
@@ -2346,21 +2366,21 @@ private fun markTagsForJobLaunch(tag: TagType, step: AnyCoroutineStep, job: Job,
         ?.asCoroutineItem()
         ?.onJobLaunched(job, owner, context, start) }
 
-private fun markTagsInGroupForJobRelaunch(instance: JobKProperty, step: CoroutineStep, group: FunctionSet?, job: Job, owner: LifecycleOwner?, context: CoroutineContext, start: CoroutineStart) =
-    step.asCallable().let { step ->
-    (instance.tag ?: step.tag)?.also { tag ->
-    group?.saveCoroutine(step, tag)
+private fun markTagsInGroupForJobRelaunch(instance: JobKProperty, block: CoroutineStep, group: FunctionSet?, job: Job, owner: LifecycleOwner?, context: CoroutineContext, start: CoroutineStart) =
+    block.asCallable().let { parent ->
+    instance.tag?.also { tag ->
+    group?.saveCoroutine(parent, tag)
         ?.asCoroutineItem()
         ?.onJobRelaunched(job, owner, context, start) } }
 
-private fun markTagsForJobRepeat(block: JobFunction, job: Job, predicate: PredicateFunction, delay: DelayFunction) =
-    block.asCallable().let { block ->
+private fun markTagsForJobRepeat(step: JobFunction, group: FunctionSet?, job: Job, predicate: PredicateFunction, delay: DelayFunction) =
+    step.asCallable().let { block ->
     block.tag?.also { tag ->
-    jobs?.save(block, tag, Item.Type.JobFunction)
-        ?.asItem()
-        ?.onSaved(JOB, job)
-        ?.onSaved(PREDICATE, predicate)
-        ?.onSaved(DELAY, delay) } }
+    group?.apply {
+    (relateByTag(tag) ?:
+    saveCoroutine(block, tag))
+        .asCoroutineItem()
+        ?.onJobFunctionRepeated(step, block, tag, job, predicate, delay) } } }
 
 private fun markTagsForSeqAttach(tag: Any?, step: LiveWork, index: Int) =
     tag?.asTagType()?.also { tag ->
@@ -2382,10 +2402,7 @@ private fun markTagsForCtxReform(tag: TagType?, job: Job, stage: ContextStep?, f
     tag?.also { tag ->
     items?.findByTag(tag)
         ?.asItem()
-        ?.setType(Item.Type.ContextStep)
-        ?.onSaved(JOB, job)
-        ?.onSaved(CTX_STEP, stage)
-        ?.onSaved(FORM, form) }
+        ?.onContextReform(job, stage, form) }
 
 private fun markTagsForClkAttach(step: Any, index: Number) =
     when (step) {
