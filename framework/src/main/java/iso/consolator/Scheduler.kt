@@ -753,7 +753,7 @@ internal fun <R> CoroutineScope.change(ref: WeakContext, owner: LifecycleOwner, 
 internal suspend fun CoroutineScope.repeatSuspended(scope: CoroutineScope = this, predicate: PredicateFunction = @Tag(IS_ACTIVE) { isActive }, delayTime: DelayFunction = yield, group: FunctionSet? = null, block: JobFunction) {
     markTagsForJobRepeat(block, group, currentJob(), predicate, delayTime)
     while (predicate()) {
-        block(scope)
+        block(scope, block)
         if (isActive)
             delayOrYield(delayTime()) } }
 
@@ -2204,6 +2204,14 @@ private open class Item<R>(override var target: KCallable<R>? = null) : Addresse
 
         @JvmStatic private fun <V> Value<V>.saveTarget(target: KCallable<V>) =
             target.tag?.let { set(it, target) }
+
+        @JvmStatic internal inline fun <reified V : Any> findByTag(target: KCallable<V>): V? =
+            (target.tag?.let { tag ->
+                filter {
+                    it.key.asTag()?.id === tag.id &&
+                    it.key !== tag }
+                .values.firstOrNull() }
+            )?.call().asType<V>()
     }
 
     override val target: KCallable<V>?
@@ -2776,7 +2784,7 @@ private fun Any?.asTag() = asType<Tag>()
 private typealias SchedulerNode = KClass<out Annotation>
 private typealias SchedulerPath = Array<KClass<out Throwable>>
 private typealias SchedulerStep = suspend CoroutineScope.(Any?, Job) -> Unit
-internal typealias JobFunction = suspend (Any?) -> Unit
+internal typealias JobFunction = suspend (Any?, Any?) -> Unit
 private typealias JobPredicate = (Job) -> Boolean
 internal typealias CoroutineFunction = (CoroutineStep) -> Any?
 internal typealias AnyCoroutineFunction = (AnyCoroutineStep) -> Any?

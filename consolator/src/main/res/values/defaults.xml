@@ -1,3 +1,4 @@
 <resources>
     <integer name="view_min_delay">100</integer>
+    <integer name="netcall_min_time_interval">20000</integer>
 </resources>

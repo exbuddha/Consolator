@@ -9,6 +9,12 @@ internal open class MainApplication : BaseApplication() {
         commit @Scope @Synchronous @Tag(APP_INIT) {
             log(info,
             registerValue(
+                @Tag(INET_MIN_INTERVAL)
+                R.integer.netcall_min_time_interval,
+                ::netcall_min_time_interval),
+            "Minimum interval for netcall was found in resource.")
+            log(info,
+            registerValue(
                 @Tag(VIEW_MIN_DELAY)
                 R.integer.view_min_delay.toLong(),
                 ::view_min_delay),

@@ -90,11 +90,10 @@ internal var netCall: Call? = null
 private suspend fun repeatNetworkCallFunction(scope: CoroutineScope) {
     scope.repeatSuspended(
         group = calls,
-        block = networkCallFunction,
+        block = @Tag(INET_FUNCTION) networkCallFunction,
         delayTime = @Tag(INET_DELAY) { netCallDelayTime }) }
 
-private var networkCallFunction: JobFunction =
-    @Tag(INET_FUNCTION) { scope ->
+private var networkCallFunction: JobFunction = { scope, _ ->
     if (isNetCallbackResumed && isNetCallTimeIntervalExceeded)
         scope.asCoroutineScope()?.run {
         log(info, INET_TAG, "Trying to send out http request for network caller...")
@@ -106,7 +105,7 @@ private var networkCallFunction: JobFunction =
             launch { send(this) } } } } } }
 
 private var reactToNetCallResponseReceived: JobResponseFunction =
-    @Tag(INET_SUCCESS) { scope, response ->
+    @Tag(INET_SUCCESS) { scope, _, response ->
     with(response) {
         hasInternet = isSuccessful
         if (isSuccessful)
@@ -116,23 +115,24 @@ private var reactToNetCallResponseReceived: JobResponseFunction =
     scope.asCoroutineScope()?.log?.invoke(info, INET_TAG, "Received response for network caller.") }
 
 private var reactToNetCallRequestFailed: JobThrowableFunction =
-    @Tag(INET_ERROR) { scope, _ ->
+    @Tag(INET_ERROR) { scope, _, _ ->
     hasInternet = false
     scope.asCoroutineScope()?.log?.invoke(warning, INET_TAG, "Failed to send http request for network caller.") }
 
 @Tag(INET_DELAY)
 private var netCallDelayTime = -1L
     get() = if (field < 0)
-        getDelayTime(netCallTimeInterval, lastNetCallResponseTime)
-    else field
+            getDelayTime(netCallTimeReference!!)
+        else field
 
 @Tag(INET_MIN_INTERVAL)
-private var minNetCallTimeInterval = 5000L
+var netcall_min_time_interval = 5000L
+    internal set
 
 @Tag(INET_INTERVAL)
-private var netCallTimeInterval = minNetCallTimeInterval
+private var netCallTimeInterval = netcall_min_time_interval
     set(value) {
-        field = maxOf(value, minNetCallTimeInterval) }
+        field = maxOf(value, netcall_min_time_interval) }
 
 private var lastNetCallResponseTime = 0L
     set(value) {
@@ -140,7 +140,11 @@ private var lastNetCallResponseTime = 0L
             field = value }
 
 private val isNetCallTimeIntervalExceeded
-    get() = isTimeIntervalExceeded(netCallTimeInterval, lastNetCallResponseTime)
+    get() = isTimeIntervalExceeded(netCallTimeReference!!)
+
+private var netCallTimeReference: TimeReference? = null
+    get() = field ?: TimeReference(::netCallTimeInterval, ::lastNetCallResponseTime)
+        .also { field = it }
 
 private var isNetCallbackResumed = true
 
@@ -177,11 +181,11 @@ private fun NetCall.exec(scope: Any?, respond: Respond) {
 
 private fun JobResponseFunction.commit(scope: Any?, response: Response) {
     markTag(calls)
-    invoke(scope, response) }
+    invoke(scope, this, response) }
 
 private fun JobThrowableFunction.commit(scope: Any?, ex: Throwable) {
     markTag(calls)
-    invoke(scope, ex) }
+    invoke(scope, this, ex) }
 
 private var calls: FunctionSet? = null
 
@@ -192,7 +196,6 @@ internal operator fun NetCall.get(id: TagType): Any? = when {
     id === INET_ERROR -> reactToNetCallRequestFailed
     id === INET_DELAY -> netCallDelayTime
     id === INET_INTERVAL -> netCallTimeInterval
-    id === INET_MIN_INTERVAL -> minNetCallTimeInterval
     else -> null }
 
 internal operator fun NetCall.set(scope: Any?, id: TagType, value: Any?) {
@@ -204,8 +207,7 @@ internal operator fun NetCall.set(scope: Any?, id: TagType, value: Any?) {
         id === INET_SUCCESS -> reactToNetCallResponseReceived = take(value)
         id === INET_ERROR -> reactToNetCallRequestFailed = take(value)
         id === INET_DELAY -> netCallDelayTime = take(value)
-        id === INET_INTERVAL -> netCallTimeInterval = take(value)
-        id === INET_MIN_INTERVAL -> minNetCallTimeInterval = take(value) } } }
+        id === INET_INTERVAL -> netCallTimeInterval = take(value) } } }
 
 internal interface NetworkContext : SchedulerContext
 
@@ -253,12 +255,13 @@ private fun clearNetworkCallbackObjects() {
     connectivityRequest = null }
 private fun clearInternetCallbackObjects() {
     networkCaller = null
-    netCall = null }
+    netCall = null
+    netCallTimeReference = null }
 
 private typealias NetCall = KCallable<Call?>
 private typealias Respond = (Response) -> Unit
-private typealias JobResponseFunction = (Any?, Response) -> Unit
-private typealias JobThrowableFunction = (Any?, Throwable) -> Unit
+private typealias JobResponseFunction = (Any?, Any?, Response) -> Unit
+private typealias JobThrowableFunction = (Any?, Any?, Throwable) -> Unit
 
 private inline fun <reified T : Any> take(value: Any?): T = value.asType()!!
 
@@ -276,5 +279,5 @@ internal const val INET_SUCCESS = "$INET.$SUCCESS"
 internal const val INET_ERROR = "$INET.$ERROR"
 internal const val INET_DELAY = "$INET.$DELAY"
 internal const val INET_INTERVAL = "$INET.$INTERVAL"
-internal const val INET_MIN_INTERVAL = "$INET.$MIN_INTERVAL"
+const val INET_MIN_INTERVAL = "$INET.$MIN_INTERVAL"
 internal const val INET_TAG = "INTERNET"

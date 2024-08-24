@@ -6,6 +6,7 @@ package iso.consolator
 import android.app.*
 import android.content.*
 import android.content.pm.*
+import androidx.core.util.*
 import android.net.*
 import android.util.*
 import androidx.annotation.*
@@ -170,6 +171,16 @@ fun <T : Context> WeakReference<out T>?.unique(context: T) =
     require { WeakReference(context) }
 
 internal fun Context.startTime() = asUniqueContext()?.startTime ?: -1L
+
+internal typealias TimeReference = Pair<LongFunction, LongFunction>
+
+internal fun getDelayTime(ref: TimeReference): Long {
+    val (interval, last) = ref
+    return getDelayTime(interval(), last()) }
+
+internal fun isTimeIntervalExceeded(ref: TimeReference): Boolean {
+    val (interval, last) = ref
+    return isTimeIntervalExceeded(interval(), last()) }
 
 internal fun getDelayTime(interval: Long, last: Long) =
     interval + last - now()
