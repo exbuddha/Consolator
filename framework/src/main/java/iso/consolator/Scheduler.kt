@@ -2550,7 +2550,7 @@ private annotation class Enlisted
 private annotation class Unlisted
 
 private val AnyKCallable.isItemized
-    get() = annotations.any { it is Itemize }
+    get() = hasAnnotationType<Itemize>()
 
 private val AnyKClass.tag
     get() = annotations.find { it is Tag } as? Tag
@@ -2559,7 +2559,7 @@ private val AnyKCallable.tag
     get() = annotations.find { it is Tag } as? Tag
 
 internal val Any.isKept
-    get() = asCallable().annotations.any { it is Keep }
+    get() = hasAnnotationType<Keep>()
 
 private val AnyKCallable.event
     get() = annotations.find { it is Event } as? Event
@@ -2592,19 +2592,25 @@ private val Any.annotatedScope
 private fun Any.annotatedOrSchedulerScope() = annotatedScope ?: SchedulerScope()
 
 internal val AnyStep.isScheduledFirst
-    get() = asCallable().annotations.find { it is First } !== null
+    get() = hasAnnotationType<First>()
 
 internal val AnyStep.isScheduledLast
-    get() = asCallable().annotations.find { it is Last } !== null
+    get() = hasAnnotationType<Last>()
 
 val Any.isScheduledAhead
-    get() = asCallable().annotations.find { it is Ahead } !== null
+    get() = hasAnnotationType<Ahead>()
 
 private val Any.isEnlisted
-    get() = asCallable().annotations.find { it is Enlisted } !== null
+    get() = hasAnnotationType<Enlisted>()
 
 private val Any.isUnlisted
-    get() = asCallable().annotations.find { it is Unlisted } !== null
+    get() = hasAnnotationType<Unlisted>()
+
+private inline fun <reified T : Annotation> AnyKCallable.hasAnnotationType() =
+    annotations.any { it is T }
+
+private inline fun <reified T : Annotation> Any.hasAnnotationType() =
+    asCallable().hasAnnotationType<T>()
 
 private typealias PropertyCondition = suspend (AnyKProperty, TagType, AnyStep) -> Any?
 private typealias PropertyPredicate = suspend (AnyKProperty) -> Boolean
