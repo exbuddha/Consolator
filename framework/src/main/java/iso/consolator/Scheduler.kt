@@ -481,6 +481,9 @@ private fun Job.saveNewElement(step: AnyCoroutineStep) {}
 private fun FunctionSet.saveCoroutine(self: AnyKCallable, tag: Tag) =
     save(self, tag, Item.Type.Coroutine)
 
+private fun FunctionSet.saveCoroutine(self: AnyKCallable, tag: TagType) =
+    save(self, tag, Item.Type.Coroutine)
+
 private open class CoroutineItem<R>(override var target: KCallable<R>?) : Item<R>(target) {
     init {
         type = Type.Coroutine }
@@ -776,12 +779,11 @@ private open class LiveStepItem<R>(override var target: KCallable<R>? = null) : 
 
     fun onAttached(step: LiveWork, index: Int) {
         onSaved(LIVEWORK, step)
-        onSaved(INDEX, index)
-    }
+        onSaved(INDEX, index) }
 
     fun onObserved(job: Job, index: Int, context: CoroutineContext?) {
         onSaved(JOB, job)
-        onSaved(INDEX, index) // optionally, readjust by remarks or from seq here instead
+        onSaved(INDEX, index) // optionally, readjust by remarks or from seq
         onSaved(CONTEXT, context) }
 }
 
@@ -1734,6 +1736,24 @@ private fun Runnable.detach(): Runnable? = null
 
 private fun Runnable.close() {}
 
+private fun FunctionSet.saveRunnable(self: AnyKCallable, tag: TagType) =
+    save(self, tag, Item.Type.Runnable)
+
+private fun FunctionSet.saveMessage(self: AnyKCallable, tag: TagType) =
+    save(self, tag, Item.Type.Message)
+
+private open class RunnableItem<R>(override var target: KCallable<R>? = null) : CoroutineItem<R>(target) {
+    init {
+        type = Type.Runnable }
+
+    fun onAttached(index: Number) {
+        onSaved(INDEX, index) }
+
+    fun onAttachedAsMessage() {}
+}
+
+private fun Any?.asRunnableItem() = asType<RunnableItem<*>>()
+
 infix fun Runnable.then(next: Runnable): Runnable = this
 
 infix fun Runnable.then(next: RunnableFunction): Runnable = this
@@ -2321,7 +2341,7 @@ private fun getTag(msg: Message): TagType? = TODO()
 private fun getTag(what: Int): TagType? = TODO()
 
 private fun markTagsForJobLaunch(tag: TagType, step: AnyCoroutineStep, job: Job, owner: LifecycleOwner?, context: CoroutineContext, start: CoroutineStart) =
-    tag.asTag()?.also { tag ->
+    tag.asTagType()?.also { tag ->
     jobs?.saveCoroutine(step.asCallable(), tag)
         ?.asCoroutineItem()
         ?.onJobLaunched(job, owner, context, start) }
@@ -2371,12 +2391,14 @@ private fun markTagsForClkAttach(step: Any, index: Number) =
     when (step) {
     is Runnable ->
         getTag(step)?.also { tag ->
-        callbacks?.save(step.asCallable(), tag, Item.Type.Runnable)
-            ?.asItem()
-            ?.onSaved(INDEX, index) }
+        callbacks?.saveRunnable(step.asCallable(), tag)
+            ?.asRunnableItem()
+            ?.onAttached(index) }
     is Message ->
         getTag(step)?.also { tag ->
-        callbacks?.save(step.asCallable(), tag, Item.Type.Message) }
+        callbacks?.saveRunnable(step.asCallable(), tag)
+            ?.asRunnableItem()
+            ?.onAttachedAsMessage() }
     else ->
         null }
 
