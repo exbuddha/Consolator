@@ -196,7 +196,7 @@ internal operator fun NetCall.get(id: TagType): Any? = when {
 
 internal operator fun NetCall.set(scope: Any?, id: TagType, value: Any?) {
     if (value !== null && value.isKept) {
-        value.markSequentialTag(calls, INET_CALL, id) }
+        value.markSequentialTag(INET_CALL, id, calls) }
     lock(id) { when {
         id === INET_CALL -> netCall = take(value)
         id === INET_FUNCTION -> networkCallFunction = take(value)

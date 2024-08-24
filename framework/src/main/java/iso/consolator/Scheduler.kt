@@ -435,14 +435,15 @@ private interface SchedulerKey : CoroutineContext.Key<SchedulerElement> {
 
 internal fun CoroutineScope.relaunch(instance: JobKProperty, group: FunctionSet?, context: CoroutineContext = SchedulerContext, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep) =
     relaunch(::launch, instance, group, context, start, step)
+    .also { job -> markTagsInGroupForJobRelaunch(instance, step, group, job, null, context, start) }
 
 internal fun LifecycleOwner.relaunch(instance: JobKProperty, group: FunctionSet?, context: CoroutineContext = SchedulerContext, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep) =
     relaunch(::launch, instance, group, context, start, step)
+    .also { job -> markTagsInGroupForJobRelaunch(instance, step, group, job, this, context, start) }
 
 private fun relaunch(launcher: JobKFunction, instance: JobKProperty, group: FunctionSet?, context: CoroutineContext, start: CoroutineStart, step: CoroutineStep) =
     instance.require(Job::isNotActive) {
         launcher.call(context, start, step) }
-    .also { instance.markTag(group) }
 
 internal fun launch(context: CoroutineContext = SchedulerContext, start: CoroutineStart = CoroutineStart.DEFAULT, step: AnyCoroutineStep) =
     step.markTagForSchLaunch()
@@ -476,6 +477,25 @@ private fun AnyCoroutineStep.afterTrackingTagsForJobLaunch(owner: LifecycleOwner
     ?: this
 
 private fun Job.saveNewElement(step: AnyCoroutineStep) {}
+
+private fun FunctionSet.saveCoroutine(self: AnyKCallable, tag: Tag) =
+    save(self, tag, Item.Type.Coroutine)
+
+private open class CoroutineItem<R>(override var target: KCallable<R>?) : Item<R>(target) {
+    init {
+        type = Type.Coroutine }
+
+    open fun onJobLaunched(job: Job, owner: LifecycleOwner?, context: CoroutineContext, start: CoroutineStart) {
+        onSaved(JOB, job)
+        onSaved(OWNER, owner)
+        onSaved(CONTEXT, context)
+        onSaved(START, start) }
+
+    open fun onJobRelaunched(job: Job, owner: LifecycleOwner?, context: CoroutineContext, start: CoroutineStart) =
+        onJobLaunched(job, owner, context, start)
+}
+
+private fun Any?.asCoroutineItem() = asType<CoroutineItem<*>>()
 
 private inline fun Job.attachToElement(crossinline statement: CoroutinePointer): AnyCoroutineStep = TODO()
 
@@ -746,6 +766,26 @@ internal fun SequencerScope.cancel() =
     Sequencer.cancel()
 
 internal fun SequencerScope.commit(vararg tag: Tag): Any? = TODO()
+
+private fun FunctionSet.saveLiveStep(self: AnyKCallable, tag: Tag) =
+    save(self, tag, Item.Type.LiveStep)
+
+private open class LiveStepItem<R>(override var target: KCallable<R>? = null) : CoroutineItem<R>(target) {
+    init {
+        type = Type.LiveStep }
+
+    fun onAttached(step: LiveWork, index: Int) {
+        onSaved(LIVEWORK, step)
+        onSaved(INDEX, index)
+    }
+
+    fun onObserved(job: Job, index: Int, context: CoroutineContext?) {
+        onSaved(JOB, job)
+        onSaved(INDEX, index) // optionally, readjust by remarks or from seq here instead
+        onSaved(CONTEXT, context) }
+}
+
+private fun Any?.asLiveStepItem() = asType<LiveStepItem<*>>()
 
 internal fun LiveWork.attach(tag: TagType? = null, owner: LifecycleOwner? = null) =
     Sequencer.attach(this, tag)
@@ -2204,9 +2244,17 @@ internal fun FunctionSet.findByTag(tag: TagType) =
 private fun FunctionSet.save(self: AnyKCallable, tag: Tag) =
     with(tag) { save(self, id, keep) }
 
+private fun FunctionSet.save(self: AnyKCallable, tag: Tag, type: Item.Type) =
+    save(self, tag).also {
+    asItem()?.setType(type) }
+
 private fun FunctionSet.save(function: AnyKCallable, tag: TagType) =
     function.tag?.apply {
     save(function, combineTags(tag, id), keep) }
+
+private fun FunctionSet.save(function: AnyKCallable, tag: TagType, type: Item.Type) =
+    save(function, tag).also {
+    asItem()?.setType(type) }
 
 private fun FunctionSet.save(function: AnyKCallable, tag: TagType?, keep: Boolean) =
     tag?.let(::findByTag)
@@ -2248,7 +2296,7 @@ internal fun Any.markTag(group: FunctionSet?) =
 internal fun Any?.markTag(tag: TagType, group: FunctionSet?) =
     group?.save(@Itemize asCallable(), tag)
 
-internal fun Any.markSequentialTag(group: FunctionSet?, tag: TagType?, id: TagType) =
+internal fun Any.markSequentialTag(tag: TagType?, id: TagType, group: FunctionSet?) =
     tag?.let { tag ->
     reduceTags(tag, TAG_DASH, id)
     .also { this@markSequentialTag.markTag(it, group) } }
@@ -2274,17 +2322,21 @@ private fun getTag(what: Int): TagType? = TODO()
 
 private fun markTagsForJobLaunch(tag: TagType, step: AnyCoroutineStep, job: Job, owner: LifecycleOwner?, context: CoroutineContext, start: CoroutineStart) =
     tag.asTag()?.also { tag ->
-    jobs?.save(step.asCallable(), tag) /* step */
-        ?.asItem()
-        ?.onSaved(JOB, job)
-        ?.onSaved(OWNER, owner)
-        ?.onSaved(CONTEXT, context)
-        ?.onSaved(START, start) }
+    jobs?.saveCoroutine(step.asCallable(), tag)
+        ?.asCoroutineItem()
+        ?.onJobLaunched(job, owner, context, start) }
+
+private fun markTagsInGroupForJobRelaunch(instance: JobKProperty, step: CoroutineStep, group: FunctionSet?, job: Job, owner: LifecycleOwner?, context: CoroutineContext, start: CoroutineStart) =
+    step.asCallable().let { step ->
+    (instance.tag ?: step.tag)?.also { tag ->
+    group?.saveCoroutine(step, tag)
+        ?.asCoroutineItem()
+        ?.onJobRelaunched(job, owner, context, start) } }
 
 private fun markTagsForJobRepeat(block: JobFunction, job: Job, predicate: PredicateFunction, delay: DelayFunction) =
     block.asCallable().let { block ->
     block.tag?.also { tag ->
-    jobs?.save(block, tag)
+    jobs?.save(block, tag, Item.Type.JobFunction)
         ?.asItem()
         ?.onSaved(JOB, job)
         ?.onSaved(PREDICATE, predicate)
@@ -2294,24 +2346,23 @@ private fun markTagsForSeqAttach(tag: Any?, step: LiveWork, index: Int) =
     tag?.asTagType()?.also { tag ->
     (livesteps?.findByTag(tag)
         ?.instance
-        ?: Item<Unit>().also { livesteps?.add(it.toFunctionItem({ tag }, true)) }
-        ).asItem()
-        ?.onSaved(LIVEWORK, step)
-        ?.onSaved(INDEX, index) }
+        ?: LiveStepItem<Unit>()
+            .also { livesteps?.add(it.toFunctionItem({ tag }, true)) }
+        ).asLiveStepItem()
+        ?.onAttached(step, index) }
 
 private fun markTagsForSeqLaunch(step: SequencerStep, job: Job, index: Int, context: CoroutineContext?) =
     step.asCallable().let { step ->
     step.tag?.also { tag ->
-    livesteps?.save(step, tag)
-        ?.asItem()
-        ?.onSaved(JOB, job)
-        ?.onSaved(INDEX, index) // optionally, readjust by remarks or from seq here instead
-        ?.onSaved(CONTEXT, context) } }
+    livesteps?.saveLiveStep(step, tag)
+        ?.asLiveStepItem()
+        ?.onObserved(job, index, context) } }
 
 private fun markTagsForCtxReform(tag: TagType?, job: Job, stage: ContextStep?, form: AnyStep) =
     tag?.also { tag ->
     items?.findByTag(tag)
         ?.asItem()
+        ?.setType(Item.Type.ContextStep)
         ?.onSaved(JOB, job)
         ?.onSaved(CTX_STEP, stage)
         ?.onSaved(FORM, form) }
@@ -2320,12 +2371,12 @@ private fun markTagsForClkAttach(step: Any, index: Number) =
     when (step) {
     is Runnable ->
         getTag(step)?.also { tag ->
-        callbacks?.save(step.asCallable(), tag)
+        callbacks?.save(step.asCallable(), tag, Item.Type.Runnable)
             ?.asItem()
             ?.onSaved(INDEX, index) }
     is Message ->
         getTag(step)?.also { tag ->
-        callbacks?.save(step.asCallable(), tag) }
+        callbacks?.save(step.asCallable(), tag, Item.Type.Message) }
     else ->
         null }
 
