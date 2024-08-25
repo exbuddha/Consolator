@@ -407,7 +407,7 @@ private fun detach(step: AnyCoroutineStep) =
     ?: step
 
 private fun launch(it: AnyCoroutineStep) =
-    Scheduler.launch { it() }
+    it.annotatedScopeOrScheduler().launch { it() }
 
 internal sealed interface SchedulerContext : CoroutineContext {
     companion object : SchedulerContext {
@@ -750,10 +750,13 @@ internal fun <R> CoroutineScope.change(ref: WeakContext, member: KFunction<R>, s
 internal fun <R> CoroutineScope.change(ref: WeakContext, owner: LifecycleOwner, member: KFunction<R>, stage: ContextStep) =
     EventBus.commit(stage)
 
+internal suspend inline fun CoroutineScope.blockSuspended(scope: CoroutineScope = this, noinline block: JobFunction) =
+    block(scope, block)
+
 internal suspend fun CoroutineScope.repeatSuspended(scope: CoroutineScope = this, predicate: PredicateFunction = @Tag(IS_ACTIVE) { isActive }, delayTime: DelayFunction = @Tag(YIELD) { 0L }, group: FunctionSet? = null, block: JobFunction) {
     markTagsForJobRepeat(block, group, currentJob(), predicate, delayTime)
     while (predicate()) {
-        block(scope, block)
+        scope.blockSuspended(scope, block)
         if (isActive)
             delayOrYield(delayTime()) } }
 
@@ -2382,9 +2385,9 @@ private fun markTagsInGroupForJobRelaunch(instance: JobKProperty, block: Corouti
         ?.onJobRelaunched(job, owner, context, start) } }
 
 private fun markTagsForJobRepeat(step: JobFunction, group: FunctionSet?, job: Job, predicate: PredicateFunction, delay: DelayFunction) =
+    group?.apply {
     step.asCallable().let { block ->
     block.tag?.also { tag ->
-    group?.apply {
     (relateByTag(tag) ?:
     saveCoroutine(block, tag))
         .asCoroutineItem()
@@ -2599,6 +2602,8 @@ private val Any.annotatedScope
 
 private fun Any.annotatedOrSchedulerScope() = annotatedScope ?: SchedulerScope()
 
+private fun Any.annotatedScopeOrScheduler() = annotatedScope ?: Scheduler
+
 internal val AnyStep.isScheduledFirst
     get() = hasAnnotationType<First>()
 
@@ -2784,12 +2789,6 @@ private fun Any?.asTag() = asType<Tag>()
 private typealias SchedulerNode = KClass<out Annotation>
 private typealias SchedulerPath = Array<KClass<out Throwable>>
 private typealias SchedulerStep = suspend CoroutineScope.(Any?, Job) -> Unit
-internal typealias JobFunction = suspend (Any?, Any?) -> Unit
-private typealias JobPredicate = (Job) -> Boolean
-internal typealias CoroutineFunction = (CoroutineStep) -> Any?
-internal typealias AnyCoroutineFunction = (AnyCoroutineStep) -> Any?
-private typealias CoroutinePointer = () -> CoroutineStep?
-private typealias AnyCoroutinePointer = () -> AnyCoroutineStep?
 
 private typealias SequencerScope = LiveDataScope<Step?>
 private typealias SequencerStep = suspend SequencerScope.(Any?) -> Unit
@@ -2802,13 +2801,24 @@ private typealias LiveWork = Triple<LiveStepPointer, CaptureFunction?, Boolean>
 private typealias LiveSequence = MutableList<LiveWork>
 private typealias LiveWorkFunction = (LiveWork) -> Any?
 private typealias LiveWorkPredicate = (LiveWork) -> Boolean
-private typealias StepFunction = (Step) -> Any?
-private typealias AnyStepFunction = (AnyStep) -> Any?
-private typealias StepPointer = () -> Step
+
+internal typealias JobFunction = suspend (Any?, Any?) -> Unit
+internal typealias AnyJobFunction = suspend (Any?, Any?) -> Any?
+internal typealias JobContinuation = suspend (Any?, Any?, Any?) -> Unit
+internal typealias AnyJobContinuation = suspend (Any?, Any?, Any?) -> Any?
+private typealias JobPredicate = (Job) -> Boolean
 
 internal typealias FunctionSet = MutableSet<FunctionItem>
 private typealias FunctionItem = TagTypeToAnyPair
 private typealias TagTypeToAnyPair = Pair<TagTypePointer, Any>
+
+internal typealias CoroutineFunction = (CoroutineStep) -> Any?
+internal typealias AnyCoroutineFunction = (AnyCoroutineStep) -> Any?
+private typealias CoroutinePointer = () -> CoroutineStep?
+private typealias AnyCoroutinePointer = () -> AnyCoroutineStep?
+private typealias StepFunction = (Step) -> Any?
+private typealias AnyStepFunction = (AnyStep) -> Any?
+private typealias StepPointer = () -> Step
 
 private typealias HandlerFunction = Clock.(Message) -> Unit
 private typealias MessageFunction = (Message) -> Any?
