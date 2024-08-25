@@ -35,7 +35,7 @@ internal abstract class BaseFragment : Fragment(contentLayoutId), TransitionMana
         trySafely { (this as LifecycleOwner)
        .launch(start = LAZY) @MainViewGroup
         @Listening @OnEvent(ACTION_MIGRATE_APP) {
-            defer<MigrationManager>(Fragment::onViewCreated, {
+            defer<MigrationManager>(Fragment::onViewCreated, this@BaseFragment, {
                 // listen to db updates
                 // preload data
                 // reset function pointers

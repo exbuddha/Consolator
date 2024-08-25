@@ -79,7 +79,7 @@ internal abstract class BaseActivity : AppCompatActivity(), TransitionManager, R
     abstract inner class LocalesChangeManager : iso.consolator.activity.LocalesChangeManager()
 
     companion object {
-        const val VIEW_TAG = "ACTIVITY"
         const val ENABLE_NETWORK_CALLBACKS_KEY = "4"
+        const val VIEW_TAG = "ACTIVITY"
     }
 }
