@@ -101,7 +101,7 @@ private var netCallFunction: JobFunction = { scope, _ ->
         with(scope) {
         commit(this) {
             set(this, INET_CALL,
-                @Keep ::buildNetCall.with("https://httpbin.org/delay/1")) // convert to contextual function
+                @Keep ::buildNetCall.implicitly()) // convert to contextual function by current context of scope
             launch { send(this) } } } } } }
 
 private var reactToNetCallResponseReceived: JobResponseFunction =
@@ -217,7 +217,7 @@ private annotation class NetworkListener
 
 internal fun buildNetCall(scope: Any?, key: Any) = buildHttpCall(key)
 
-private fun NetCall.with(key: Any): Call? = call(key)
+private fun NetCall.implicitly(key: Any = "https://httpbin.org/delay/1"): Call? = call(key)
 
 internal fun buildHttpCall(key: Any, method: String = "GET", body: RequestBody? = null, headers: Headers? = null, retry: Boolean = false) =
     when (key) {
