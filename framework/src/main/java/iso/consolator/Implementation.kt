@@ -19,6 +19,7 @@ import data.consolator.*
 import data.consolator.dao.*
 import data.consolator.entity.*
 import iso.consolator.Path.*
+import iso.consolator.activity.*
 import java.lang.*
 import java.lang.ref.*
 import java.util.*
@@ -373,6 +374,7 @@ internal fun Byte.toPercentage() =
 
 fun Any?.asObjectProvider() = asType<ObjectProvider>()
 fun Any?.asFunctionProvider() = asType<FunctionProvider>()
+fun Any?.asTransitFunction() = asType<(TransitionManager) -> Unit>()
 internal fun Any?.asActivity() = asType<Activity>()
 internal fun Any?.asFragment() = asType<Fragment>()
 internal fun Any?.asContext() = asType<Context>()

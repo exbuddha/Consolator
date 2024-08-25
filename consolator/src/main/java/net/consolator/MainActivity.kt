@@ -46,6 +46,9 @@ internal open class MainActivity : BaseActivity(), Provider {
             super.onLocalesChanged(locales) }
     }
 
+    override fun commit(vararg context: Any?) =
+        context.lastOrNull()?.asTransitFunction()?.invoke(this)
+
     inner class ConfigurationChangeManager : BaseActivity.ConfigurationChangeManager()
     inner class NightModeChangeManager : BaseActivity.NightModeChangeManager()
     inner class LocalesChangeManager : BaseActivity.LocalesChangeManager()
