@@ -137,7 +137,7 @@ internal abstract class BaseFragment : Fragment(contentLayoutId), TransitionMana
         super.onSaveInstanceState(outState)
     }
 
-    private fun transit(destination: Short) = commit(destination)
+    private fun transit(destination: Short) = commit(destination = destination)
 
     override fun commit(vararg context: Any?) =
         context.lastOrNull()?.asTransitFunction()?.invoke(this)
