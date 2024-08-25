@@ -762,7 +762,7 @@ internal suspend fun delayOrYield(dt: Long = 0L) {
     else if (dt == 0L) yield() }
 
 suspend fun CoroutineScope.currentContext() =
-    currentJob()[CONTEXT].asContext()!!
+    currentJob()[CONTEXT].asWeakContext()?.get()!!
 
 private suspend fun CoroutineScope.registerContext(context: WeakContext) {
     currentJob()[CONTEXT] = context }
