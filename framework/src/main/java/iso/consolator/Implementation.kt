@@ -172,21 +172,19 @@ fun <T : Context> WeakReference<out T>?.unique(context: T) =
 
 internal fun Context.startTime() = asUniqueContext()?.startTime ?: -1L
 
-internal typealias TimeReference = Pair<LongFunction, LongFunction>
+internal typealias TimeInterval = LongFunctionPair
 
-internal fun getDelayTime(ref: TimeReference): Long {
-    val (interval, last) = ref
-    return getDelayTime(interval(), last()) }
+internal fun hasTimeIntervalElapsed(ref: TimeInterval) =
+    with(ref) { hasTimeIntervalElapsed(first(), second()) }
 
-internal fun isTimeIntervalExceeded(ref: TimeReference): Boolean {
-    val (interval, last) = ref
-    return isTimeIntervalExceeded(interval(), last()) }
+internal fun getDelayTime(ref: TimeInterval) =
+    with(ref) { getDelayTime(first(), second()) }
 
-internal fun getDelayTime(interval: Long, last: Long) =
-    interval + last - now()
+internal fun hasTimeIntervalElapsed(last: Long, interval: Long) =
+    getDelayTime(last, interval) <= 0 || last == 0L
 
-internal fun isTimeIntervalExceeded(interval: Long, last: Long) =
-    getDelayTime(interval, last) <= 0 || last == 0L
+internal fun getDelayTime(last: Long, interval: Long) =
+    last + interval - now()
 
 internal inline fun <R> Boolean.then(block: () -> R) =
     if (this) block() else null
@@ -409,6 +407,7 @@ internal typealias ObjectPredicate = (Any) -> Boolean
 internal typealias IntPredicate = (Int) -> Boolean
 internal typealias ThrowablePredicate = (Throwable) -> Boolean
 internal typealias ThrowableNothing = (Throwable) -> Nothing
+internal typealias LongFunctionPair = Pair<LongFunction, LongFunction>
 
 lateinit var mainUncaughtExceptionHandler: ExceptionHandler
 

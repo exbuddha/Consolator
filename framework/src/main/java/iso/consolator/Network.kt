@@ -73,7 +73,7 @@ internal fun resumeInternetCallback() {
 @Tag(INET_UNREGISTER)
 fun unregisterInternetCallback() {
     networkCaller?.cancel()
-    netCallDelayTime = -1L
+    netCallRepeatDelay = -1L
     clearInternetCallbackObjects() }
 
 @JobTreeRoot @NetworkListener
@@ -90,11 +90,11 @@ internal var netCall: Call? = null
 private suspend fun repeatNetworkCallFunction(scope: CoroutineScope) {
     scope.repeatSuspended(
         group = calls,
-        block = @Tag(INET_FUNCTION) networkCallFunction,
-        delayTime = @Tag(INET_DELAY) { netCallDelayTime }) }
+        block = @Tag(INET_FUNCTION) netCallFunction,
+        delayTime = @Tag(INET_DELAY) { netCallRepeatDelay }) }
 
-private var networkCallFunction: JobFunction = { scope, _ ->
-    if (isNetCallbackResumed && isNetCallTimeIntervalExceeded)
+private var netCallFunction: JobFunction = { scope, _ ->
+    if (isNetCallbackResumed && hasNetCallRepeatTimeElapsed)
         scope.asCoroutineScope()?.run {
         log(info, INET_TAG, "Trying to send out http request for network caller...")
         with(::netCall) {
@@ -110,7 +110,7 @@ private var reactToNetCallResponseReceived: JobResponseFunction =
         hasInternet = isSuccessful
         if (isSuccessful)
             lastNetCallResponseTime = now()
-        netCallDelayTime = -1L
+        netCallRepeatDelay = -1L
         close() }
     scope.asCoroutineScope()?.log?.invoke(info, INET_TAG, "Received response for network caller.") }
 
@@ -119,18 +119,27 @@ private var reactToNetCallRequestFailed: JobThrowableFunction =
     hasInternet = false
     scope.asCoroutineScope()?.log?.invoke(warning, INET_TAG, "Failed to send http request for network caller.") }
 
+private var isNetCallbackResumed = true
+
+private val hasNetCallRepeatTimeElapsed
+    get() = hasTimeIntervalElapsed(netCallRepeatInterval!!)
+
 @Tag(INET_DELAY)
-private var netCallDelayTime = -1L
+private var netCallRepeatDelay = -1L
     get() = if (field < 0)
-            getDelayTime(netCallTimeReference!!)
+            getDelayTime(netCallRepeatInterval!!)
         else field
+
+private var netCallRepeatInterval: TimeInterval? = null
+    get() = field ?: TimeInterval(::lastNetCallResponseTime, ::netCallRepeatTime)
+        .also { field = it }
 
 @Tag(INET_MIN_INTERVAL)
 var netcall_min_time_interval = 5000L
     internal set
 
 @Tag(INET_INTERVAL)
-private var netCallTimeInterval = netcall_min_time_interval
+private var netCallRepeatTime = netcall_min_time_interval
     set(value) {
         field = maxOf(value, netcall_min_time_interval) }
 
@@ -138,15 +147,6 @@ private var lastNetCallResponseTime = 0L
     set(value) {
         if (value > field || value == 0L)
             field = value }
-
-private val isNetCallTimeIntervalExceeded
-    get() = isTimeIntervalExceeded(netCallTimeReference!!)
-
-private var netCallTimeReference: TimeReference? = null
-    get() = field ?: TimeReference(::netCallTimeInterval, ::lastNetCallResponseTime)
-        .also { field = it }
-
-private var isNetCallbackResumed = true
 
 private fun <R> NetCall.commit(scope: Any?, block: () -> R) =
     scope.asCoroutineScope()?.run {
@@ -191,11 +191,11 @@ private var calls: FunctionSet? = null
 
 internal operator fun NetCall.get(id: TagType): Any? = when {
     id === INET_CALL -> this
-    id === INET_FUNCTION -> networkCallFunction
+    id === INET_FUNCTION -> netCallFunction
     id === INET_SUCCESS -> reactToNetCallResponseReceived
     id === INET_ERROR -> reactToNetCallRequestFailed
-    id === INET_DELAY -> netCallDelayTime
-    id === INET_INTERVAL -> netCallTimeInterval
+    id === INET_DELAY -> netCallRepeatDelay
+    id === INET_INTERVAL -> netCallRepeatTime
     else -> null }
 
 internal operator fun NetCall.set(scope: Any?, id: TagType, value: Any?) {
@@ -203,11 +203,11 @@ internal operator fun NetCall.set(scope: Any?, id: TagType, value: Any?) {
         value.markSequentialTag(INET_CALL, id, calls) }
     lock(id) { when {
         id === INET_CALL -> netCall = take(value)
-        id === INET_FUNCTION -> networkCallFunction = take(value)
+        id === INET_FUNCTION -> netCallFunction = take(value)
         id === INET_SUCCESS -> reactToNetCallResponseReceived = take(value)
         id === INET_ERROR -> reactToNetCallRequestFailed = take(value)
-        id === INET_DELAY -> netCallDelayTime = take(value)
-        id === INET_INTERVAL -> netCallTimeInterval = take(value) } } }
+        id === INET_DELAY -> netCallRepeatDelay = take(value)
+        id === INET_INTERVAL -> netCallRepeatTime = take(value) } } }
 
 internal interface NetworkContext : SchedulerContext
 
@@ -256,7 +256,7 @@ private fun clearNetworkCallbackObjects() {
 private fun clearInternetCallbackObjects() {
     networkCaller = null
     netCall = null
-    netCallTimeReference = null }
+    netCallRepeatInterval = null }
 
 private typealias NetCall = KCallable<Call?>
 private typealias Respond = (Response) -> Unit
