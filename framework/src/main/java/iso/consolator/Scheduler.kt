@@ -2868,13 +2868,13 @@ typealias AnyKFunction = KFunction<*>
 internal typealias AnyKProperty = KProperty<*>
 internal typealias AnyKMutableProperty = KMutableProperty<*>
 
-private fun <R> AnyKCallable.receive(value: R) = this
+internal fun <R, V : R> KCallable<R>.receive(value: V) = value
 
-private fun <R> AnyKCallable.resolve(routine: KCallable<R>? = asType()) = this
+internal fun <R> KCallable<R>.resolve(routine: KCallable<R>? = asType()) = this
 
-private fun <R> AnyKCallable.synchronize(block: () -> R) = synchronized(this, block)
+internal fun <R> KCallable<R>.synchronize(block: () -> R) = synchronized(this, block)
 
-private operator fun AnyKCallable.plus(lock: AnyKCallable) = this
+internal operator fun KCallable<R>.plus(lock: AnyKCallable) = this
 
 private interface Synchronizer<L> {
     fun <R> synchronize(lock: L? = null, block: () -> R): R

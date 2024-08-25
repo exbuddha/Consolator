@@ -1,3 +1,6 @@
+@file:JvmName(JVM_CLASS_NAME)
+@file:JvmMultifileClass
+
 package iso.consolator
 
 import kotlin.reflect.*

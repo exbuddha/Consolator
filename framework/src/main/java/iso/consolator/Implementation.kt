@@ -33,6 +33,7 @@ import android.Manifest.permission.ACCESS_NETWORK_STATE
 import android.Manifest.permission.INTERNET
 
 lateinit var instance: Application
+
 var service: BaseServiceScope? = null
 
 internal var receiver: BroadcastReceiver? = null
@@ -47,6 +48,8 @@ internal val foregroundActivity: Activity?
         else it.asFragment()?.activity }
 
 var foregroundLifecycleOwner: LifecycleOwner? = null
+    set(value) {
+        field = ::foregroundLifecycleOwner.receive(value) }
 
 @Tag(VIEW_MIN_DELAY)
 const val view_min_delay = 300L
