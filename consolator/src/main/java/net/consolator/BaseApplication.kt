@@ -6,22 +6,21 @@ import ctx.consolator.*
 import iso.consolator.*
 import iso.consolator.application.*
 
-internal open class BaseApplication : Application(), UniqueContext {
+open class BaseApplication : Application(), UniqueContext {
     override var startTime = now()
 
     init {
         mainUncaughtExceptionHandler = @Tag(UNCAUGHT_SHARED) ExceptionHandler { th, ex ->
             with(getSharedPreferences(UNCAUGHT, MODE_PRIVATE).edit()) {
-                putLong(START, startTime)
-                putLong(NOW, now())
-                putBoolean(MAIN, th.isMainThread())
-                putException(ex) } }
+            putLong(START, startTime)
+            putLong(NOW, now())
+            putBoolean(MAIN, th.isMainThread())
+            putException(ex) } }
         Thread.setDefaultUncaughtExceptionHandler(mainUncaughtExceptionHandler) }
 
     override fun onCreate() {
         super.onCreate()
-        instance = this
-        commitStartApp(BaseService::class)
+        commitStart(BaseService::class)
     }
 
     override fun onTrimMemory(level: Int) {
@@ -36,9 +35,7 @@ internal open class BaseApplication : Application(), UniqueContext {
         putString(EXCEPTION_CAUSE, cause::class.qualifiedName)
         putString(EXCEPTION_CAUSE_MESSAGE, cause.message) } }
 
-    companion object {
+    internal companion object {
         const val ACTION_MIGRATE_APP: Short = 1
-        const val COMMIT_NAV_MAIN_UI: Short = 2
-        const val ABORT_NAV_MAIN_UI: Short = 3
     }
 }

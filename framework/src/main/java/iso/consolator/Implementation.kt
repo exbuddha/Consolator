@@ -33,7 +33,7 @@ import kotlinx.serialization.json.Json
 import android.Manifest.permission.ACCESS_NETWORK_STATE
 import android.Manifest.permission.INTERNET
 
-lateinit var instance: Application
+internal lateinit var instance: Application
 
 var service: BaseServiceScope? = null
 

@@ -21,14 +21,14 @@ import kotlin.annotation.AnnotationTarget.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.CoroutineStart.LAZY
 import kotlinx.coroutines.Dispatchers.IO
+import net.consolator.BaseActivity.Companion.ABORT_NAV_MAIN_UI
+import net.consolator.BaseActivity.Companion.COMMIT_NAV_MAIN_UI
 import net.consolator.BaseApplication.Companion.ACTION_MIGRATE_APP
-import net.consolator.BaseApplication.Companion.ABORT_NAV_MAIN_UI
-import net.consolator.BaseApplication.Companion.COMMIT_NAV_MAIN_UI
 
 @LayoutRes
 internal var contentLayoutId = R.layout.background
 
-internal abstract class BaseFragment : Fragment(contentLayoutId), TransitionManager {
+abstract class BaseFragment : Fragment(contentLayoutId), TransitionManager {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         if (State[1] is Resolved) return
@@ -103,23 +103,23 @@ internal abstract class BaseFragment : Fragment(contentLayoutId), TransitionMana
         super.onStart()
         if (foregroundLifecycleOwner === activity)
             foregroundLifecycleOwner = this
-        commitStartFragment(this)
+        commitStart()
     }
 
     override fun onResume() {
         if (State[1] !is Resolved)
             reattach(MainViewGroup::class)
         super.onResume()
-        commitResumeFragment(this)
+        commitResume()
     }
 
     override fun onPause() {
         super.onPause()
-        commitPauseFragment(this)
+        commitPause()
     }
 
     override fun onStop() {
-        commitStopFragment(this)
+        commitStop()
         if (foregroundLifecycleOwner === this)
             foregroundLifecycleOwner = parentFragment ?: activity
         super.onStop()
@@ -128,12 +128,12 @@ internal abstract class BaseFragment : Fragment(contentLayoutId), TransitionMana
     override fun onDestroyView() {
         super.onDestroyView()
         close(MainViewGroup::class)
-        commitDestroyFragment(this)
+        commitDestroy()
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
         // write to bundle
-        commitSaveFragment(this, outState)
+        commitSaveInstanceState(outState)
         super.onSaveInstanceState(outState)
     }
 

@@ -6,7 +6,7 @@ import android.view.GestureDetector.*
 import iso.consolator.*
 
 @Tag(OVERLAY_FRAGMENT)
-internal open class OverlayFragment(
+open class OverlayFragment(
     previous: MainFragment? = null,
     override var interceptor: InterceptFunction? = null
 ) : MainFragment(), Interceptor, OnContextClickListener {

@@ -12,8 +12,10 @@ import iso.consolator.activity.*
 @LayoutRes
 internal var layoutId = R.layout.background
 
-internal abstract class BaseActivity : AppCompatActivity(), TransitionManager, ReferredContext {
+abstract class BaseActivity : AppCompatActivity(), TransitionManager, ReferredContext {
+    @Coordinate(key = 1)
     internal var enableNetworkCallbacks: Work? = null
+    @Coordinate(key = 2)
     internal var disableNetworkCallbacks: Work? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -33,53 +35,55 @@ internal abstract class BaseActivity : AppCompatActivity(), TransitionManager, R
         super.onStart()
         foregroundLifecycleOwner = this
         enableNetworkCallbacks?.invoke()
-        commitStartActivity(this)
+        commitStart()
     }
 
     override fun onRestart() {
         super.onRestart()
-        commitRestartActivity(this)
+        commitRestart()
     }
 
     override fun onResume() {
         super.onResume()
-        commitResumeActivity(this)
+        commitResume()
     }
 
     override fun onPause() {
         super.onPause()
-        commitPauseActivity(this)
+        commitPause()
     }
 
     override fun onStop() {
         disableNetworkCallbacks?.invoke()
-        commitStopActivity(this)
+        commitStop()
         foregroundLifecycleOwner = null
         super.onStop()
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        commitDestroyActivity(this)
+        commitDestroy()
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
         outState.putBoolean(
             ENABLE_NETWORK_CALLBACKS_KEY,
             enableNetworkCallbacks !== null)
-        commitSaveActivity(this, outState)
+        commitSaveInstanceState(outState)
         super.onSaveInstanceState(outState)
     }
 
     override var ref: WeakContext? = null
         get() = field.unique(this).also { field = it }
 
-    abstract inner class ConfigurationChangeManager : iso.consolator.activity.ConfigurationChangeManager()
-    abstract inner class NightModeChangeManager : iso.consolator.activity.NightModeChangeManager()
-    abstract inner class LocalesChangeManager : iso.consolator.activity.LocalesChangeManager()
+    internal abstract inner class ConfigurationChangeManager : iso.consolator.activity.ConfigurationChangeManager()
+    internal abstract inner class NightModeChangeManager : iso.consolator.activity.NightModeChangeManager()
+    internal abstract inner class LocalesChangeManager : iso.consolator.activity.LocalesChangeManager()
 
-    companion object {
+    internal companion object {
         const val ENABLE_NETWORK_CALLBACKS_KEY = "4"
+        const val COMMIT_NAV_MAIN_UI: Short = 2
+        const val ABORT_NAV_MAIN_UI: Short = 3
         const val VIEW_TAG = "ACTIVITY"
     }
 }

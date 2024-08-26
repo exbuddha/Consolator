@@ -15,7 +15,7 @@ import kotlin.reflect.*
 internal var containerViewId = R.id.layout_background
 
 @Tag(MAIN_ACTIVITY)
-internal open class MainActivity : BaseActivity(), Provider {
+open class MainActivity : BaseActivity(), Provider {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (savedInstanceState === null)
@@ -49,9 +49,9 @@ internal open class MainActivity : BaseActivity(), Provider {
     override fun commit(vararg context: Any?) =
         context.lastOrNull()?.asTransitFunction()?.invoke(this)
 
-    inner class ConfigurationChangeManager : BaseActivity.ConfigurationChangeManager()
-    inner class NightModeChangeManager : BaseActivity.NightModeChangeManager()
-    inner class LocalesChangeManager : BaseActivity.LocalesChangeManager()
+    internal inner class ConfigurationChangeManager : BaseActivity.ConfigurationChangeManager()
+    internal inner class NightModeChangeManager : BaseActivity.NightModeChangeManager()
+    internal inner class LocalesChangeManager : BaseActivity.LocalesChangeManager()
 
     override fun invoke(type: AnyKClass): Resolver = when (type) {
         iso.consolator.activity.ConfigurationChangeManager::class ->

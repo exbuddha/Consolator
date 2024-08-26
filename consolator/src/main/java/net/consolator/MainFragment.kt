@@ -13,11 +13,11 @@ import kotlin.reflect.*
 import kotlinx.coroutines.*
 import androidx.fragment.app.FragmentTransaction.TRANSIT_FRAGMENT_OPEN
 import kotlinx.coroutines.Dispatchers.Default
-import net.consolator.BaseApplication.Companion.ABORT_NAV_MAIN_UI
-import net.consolator.BaseApplication.Companion.COMMIT_NAV_MAIN_UI
+import net.consolator.BaseActivity.Companion.ABORT_NAV_MAIN_UI
+import net.consolator.BaseActivity.Companion.COMMIT_NAV_MAIN_UI
 
 @Tag(MAIN_FRAGMENT)
-internal open class MainFragment : BaseFragment(), Provider {
+open class MainFragment : BaseFragment(), Provider {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         if (this is OverlayFragment) return

@@ -30,7 +30,8 @@ import androidx.core.content.ContextCompat.RECEIVER_EXPORTED
 import kotlinx.coroutines.Dispatchers.Default
 import kotlinx.coroutines.Dispatchers.IO
 
-fun commitStartApp() {
+fun Application.commitStart() {
+    instance = this
     enableLogger()
     enableAllLogs()
     SchedulerScope @Tag(SCH_CONFIG) {
@@ -44,39 +45,39 @@ fun commitStartApp() {
             currentThread.log(info, SVC_TAG, "Clock is detected.") }
         .alsoStart() }
 
-fun commitStartApp(component: KClass<out Service>) {
-    commitStartApp()
+fun Application.commitStart(component: KClass<out Service>) {
+    commitStart()
     with(foregroundContext) {
         startService(
         intendFor(component.asType()!!)
         .putExtra(START_TIME_KEY,
             startTime())) } }
 
-fun commitStartActivity(instance: Activity) {}
+fun Activity.commitStart() {}
 
-fun commitStartFragment(instance: Fragment) {}
+fun Fragment.commitStart() {}
 
-fun commitRestartActivity(instance: Activity) {}
+fun Activity.commitRestart() {}
 
-fun commitResumeActivity(instance: Activity) {}
+fun Activity.commitResume() {}
 
-fun commitResumeFragment(instance: Fragment) {}
+fun Fragment.commitResume() {}
 
-fun commitPauseActivity(instance: Activity) {}
+fun Activity.commitPause() {}
 
-fun commitPauseFragment(instance: Fragment) {}
+fun Fragment.commitPause() {}
 
-fun commitStopActivity(instance: Activity) {}
+fun Activity.commitStop() {}
 
-fun commitStopFragment(instance: Fragment) {}
+fun Fragment.commitStop() {}
 
-fun commitDestroyActivity(instance: Activity) {}
+fun Activity.commitDestroy() {}
 
-fun commitDestroyFragment(instance: Fragment) {}
+fun Fragment.commitDestroy() {}
 
-fun commitSaveActivity(instance: Activity, outState: Bundle) {}
+fun Activity.commitSaveInstanceState(outState: Bundle) {}
 
-fun commitSaveFragment(instance: Fragment, outState: Bundle) {}
+fun Fragment.commitSaveInstanceState(outState: Bundle) {}
 
 interface BaseServiceScope : ResolverScope, ReferredContext, UniqueContext {
     fun Intent.invoke(flags: Int, startId: Int, mode: Int): Int? {
