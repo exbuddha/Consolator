@@ -12,6 +12,8 @@ import androidx.lifecycle.*
 import androidx.room.*
 import ctx.consolator.*
 import data.consolator.*
+import iso.consolator.AdjustOperator.Element.Adjustable
+import iso.consolator.AttachOperator.Element.Observable
 import iso.consolator.Scheduler.defer
 import iso.consolator.State.*
 import iso.consolator.activity.*
@@ -798,7 +800,7 @@ internal fun SequencerScope.commit(vararg tag: Tag): Any? = TODO()
 private fun FunctionSet.saveLiveStep(self: AnyKCallable, tag: Tag) =
     save(self, tag, Item.Type.LiveStep)
 
-private open class LiveStepItem<R>(override var target: KCallable<R>? = null) : CoroutineItem<R>(target), AdjustOperator.Element.Adjustable.By<LiveWork, SequencerIndex>, AttachOperator.Element.Observable {
+private open class LiveStepItem<R>(override var target: KCallable<R>? = null) : CoroutineItem<R>(target), Adjustable.By<LiveWork, SequencerIndex>, Observable {
     init {
         type = Type.LiveStep }
 
@@ -1777,7 +1779,7 @@ private fun FunctionSet.saveRunnable(self: AnyKCallable, tag: TagType) =
 private fun FunctionSet.saveMessage(self: AnyKCallable, tag: TagType) =
     save(self, tag, Item.Type.Message)
 
-private open class RunnableItem<R>(override var target: KCallable<R>? = null) : CoroutineItem<R>(target), AdjustOperator.Element.Adjustable.By<Message, ClockIndex> {
+private open class RunnableItem<R>(override var target: KCallable<R>? = null) : CoroutineItem<R>(target), Adjustable.By<Message, ClockIndex> {
     init {
         type = Type.Runnable }
 
