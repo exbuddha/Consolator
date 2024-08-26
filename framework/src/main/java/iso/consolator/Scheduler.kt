@@ -497,21 +497,27 @@ private open class CoroutineItem<R>(override var target: KCallable<R>?) : Item<R
     init {
         type = Type.Coroutine }
 
-    open fun onJobLaunched(job: Job, owner: LifecycleOwner?, context: CoroutineContext, start: CoroutineStart) {
-        onSaved(JOB, job)
-        onSaved(OWNER, owner)
-        onSaved(CONTEXT, context)
-        onSaved(START, start) }
+    open fun onLifecycleOwnerSet(owner: LifecycleOwner?): CoroutineItem<R> {
+        onSave(OWNER, owner)
+        return this }
 
-    open fun onJobRelaunched(job: Job, owner: LifecycleOwner?, context: CoroutineContext, start: CoroutineStart) =
-        onJobLaunched(job, owner, context, start)
+    open fun onJobLaunch(job: Job, context: CoroutineContext, start: CoroutineStart): CoroutineItem<R> {
+        onSave(JOB, job)
+        onSave(CONTEXT, context)
+        onSave(START, start)
+        return this }
 
-    open fun onJobFunctionRepeated(block: JobFunction, self: AnyKCallable, tag: Tag, job: Job, predicate: PredicateFunction, delay: DelayFunction) {
+    open fun onJobRelaunch(job: Job, owner: LifecycleOwner?, context: CoroutineContext, start: CoroutineStart) =
+        onLifecycleOwnerSet(owner)
+        .onJobLaunch(job, context, start)
+
+    open fun onJobFunctionRepeat(block: JobFunction, self: AnyKCallable, tag: Tag, job: Job, predicate: PredicateFunction, delay: DelayFunction): CoroutineItem<R> {
         // optionally, replace target with self
         self.asType<KCallable<R>>()?.apply(::setTarget)
-        onSaved(JOB, job)
-        onSaved(PREDICATE, predicate)
-        onSaved(DELAY, delay) }
+        onSave(JOB, job)
+        onSave(PREDICATE, predicate)
+        onSave(DELAY, delay)
+        return this }
 }
 
 private fun Any?.asCoroutineItem() = asType<CoroutineItem<*>>()
@@ -792,18 +798,26 @@ internal fun SequencerScope.commit(vararg tag: Tag): Any? = TODO()
 private fun FunctionSet.saveLiveStep(self: AnyKCallable, tag: Tag) =
     save(self, tag, Item.Type.LiveStep)
 
-private open class LiveStepItem<R>(override var target: KCallable<R>? = null) : CoroutineItem<R>(target) {
+private open class LiveStepItem<R>(override var target: KCallable<R>? = null) : CoroutineItem<R>(target), AdjustOperator.Element.Adjustable.By<LiveWork, SequencerIndex>, AttachOperator.Element.Observable {
     init {
         type = Type.LiveStep }
 
-    fun onAttached(step: LiveWork, index: Int) {
-        onSaved(LIVEWORK, step)
-        onSaved(INDEX, index) }
+    override fun onAttach(index: SequencerIndex): LiveStepItem<R> {
+        super.onAttach(index)
+        onSave(INDEX, index)
+        return this }
 
-    fun onObserved(job: Job, index: Int, context: CoroutineContext?) {
-        onSaved(JOB, job)
-        onSaved(INDEX, index) // optionally, readjust by remarks or from seq
-        onSaved(CONTEXT, context) }
+    override fun onAttachBy(container: LiveWork): LiveStepItem<R> {
+        super.onAttachBy(container)
+        onSave(LIVEWORK, container)
+        return this }
+
+    override fun onObserve(job: Job, index: SequencerIndex, context: CoroutineContext?): LiveStepItem<R> {
+        super.onObserve(job, index, context)
+        onSave(JOB, job)
+        onSave(INDEX, index) // optionally, readjust by remarks or from seq
+        onSave(CONTEXT, context)
+        return this }
 }
 
 private fun Any?.asLiveStepItem() = asType<LiveStepItem<*>>()
@@ -933,6 +947,8 @@ private inline fun <R> sequencer(block: Sequencer.() -> R) = sequencer?.block()
 
 private var sequencer: Sequencer? = null
     get() = field.singleton().also { field = it }
+
+private typealias SequencerIndex = Int
 
 private class Sequencer : Synchronizer<LiveWork>, Transactor<Int, Boolean?>, PriorityQueue<Int>, AdjustOperator<LiveWork, Int> {
     constructor() : this(DEFAULT_OBSERVER)
@@ -1761,14 +1777,18 @@ private fun FunctionSet.saveRunnable(self: AnyKCallable, tag: TagType) =
 private fun FunctionSet.saveMessage(self: AnyKCallable, tag: TagType) =
     save(self, tag, Item.Type.Message)
 
-private open class RunnableItem<R>(override var target: KCallable<R>? = null) : CoroutineItem<R>(target) {
+private open class RunnableItem<R>(override var target: KCallable<R>? = null) : CoroutineItem<R>(target), AdjustOperator.Element.Adjustable.By<Message, ClockIndex> {
     init {
         type = Type.Runnable }
 
-    fun onAttached(index: Number) {
-        onSaved(INDEX, index) }
+    override fun onAttach(index: ClockIndex): RunnableItem<R> {
+        super.onAttach(index)
+        onSave(INDEX, index)
+        return this }
 
-    fun onAttachedAsMessage() {}
+    override fun onAttachBy(container: Message): RunnableItem<R> {
+        super.onAttachBy(container)
+        return this }
 }
 
 private fun Any?.asRunnableItem() = asType<RunnableItem<*>>()
@@ -1848,10 +1868,12 @@ internal infix fun Message.otherwise(next: MessageFunction): Message = this
 private var clock: Clock? = null
     get() = field.singleton().also { field = it }
 
-internal open class Clock(
+private typealias ClockIndex = Number
+
+private open class Clock(
     name: String,
     priority: Int = currentThread.priority
-) : HandlerThread(name, priority), Synchronizer<Any>, Transactor<Message, Any?>, PriorityQueue<Runnable>, AdjustOperator<Runnable, Number> {
+) : HandlerThread(name, priority), Synchronizer<Any>, Transactor<Message, Any?>, PriorityQueue<Runnable>, AdjustOperator<Runnable, ClockIndex> {
     @JvmField var handler: Handler? = null
     final override lateinit var queue: RunnableList
 
@@ -1950,11 +1972,11 @@ internal open class Clock(
             block().also {
             hLock = Lock.Open(lock, block, it) } }
 
-    override fun adjust(index: Number) = when (index) {
+    override fun adjust(index: ClockIndex) = when (index) {
         is Int -> index
         else -> getEstimatedIndex(index) }
 
-    private fun getEstimatedIndex(delay: Number) = queue.size
+    private fun getEstimatedIndex(delay: ClockIndex) = queue.size
 
     private var sLock = Any()
 
@@ -1963,7 +1985,7 @@ internal open class Clock(
             add(step)
             markTagsForClkAttach(step, size) } }
 
-    override fun attach(index: Number, step: Runnable, vararg args: Any?) =
+    override fun attach(index: ClockIndex, step: Runnable, vararg args: Any?) =
         synchronized<Unit>(sLock) {
             queue.add(index.toInt(), step)
             // remark items in queue for adjustment
@@ -2032,11 +2054,31 @@ private var callbacks: FunctionSet? = null
 
 private interface AttachOperator<in S> {
     fun attach(step: S, vararg args: Any?): Any?
+
+    interface Element {
+        interface Attachable<I> : Element {
+            fun onAttach(index: I) = this
+
+            interface By<in S, I> : Attachable<I> {
+                fun onAttachBy(container: S) = this
+            }
+        }
+
+        interface Observable : Element {
+            fun onObserve(job: Job, index: Int, context: CoroutineContext?) = this
+        }
+    }
 }
 
 private interface AdjustOperator<in S, I> : AttachOperator<S> {
     fun attach(index: I, step: S, vararg args: Any?): Any?
     fun adjust(index: I): I
+
+    interface Element : AttachOperator.Element {
+        interface Adjustable<I> : Element, AttachOperator.Element.Attachable<I> {
+            interface By<in S, I> : Adjustable<I>, AttachOperator.Element.Attachable.By<S, I>
+        }
+    }
 }
 
 private interface PriorityQueue<E> {
@@ -2140,7 +2182,7 @@ annotation class Timeout(
     @JvmField val millis: Long = -1L)
 
 private open class Item<R>(override var target: KCallable<R>? = null) : Addressed<R>, Tagged, KCallable<R> by target ?: CallableReference.Lateinit({ target }) {
-    open fun onSaved(subtag: TagType, value: Any?) = this.also { when {
+    open fun onSave(subtag: TagType, value: Any?) = this.also { when {
         subtag === FUNC ->
             if (target === null)
                 value?.asType<KCallable<R>>()?.apply(::setTarget)
@@ -2149,9 +2191,9 @@ private open class Item<R>(override var target: KCallable<R>? = null) : Addresse
     } }
 
     open fun onContextReform(job: Job, stage: ContextStep?, form: AnyStep) {
-        onSaved(JOB, job)
-        onSaved(CTX_STEP, stage)
-        onSaved(FORM, form) }
+        onSave(JOB, job)
+        onSave(CTX_STEP, stage)
+        onSave(FORM, form) }
 
     override fun setTarget(target: KCallable<R>): Item<R> {
         this.target = target
@@ -2312,11 +2354,11 @@ private fun FunctionSet.save(function: AnyKCallable, tag: TagType?, keep: Boolea
     tag?.let(::findByTag)
         ?.instance
         ?.also { if (it is Item<*>) { with(it) {
-            onSaved(FUNC, function)
-            onSaved(KEEP, keep) } } }
+            onSave(FUNC, function)
+            onSave(KEEP, keep) } } }
     ?: (if (function.asReference().isItemized)
             Item(function)
-            .onSaved(KEEP, keep)
+            .onSave(KEEP, keep)
         else
             function)
         .also {
@@ -2376,14 +2418,15 @@ private fun markTagsForJobLaunch(tag: TagType, step: AnyCoroutineStep, job: Job,
     tag.asTagType()?.also { tag ->
     jobs?.saveCoroutine(step.asCallable(), tag)
         ?.asCoroutineItem()
-        ?.onJobLaunched(job, owner, context, start) }
+        ?.onLifecycleOwnerSet(owner)
+        ?.onJobLaunch(job, context, start) }
 
 private fun markTagsInGroupForJobRelaunch(instance: JobKProperty, block: CoroutineStep, group: FunctionSet?, job: Job, owner: LifecycleOwner?, context: CoroutineContext, start: CoroutineStart) =
     block.asCallable().let { parent ->
     instance.tag?.also { tag ->
     group?.saveCoroutine(parent, tag)
         ?.asCoroutineItem()
-        ?.onJobRelaunched(job, owner, context, start) } }
+        ?.onJobRelaunch(job, owner, context, start) } }
 
 private fun markTagsForJobRepeat(step: JobFunction, group: FunctionSet?, job: Job, predicate: PredicateFunction, delay: DelayFunction) =
     group?.apply {
@@ -2392,7 +2435,7 @@ private fun markTagsForJobRepeat(step: JobFunction, group: FunctionSet?, job: Jo
     (relateByTag(tag) ?:
     saveCoroutine(block, tag))
         .asCoroutineItem()
-        ?.onJobFunctionRepeated(step, block, tag, job, predicate, delay) } } }
+        ?.onJobFunctionRepeat(step, block, tag, job, predicate, delay) } } }
 
 private fun markTagsForSeqAttach(tag: Any?, step: LiveWork, index: Int) =
     tag?.asTagType()?.also { tag ->
@@ -2401,14 +2444,15 @@ private fun markTagsForSeqAttach(tag: Any?, step: LiveWork, index: Int) =
         ?: LiveStepItem<Unit>()
             .also { livesteps?.add(it.toFunctionItem({ tag }, true)) }
         ).asLiveStepItem()
-        ?.onAttached(step, index) }
+        ?.onAttachBy(step)
+        ?.onAttach(index) }
 
 private fun markTagsForSeqLaunch(step: SequencerStep, job: Job, index: Int, context: CoroutineContext?) =
     step.asCallable().let { step ->
     step.tag?.also { tag ->
     livesteps?.saveLiveStep(step, tag)
         ?.asLiveStepItem()
-        ?.onObserved(job, index, context) } }
+        ?.onObserve(job, index, context) } }
 
 private fun markTagsForCtxReform(tag: TagType?, job: Job, stage: ContextStep?, form: AnyStep) =
     tag?.also { tag ->
@@ -2422,12 +2466,13 @@ private fun markTagsForClkAttach(step: Any, index: Number) =
         getTag(step)?.also { tag ->
         callbacks?.saveRunnable(step.asCallable(), tag)
             ?.asRunnableItem()
-            ?.onAttached(index) }
+            ?.onAttach(index) }
     is Message ->
         getTag(step)?.also { tag ->
         callbacks?.saveRunnable(step.asCallable(), tag)
             ?.asRunnableItem()
-            ?.onAttachedAsMessage() }
+            ?.onAttachBy(step)
+            ?.onAttach(index) }
     else ->
         null }
 
