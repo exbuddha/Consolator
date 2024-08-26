@@ -2181,7 +2181,7 @@ annotation class Delay(
 annotation class Timeout(
     @JvmField val millis: Long = -1L)
 
-private open class Item<R>(override var target: KCallable<R>? = null) : Addressed<R>, Tagged, KCallable<R> by target ?: CallableReference.Lateinit({ target }) {
+private open class Item<R>(override var target: KCallable<R>? = null) : Addressed<R>, Tagged, KCallable<R> by target ?: Reference({ target }) {
     open fun onSave(subtag: TagType, value: Any?) = this.also { when {
         subtag === FUNC ->
             if (target === null)
@@ -2705,47 +2705,39 @@ private typealias Lifetime = (AnyKMutableProperty) -> Boolean?
 
 fun AnyKMutableProperty.expire() = set(null)
 
-private open class ObjectReference<R>(override var obj: R) : PropertyReference<R>(obj), KMutableProperty<R> {
-    override val setter = ::obj.setter
+private open class ObjectReference<R>(obj: R) : PropertyReference<R>(obj), KMutableProperty<R> {
+    override val setter = requireReference().setter
 }
 
-open class PropertyReference<R>(override var obj: R) : CallableReference<R>(obj), KProperty<R> {
-    override val getter = ::obj.getter
-    override val isConst = ::obj.isConst
-    override val isLateinit = ::obj.isLateinit
+open class PropertyReference<R>(obj: R) : CallableReference<R>(obj), KProperty<R> {
+    override val getter = requireReference().getter
+    override val isConst = requireReference().isConst
+    override val isLateinit = requireReference().isLateinit
 }
 
-open class CallableReference<R>(open var obj: R) : KCallable<R> {
-    protected open fun requireInstance(): KCallable<R> = ::obj
-    override fun call(vararg args: Any?) = ::obj.call(*args)
+open class CallableReference<R>(private var obj: R) : Reference<R>(obj) {
+    final override fun setObject(obj: R) { this.obj = obj }
+    final override fun requireReference() = ::obj
+}
+
+open class Reference<R>(private val pointer: (() -> KCallable<R>?)? = null) : KCallable<R> {
+    internal constructor(obj: R) : this() { setObject(obj) }
+
+    internal open fun setObject(obj: R) = Unit
+    internal open fun requireReference(): KCallable<R> = pointer?.invoke()!!
+    
+    override fun call(vararg args: Any?) = requireReference().call(*args)
     override fun callBy(args: KParameterMap) = call(*mapToTypedArray(args))
-    override val annotations = requireInstance().annotations
-    override val isAbstract = requireInstance().isAbstract
-    override val isFinal = requireInstance().isFinal
-    override val isOpen = requireInstance().isOpen
-    override val isSuspend = requireInstance().isSuspend
-    override val name = requireInstance().name
-    override val parameters = requireInstance().parameters
-    override val returnType = requireInstance().returnType
-    override val typeParameters = requireInstance().typeParameters
-    override val visibility = requireInstance().visibility
-    internal object Lateinit {
-        operator fun <R> invoke(pointer: () -> KCallable<R>?) = object : KCallable<R> {
-            private fun requireInstance() = pointer()!!
-            override fun call(vararg args: Any?) = requireInstance().call(*args)
-            override fun callBy(args: KParameterMap) = requireInstance().callBy(args)
-            override val annotations = requireInstance().annotations
-            override val isAbstract = requireInstance().isAbstract
-            override val isFinal = requireInstance().isFinal
-            override val isOpen = requireInstance().isOpen
-            override val isSuspend = requireInstance().isSuspend
-            override val name = requireInstance().name
-            override val parameters = requireInstance().parameters
-            override val returnType = requireInstance().returnType
-            override val typeParameters = requireInstance().typeParameters
-            override val visibility = requireInstance().visibility
-        }
-    }
+    override val annotations = requireReference().annotations
+    override val isAbstract = requireReference().isAbstract
+    override val isFinal = requireReference().isFinal
+    override val isOpen = requireReference().isOpen
+    override val isSuspend = requireReference().isSuspend
+    override val name = requireReference().name
+    override val parameters = requireReference().parameters
+    override val returnType = requireReference().returnType
+    override val typeParameters = requireReference().typeParameters
+    override val visibility = requireReference().visibility
 }
 
 internal fun <R> R.asMutableProperty(): KMutableProperty<R> =
@@ -2761,10 +2753,9 @@ internal fun <R> R.asProperty(): KProperty<R> =
 internal fun <R> R.asCallable(): KCallable<R> =
     if (this is CallableReference<*>)
         asType()!!
-    else asReference()
+    else CallableReference(this)
 
-fun <R> R.asReference() =
-    CallableReference(this)
+fun <R> R.asReference() = Reference(this)
 
 internal fun trueWhenNull(it: Any?) = it === null
 
