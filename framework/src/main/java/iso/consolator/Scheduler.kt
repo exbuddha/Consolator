@@ -2259,13 +2259,24 @@ private open class Item<R>(override var target: KCallable<R>? = null) : Addresse
         @JvmStatic private fun <V> Value<V>.saveTarget(target: KCallable<V>) =
             target.tag?.let { set(it, target) }
 
-        @JvmStatic internal inline fun <reified V : Any> findByTag(target: KCallable<V>, transform: (Tag, Any) -> TagType? = { _, key -> if (key is Tag) key.id else key.asTagType() }): V? =
-            (target.tag?.let { tag ->
+        @JvmStatic internal inline fun <reified V : Any> filterByTag(target: KCallable<V>, transform: (Tag, Any) -> TagType? = ::matchByTagOrValue, comparator: TagType.(Any?) -> Boolean = TagType::equals) =
+            target.tag?.let { tag ->
                 filter { it.key.let { key ->
                     key !== tag &&
-                    transform(tag, key) == tag.id }
-                }.values.firstOrNull() }
-            )?.call().asType<V>()
+                    comparator(tag.id, transform(tag, key)) }
+                }.values }
+
+        @JvmStatic internal inline fun <reified V : Any> findByTag(target: KCallable<V>, transform: (Tag, Any) -> TagType? = ::matchByTagOrValue, comparator: TagType.(Any?) -> Boolean = TagType::equals): V? =
+            filterByTag(target, transform)?.firstOrNull()?.call().asType<V>()
+
+        @JvmStatic private fun matchByTagOrValue(tag: Tag, key: Any) =
+            if (key is Tag) key.id else key.asTagType()
+
+        @JvmStatic private fun matchByTag(tag: Tag, key: Any) =
+            key.asTag()?.id
+
+        @JvmStatic private fun matchByValue(tag: Tag, key: Any) =
+            if (key is Tag) null else key.asTagType()
     }
 
     override val target: KCallable<V>?

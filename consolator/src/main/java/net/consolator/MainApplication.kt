@@ -25,7 +25,7 @@ internal open class MainApplication : BaseApplication() {
         @JvmStatic fun <V> registerValue(value: V, target: KProperty<V>) =
             Value(value).setTarget(target)
 
-        @JvmStatic fun <V> registerValueByTag(value: R, tag: TagType) =
+        @JvmStatic fun <V> registerValueByTag(value: V, tag: TagType) =
             Value(value).setTag(tag)
     }
 }
