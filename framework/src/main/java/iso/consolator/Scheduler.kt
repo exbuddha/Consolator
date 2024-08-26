@@ -2251,12 +2251,12 @@ private open class Item<R>(override var target: KCallable<R>? = null) : Addresse
         @JvmStatic private fun <V> Value<V>.saveTarget(target: KCallable<V>) =
             target.tag?.let { set(it, target) }
 
-        @JvmStatic internal inline fun <reified V : Any> findByTag(target: KCallable<V>): V? =
+        @JvmStatic internal inline fun <reified V : Any> findByTag(target: KCallable<V>, transform: (Tag, Any) -> TagType? = { _, key -> if (key is Tag) key.id else key.asTagType() }): V? =
             (target.tag?.let { tag ->
-                filter {
-                    it.key.asTag()?.id === tag.id &&
-                    it.key !== tag }
-                .values.firstOrNull() }
+                filter { it.key.let { key ->
+                    key !== tag &&
+                    transform(tag, key) == tag.id }
+                }.values.firstOrNull() }
             )?.call().asType<V>()
     }
 
@@ -2332,8 +2332,8 @@ internal fun Any.toFunctionItem(tag: TagTypePointer, keep: Boolean) =
 internal val FunctionItem.instance
     get() = second.asAnyToBooleanPair()?.first
 
-internal fun FunctionSet.findByTag(tag: TagType) =
-    find { tag == it.first() }
+internal fun FunctionSet.findByTag(tag: TagType, transform: (TagType, FunctionItem) -> TagType? = { _, it -> it.first() }) =
+    find { tag == transform(tag, it) }
 
 private fun FunctionSet.save(self: AnyKCallable, tag: Tag) =
     with(tag) { save(self, id, keep) }
