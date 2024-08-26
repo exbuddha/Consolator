@@ -1789,6 +1789,12 @@ private open class RunnableItem<R>(override var target: KCallable<R>? = null) : 
     override fun onAttachBy(container: Message): RunnableItem<R> {
         super.onAttachBy(container)
         return this }
+
+    @Suppress("UNCHECKED_CAST")
+    override fun call(vararg args: Any?): R =
+        target?.call().apply {
+        if (this is Runnable) run()
+        else asMessage()?.callback?.run() } as R
 }
 
 private fun Any?.asRunnableItem() = asType<RunnableItem<*>>()
