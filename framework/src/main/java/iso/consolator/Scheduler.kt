@@ -594,6 +594,8 @@ private fun AnyCoroutineStep.annotatedOrCurrentScopeReferring(target: SchedulerS
 
 private fun SchedulerStep.annotatedOrCurrentScopeReferring(target: AnyCoroutineStep): CoroutineScope = TODO()
 
+// convert job to context parameter here on and in scheduler step
+
 infix fun Job?.then(next: SchedulerStep) = this?.let {
     attachConjunctionToElement(
         AnyCoroutineStep::then, next) }
@@ -758,6 +760,9 @@ internal fun <R> CoroutineScope.change(ref: WeakContext, member: KFunction<R>, s
 
 internal fun <R> CoroutineScope.change(ref: WeakContext, owner: LifecycleOwner, member: KFunction<R>, stage: ContextStep) =
     EventBus.commit(stage)
+
+// job functions provide detailed continuations for each step
+// items group contains and clears them when scope changes to background
 
 internal suspend inline fun CoroutineScope.blockSuspended(scope: CoroutineScope = this, noinline block: JobFunction) =
     block(scope, block)
@@ -2932,6 +2937,10 @@ typealias AnyKFunction = KFunction<*>
 internal typealias AnyKProperty = KProperty<*>
 internal typealias AnyKMutableProperty = KMutableProperty<*>
 
+// callables can be considered as the origination points for features or routines
+// they may receive any value in order to resolve their own or another active context
+// states concurrently maintain and transact with the flow of communication among routines
+
 internal fun <R, V : R> KCallable<R>.receive(value: V) = value
 
 internal fun <R> KCallable<R>.resolve(routine: KCallable<R>? = asType()) = this
@@ -2947,6 +2956,9 @@ private interface Synchronizer<L> {
 enum class Lock : State { Closed, Open }
 
 abstract class Routine : State, KCallable<State>
+
+// user states are registered and loaded with control flow logic at runtime
+// they can be retrieved as live references and provide access to job controllers
 
 private typealias ID = Short
 
