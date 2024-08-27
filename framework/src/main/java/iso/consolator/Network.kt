@@ -100,9 +100,18 @@ private var netCallFunction: JobFunction = { scope, _ ->
         with(::netCall) {
         with(scope) {
         commit(this) {
+            // convert to contextual function by current context of scope
             set(this, INET_CALL,
-                @Keep ::buildNetCall.implicitly()) // convert to contextual function by current context of scope
-            launch { send(this) } } } } } }
+                @Keep ::buildNetCall.implicitly())
+            launch {
+                sendForResult(this,
+                { response ->
+                    trySafelyCanceling {
+                        reactToNetCallResponseReceived.commit(this, response) } },
+                { ex -> ex?.let { ex ->
+                    trySafelyCanceling {
+                        reactToNetCallRequestFailed.commit(this, ex) } }
+                }) } } } } } }
 
 private var reactToNetCallResponseReceived: JobResponseFunction =
     @Tag(INET_SUCCESS) { scope, _, response ->
@@ -162,26 +171,17 @@ private fun NetCall.asCallable() =
 
 private fun NetCall.asProperty() = this as KProperty
 
-internal suspend fun NetCall.send(scope: Any?, respond: Respond, exit: ThrowableFunction) =
+internal fun <R, S : R> NetCall.sendForResult(scope: Any?, respond: (Response) -> R, exit: (Throwable?) -> S? = { null }) =
     scope.asCoroutineScope()?.run {
     tryCancelingForResult({
-        exec(this, respond)
+        execute(this, { respond(it) })
     }, exit) }
 
-internal suspend fun NetCall.send(scope: Any?) =
-    send(this, { response ->
-        trySafelyCanceling {
-            reactToNetCallResponseReceived.commit(this, response) } },
-        { ex -> ex?.let { ex ->
-            trySafelyCanceling {
-                reactToNetCallRequestFailed.commit(this, ex) } }
-        })
-
-private fun NetCall.exec(scope: Any?, respond: Respond) {
-    markTag(calls)
-    this[INET_CALL].asType<NetCall>()?.call()
+private fun <R> NetCall.execute(scope: Any?, respond: (Response) -> R) =
+    applyMarkTag(calls)[INET_CALL].asType<NetCall>()
+    ?.call()
     ?.execute()
-    ?.run(respond) }
+    ?.run(respond)!!
 
 private fun JobResponseFunction.commit(scope: Any?, response: Response) {
     markTag(calls)
@@ -263,7 +263,7 @@ private fun clearInternetCallbackObjects() {
     netCallRepeatInterval = null }
 
 private typealias NetCall = KCallable<Call?>
-private typealias Respond = (Response) -> Unit
+private typealias ResponseFunction = (Response) -> Unit
 private typealias JobResponseFunction = (Any?, Any?, Response) -> Unit
 private typealias JobThrowableFunction = (Any?, Any?, Throwable) -> Unit
 

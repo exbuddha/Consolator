@@ -2400,12 +2400,12 @@ internal fun reduceTags(vararg tag: TagType) =
 private fun returnTag(it: Any?) =
     it.asCallable().tag?.id
 
-private fun Any?.markValue(tag: TagType) {}
-
 internal fun AnyKCallable.markTag(group: FunctionSet?) =
     tag?.also { group?.save(@Itemize this, it) }
 
-internal fun Any.markTag(group: FunctionSet?) =
+private fun Any?.markValue(tag: TagType) {}
+
+internal fun Any?.markTag(group: FunctionSet?) =
     asCallable().markTag(group)
 
 internal fun Any?.markTag(tag: TagType, group: FunctionSet?) =
@@ -2416,15 +2416,17 @@ internal fun Any.markSequentialTag(tag: TagType?, id: TagType, group: FunctionSe
     reduceTags(tag, TAG_DASH, id)
     .also { this@markSequentialTag.markTag(it, group) } }
 
-private fun <T> T.applyMarkTag(tag: TagType, group: FunctionSet? = jobs) = apply { markTag(tag, group) }
+internal fun <T> T.applyMarkTag(group: FunctionSet?) = apply { markTag(group) }
 
-private fun AnyStep?.markTagForSchExec() = applyMarkTag(SCH_EXEC)
-private fun AnyStep.markTagForSchPost() = applyMarkTag(SCH_POST)
+internal fun <T> T.applyMarkTag(tag: TagType, group: FunctionSet?) = apply { markTag(tag, group) }
 
-private fun AnyCoroutineStep.markTagForFloLaunch() = applyMarkTag(FLO_LAUNCH)
-private fun AnyCoroutineStep.markTagForSchCommit() = applyMarkTag(SCH_COMMIT)
-private fun AnyCoroutineStep.markTagForSchLaunch() = applyMarkTag(SCH_LAUNCH)
-private fun AnyCoroutineStep.markTagForSchPost() = applyMarkTag(SCH_POST)
+private fun AnyStep?.markTagForSchExec() = applyMarkTag(SCH_EXEC, items)
+private fun AnyStep.markTagForSchPost() = applyMarkTag(SCH_POST, items)
+
+private fun AnyCoroutineStep.markTagForFloLaunch() = applyMarkTag(FLO_LAUNCH, jobs)
+private fun AnyCoroutineStep.markTagForSchCommit() = applyMarkTag(SCH_COMMIT, jobs)
+private fun AnyCoroutineStep.markTagForSchLaunch() = applyMarkTag(SCH_LAUNCH, jobs)
+private fun AnyCoroutineStep.markTagForSchPost() = applyMarkTag(SCH_POST, jobs)
 private fun AnyCoroutineStep.markTagForSvcCommit() = applyMarkTag(SVC_COMMIT, items)
 
 private fun Runnable.markTagForClkExec() = applyMarkTag(CLK_EXEC, callbacks)
