@@ -307,6 +307,9 @@ inline fun <reified T : Any> Any?.asType(): T? =
 internal inline fun <reified T : Any> T?.singleton(vararg args: Any?, lock: Any = T::class.lock) =
     commitAsyncForResult(lock, { this === null }, { T::class.new(*args) }, { this }) as T
 
+internal inline fun <T> provided(constructor: () -> T?) =
+    constructor()!!
+
 internal inline fun <T> T?.require(constructor: () -> T) =
     this ?: constructor()
 
