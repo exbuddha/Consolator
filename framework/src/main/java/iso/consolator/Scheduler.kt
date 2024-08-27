@@ -773,6 +773,7 @@ internal suspend fun delayOrYield(dt: Long = 0L) {
     if (dt > 0) delay(dt)
     else if (dt == 0L) yield() }
 
+// convert to contextual function by current job
 suspend fun CoroutineScope.currentContext() =
     currentJob()[CONTEXT].asWeakContext()?.get()!!
 
@@ -1779,7 +1780,7 @@ private fun FunctionSet.saveRunnable(self: AnyKCallable, tag: TagType) =
 private fun FunctionSet.saveMessage(self: AnyKCallable, tag: TagType) =
     save(self, tag, Item.Type.Message)
 
-private open class RunnableItem<R>(override var target: KCallable<R>? = null) : CoroutineItem<R>(target), Adjustable.By<Message, ClockIndex> {
+private open class RunnableItem<R>(override var target: KCallable<R>? = null) : CoroutineItem<R>(target), Adjustable.By<Any, ClockIndex> {
     init {
         type = Type.Runnable }
 
@@ -1788,15 +1789,9 @@ private open class RunnableItem<R>(override var target: KCallable<R>? = null) : 
         onSave(INDEX, index)
         return this }
 
-    override fun onAttachBy(container: Message): RunnableItem<R> {
+    override fun onAttachBy(container: Any): RunnableItem<R> {
         super.onAttachBy(container)
         return this }
-
-    @Suppress("UNCHECKED_CAST")
-    override fun call(vararg args: Any?): R =
-        target?.call().apply {
-        if (this is Runnable) run()
-        else asMessage()?.callback?.run() } as R
 }
 
 private fun Any?.asRunnableItem() = asType<RunnableItem<*>>()
@@ -2485,12 +2480,13 @@ private fun markTagsForClkAttach(step: Any, index: Number) =
     when (step) {
     is Runnable ->
         getTag(step)?.also { tag ->
-        callbacks?.saveRunnable(step.asCallable(), tag)
+        callbacks?.saveRunnable(step::run.asCallable(), tag)
             ?.asRunnableItem()
+            ?.onAttachBy(step)
             ?.onAttach(index) }
     is Message ->
         getTag(step)?.also { tag ->
-        callbacks?.saveRunnable(step.asCallable(), tag)
+        callbacks?.saveRunnable(step.callback::run.asCallable(), tag)
             ?.asRunnableItem()
             ?.onAttachBy(step)
             ?.onAttach(index) }

@@ -48,6 +48,8 @@ fun <R> callbackNegativeType(cls: AnyKClass) = when (cls) {
     else ->
         throw BaseImplementationRestriction() } as R
 
+fun Any?.asInterceptor() = asType<Interceptor>()
+
 typealias InterceptFunction = (Any, AnyKFunction, AnyArray, PostbackFunction?) -> Interception
 typealias PostbackFunction = suspend (Interception) -> Any?
 typealias Interception = Pair<InterceptCallback, InterceptResult>?
