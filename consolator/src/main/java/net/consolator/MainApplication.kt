@@ -10,7 +10,7 @@ internal open class MainApplication : BaseApplication() {
             log(info,
             registerValue(
                 @Tag(INET_MIN_INTERVAL)
-                R.integer.netcall_min_time_interval,
+                R.integer.netcall_min_time_interval.toLong(),
                 ::netcall_min_time_interval),
             "Minimum interval for netcall was found in resource.")
             log(info,

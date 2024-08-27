@@ -12,10 +12,8 @@ import iso.consolator.activity.*
 @LayoutRes
 internal var layoutId = R.layout.background
 
-abstract class BaseActivity : AppCompatActivity(), TransitionManager, ReferredContext {
-    @Coordinate(key = 1)
+sealed class BaseActivity : AppCompatActivity(), TransitionManager, ReferredContext {
     internal var enableNetworkCallbacks: Work? = null
-    @Coordinate(key = 2)
     internal var disableNetworkCallbacks: Work? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {

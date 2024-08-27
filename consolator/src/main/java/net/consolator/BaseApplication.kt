@@ -6,7 +6,7 @@ import ctx.consolator.*
 import iso.consolator.*
 import iso.consolator.application.*
 
-open class BaseApplication : Application(), UniqueContext {
+sealed class BaseApplication : Application(), UniqueContext {
     override var startTime = now()
 
     init {
