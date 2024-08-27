@@ -148,7 +148,7 @@ private var lastNetCallResponseTime = 0L
         if (value > field || value == 0L)
             field = value }
 
-private fun <R> NetCall.commit(scope: Any?, block: () -> R) =
+internal fun <R> NetCall.commit(scope: Any?, block: () -> R) =
     scope.asCoroutineScope()?.run {
     lock(this, block) }
 
@@ -162,7 +162,7 @@ private fun NetCall.asCallable() =
 
 private fun NetCall.asProperty() = this as KProperty
 
-private suspend fun NetCall.send(scope: Any?) =
+internal suspend fun NetCall.send(scope: Any?) =
     scope.asCoroutineScope()?.run {
     tryCancelingForResult({
         exec(this) { response ->
