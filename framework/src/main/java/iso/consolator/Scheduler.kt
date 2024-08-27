@@ -266,6 +266,12 @@ object Scheduler : SchedulerScope, MutableLiveData<AnyStep?>(), AnyStepObserver,
     internal operator fun <R> invoke(work: Scheduler.() -> R) = this.work()
 }
 
+fun schedule(step: Step) =
+    SchedulerScope.repostByPreference(step, AnyStep::post, ::handle)
+
+internal fun scheduleAhead(step: Step) =
+    SchedulerScope.repostByPreference(step, AnyStep::postAhead, ::handleAhead)
+
 sealed interface SchedulerScope : ResolverScope {
     companion object {
         internal fun init() {
@@ -290,6 +296,28 @@ sealed interface SchedulerScope : ResolverScope {
         internal fun avoidScheduler() {
             if (isSchedulerPreferred)
                 preferClock() }
+
+        internal fun repostByPreference(step: CoroutineStep, post: AnyStepFunction, handle: CoroutineFunction) =
+            repostByPreference(
+                { post(step.markTagForSchPost().toStep()) },
+                { handle(step) })
+
+        internal fun repostByPreference(step: Step, post: AnyStepFunction, handle: CoroutineFunction) =
+            repostByPreference(
+                { post(step.markTagForSchPost()) },
+                { handle(step.toCoroutine()) })
+
+        private inline fun repostByPreference(post: Work, handle: Work) = when {
+            isSchedulerPreferred &&
+            isSchedulerObserved ->
+                post()
+            isClockPreferred &&
+            Clock.isRunning ->
+                handle()
+            isSchedulerObserved ->
+                post()
+            else ->
+                currentThread.interrupt() }
 
         internal val isClockPreferred
             get() = DEFAULT_RESOLVER === HandlerScope
@@ -409,6 +437,12 @@ private fun detach(step: AnyCoroutineStep) =
     ?.asCoroutine() } })
     ?: step
 
+internal fun repost(step: CoroutineStep) =
+    SchedulerScope.repostByPreference(step, AnyStep::post, ::handle)
+
+internal fun repostAhead(step: CoroutineStep) =
+    SchedulerScope.repostByPreference(step, AnyStep::postAhead, ::handleAhead)
+
 private fun launch(it: AnyCoroutineStep) =
     it.annotatedScopeOrScheduler().launch { it() }
 
@@ -431,10 +465,13 @@ internal sealed interface SchedulerContext : CoroutineContext {
 private interface SchedulerElement : CoroutineContext.Element {
     companion object : SchedulerElement {
         override val key
-            get() = SchedulerKey } }
+            get() = SchedulerKey
+    }
+}
 
 private interface SchedulerKey : CoroutineContext.Key<SchedulerElement> {
-    companion object : SchedulerKey }
+    companion object : SchedulerKey
+}
 
 internal fun CoroutineScope.relaunch(instance: JobKProperty, group: FunctionSet?, context: CoroutineContext = SchedulerContext, start: CoroutineStart = CoroutineStart.DEFAULT, step: CoroutineStep) =
     relaunch(::launch, instance, context, start, step)
@@ -752,13 +789,13 @@ fun CoroutineScope.change(stage: ContextStep) =
 internal fun <R> CoroutineScope.change(member: KFunction<R>, stage: ContextStep) =
     EventBus.commit(stage)
 
-internal fun <R> CoroutineScope.change(owner: LifecycleOwner, member: KFunction<R>, stage: ContextStep) =
+internal fun <R> CoroutineScope.changeLocally(owner: LifecycleOwner, member: KFunction<R>, stage: ContextStep) =
     EventBus.commit(stage)
 
-internal fun <R> CoroutineScope.change(ref: WeakContext, member: KFunction<R>, stage: ContextStep) =
+internal fun <R> CoroutineScope.changeBroadly(ref: WeakContext, member: KFunction<R>, stage: ContextStep) =
     EventBus.commit(stage)
 
-internal fun <R> CoroutineScope.change(ref: WeakContext, owner: LifecycleOwner, member: KFunction<R>, stage: ContextStep) =
+internal fun <R> CoroutineScope.changeGlobally(owner: LifecycleOwner, ref: WeakContext, member: KFunction<R>, stage: ContextStep) =
     EventBus.commit(stage)
 
 // job functions provide detailed continuations for each step
@@ -947,10 +984,6 @@ internal fun SequencerScope.resetByTag(tag: TagType) = iso.consolator.resetByTag
 private fun reset() { sequencer?.reset() }
 private fun resetByTag(tag: TagType) { sequencer?.resetByTag(tag) }
 
-private fun getTag(stage: ContextStep): TagType = TODO()
-
-private fun Step.toLiveStep(): SequencerStep = { invoke() }
-
 private inline fun <R> sequencer(block: Sequencer.() -> R) = sequencer?.block()
 
 private var sequencer: Sequencer? = null
@@ -958,7 +991,7 @@ private var sequencer: Sequencer? = null
 
 private typealias SequencerIndex = Int
 
-private class Sequencer : Synchronizer<LiveWork>, Transactor<Int, Boolean?>, PriorityQueue<Int>, AdjustOperator<LiveWork, Int> {
+private class Sequencer : Synchronizer<LiveWork>, Transactor<SequencerIndex, Boolean?>, PriorityQueue<SequencerIndex>, AdjustOperator<LiveWork, SequencerIndex> {
     constructor() : this(DEFAULT_OBSERVER)
 
     private constructor(observer: StepObserver) {
@@ -1666,71 +1699,8 @@ internal inline fun <R, S : R> commitAsyncForResult(lock: Any, predicate: Predic
             if (predicate()) return block() }
     return fallback() }
 
-internal fun Any?.toJobId() = asJob().hashCode()
-
-internal suspend fun currentJob() = currentCoroutineContext().job
-internal fun currentThreadJob() = ::currentJob.block()
-
-private val Job.isNotActive get() = !isActive
-
-internal fun <T> blockOf(step: suspend CoroutineScope.() -> T): () -> T = { runBlocking(block = step) }
-internal fun <T> runnableOf(step: suspend CoroutineScope.() -> T) = Runnable { runBlocking(block = step) }
-internal fun <T> safeRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { trySafely(blockOf(step)) }
-internal fun <T> interruptingRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { tryInterrupting(step) }
-internal fun <T> safeInterruptingRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { trySafelyInterrupting(step) }
-
-internal fun <T> blockOf(step: suspend () -> T): () -> T = step::block
-internal fun <T> runnableOf(step: suspend () -> T) = Runnable { step.block() }
-internal fun <T> safeRunnableOf(step: suspend () -> T) = Runnable { trySafely(blockOf(step)) }
-internal fun <T> interruptingRunnableOf(step: suspend () -> T) = Runnable { tryInterrupting(blockOf(step)) }
-internal fun <T> safeInterruptingRunnableOf(step: suspend () -> T) = Runnable { trySafelyInterrupting(blockOf(step)) }
-
-internal fun <R> (suspend () -> R).block() = runBlocking { invoke() }
-internal fun <T, R> (suspend T.() -> R).block(scope: T) = runBlocking { invoke(scope) }
-internal fun <T, U, R> (suspend T.(U) -> R).block(scope: T, value: U) = runBlocking { invoke(scope, value) }
-internal fun <T, U, R> (suspend T.(U) -> R).block(scope: () -> T, value: U) = runBlocking { invoke(scope(), value) }
-internal fun <T, U, R> (suspend T.(U) -> R).block(scope: KCallable<T>, value: U) = runBlocking { invoke(scope.call(), value) }
-
 private fun AnyStep.post() = Scheduler.postValue(this)
 private fun AnyStep.postAhead() { Scheduler.value = this }
-
-fun schedule(step: Step) =
-    repostByPreference(step, AnyStep::post, ::handle)
-
-internal fun scheduleAhead(step: Step) =
-    repostByPreference(step, AnyStep::postAhead, ::handleAhead)
-
-internal fun repost(step: CoroutineStep) =
-    repostByPreference(step, AnyStep::post, ::handle)
-
-internal fun repostAhead(step: CoroutineStep) =
-    repostByPreference(step, AnyStep::postAhead, ::handleAhead)
-
-private fun repostByPreference(step: CoroutineStep, post: AnyStepFunction, handle: CoroutineFunction) =
-    repostByPreference(
-        { post(step.markTagForSchPost().toStep()) },
-        { handle(step) })
-
-private fun repostByPreference(step: Step, post: AnyStepFunction, handle: CoroutineFunction) =
-    repostByPreference(
-        { post(step.markTagForSchPost()) },
-        { handle(step.toCoroutine()) })
-
-private inline fun repostByPreference(post: Work, handle: Work) = with(SchedulerScope) { when {
-    isSchedulerPreferred &&
-    isSchedulerObserved ->
-        post()
-    isClockPreferred &&
-    Clock.isRunning ->
-        handle()
-    isSchedulerObserved ->
-        post()
-    else ->
-        currentThread.interrupt() } }
-
-private fun Step.toCoroutine(): CoroutineStep = { this@toCoroutine() }
-
-private fun AnyCoroutineStep.toStep() = suspend { invoke(annotatedOrSchedulerScope()) }
 
 // step <-> runnable
 internal fun handle(step: AnyCoroutineStep) = post(runnableOf(step))
@@ -1745,8 +1715,6 @@ internal fun handleAheadSafelyInterrupting(step: CoroutineStep) = postAhead(safe
 private fun Runnable.asCoroutine() =
     Clock.getCoroutine(this) ?: toCoroutine()
 
-private fun Runnable.toCoroutine(): CoroutineStep = { run() }
-
 // step <-> runnable
 internal fun reinvoke(step: Step) = post(runnableOf(step))
 internal fun reinvokeAhead(step: Step) = postAhead(runnableOf(step))
@@ -1759,8 +1727,6 @@ internal fun reinvokeAheadSafelyInterrupting(step: Step) = postAhead(safeInterru
 
 private fun Runnable.asStep() =
     Clock.getStep(this) ?: toStep()
-
-private fun Runnable.toStep() = suspend { run() }
 
 // runnable <-> message
 internal fun post(callback: Runnable) = clock?.post?.invoke(callback)
@@ -1819,9 +1785,9 @@ infix fun Runnable.onError(action: Runnable): Runnable = this
 
 infix fun Runnable.onTimeout(action: Runnable): Runnable = this
 
-private fun Message.asStep() = callback.asStep()
-
 private fun Message.asCoroutine() = callback.asCoroutine()
+
+private fun Message.asStep() = callback.asStep()
 
 private fun Message.asRunnable() = callback
 
@@ -2118,6 +2084,9 @@ object EventBus : AbstractFlow<Any?>(), Transactor<ContextStep, Boolean>, Priori
     override fun commit(step: ContextStep) =
         queue.add(step)
 
+    @JvmStatic fun commit(step: AnyStep) =
+        queue.add(step)
+
     @JvmStatic fun commit(event: Transit) =
         queue.add(event)
 
@@ -2131,69 +2100,15 @@ object EventBus : AbstractFlow<Any?>(), Transactor<ContextStep, Boolean>, Priori
 }
 
 fun AnyStep.relay(transit: Transit = this.transit) =
-    Relay(transit)
-
-fun AnyStep.reinvoke(transit: Transit = this.transit) =
-    object : Relay(transit) {
-        override suspend fun invoke() = this@reinvoke() }
-
-open class Relay(val transit: Transit = null) : AnyStep {
-    override suspend fun invoke(): Any? = Unit
-}
-
-@Retention(SOURCE)
-@Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
-@Repeatable
-annotation class Event(
-    @JvmField val transit: TransitType = 0) {
-
-    @Retention(SOURCE)
-    @Target(FUNCTION, EXPRESSION)
-    @Repeatable
-    annotation class Listening(
-        @JvmField val channel: ChannelType = 0,
-        @JvmField val timeout: Long = 0L) {
-
-        @Retention(SOURCE)
-        @Target(EXPRESSION)
-        @Repeatable
-        annotation class OnEvent(
-            @JvmField val transit: TransitType)
-    }
-
-    @Retention(SOURCE)
-    @Target(FUNCTION, EXPRESSION)
-    @Repeatable
-    annotation class Committing(
-        @JvmField val channel: ChannelType = 0)
-
-    @Retention(SOURCE)
-    @Target(FUNCTION, EXPRESSION)
-    annotation class Retrying(
-        @JvmField val channel: ChannelType = 0)
-
-    @Retention(SOURCE)
-    @Target(FUNCTION, EXPRESSION)
-    annotation class Repeating(
-        @JvmField val channel: ChannelType = 0,
-        @JvmField val count: Int = 0)
-}
-
-@Retention(SOURCE)
-@Target(FUNCTION, EXPRESSION)
-annotation class Delay(
-    @JvmField val millis: Long = 0L)
-
-@Retention(SOURCE)
-@Target(FUNCTION, EXPRESSION)
-annotation class Timeout(
-    @JvmField val millis: Long = -1L)
+    EventBus.run {
+    commit(this@relay) &&
+    commit(transit) }
 
 private open class Item<R>(override var target: KCallable<R>? = null) : Addressed<R>, Tagged, KCallable<R> by target ?: Reference({ target }) {
     open fun onSave(subtag: TagType, value: Any?) = this.also { when {
         subtag === FUNC ->
             if (target === null)
-                value?.asType<KCallable<R>>()?.apply(::setTarget)
+                value.asType<KCallable<R>>()?.apply(::setTarget)
             else {
                 /* save sub-function */ }
     } }
@@ -2433,6 +2348,7 @@ private fun Runnable.markTagForClkExec() = applyMarkTag(CLK_EXEC, callbacks)
 
 private fun SequencerStep.setTagTo(step: Step) = this
 
+private fun getTag(stage: ContextStep): TagType = TODO()
 private fun getTag(callback: Runnable): TagType? = TODO()
 private fun getTag(msg: Message): TagType? = TODO()
 private fun getTag(what: Int): TagType? = TODO()
@@ -2500,6 +2416,131 @@ private fun markTagsForClkAttach(step: Any, index: Number) =
     else ->
         null }
 
+internal interface Expiry : MutableSet<Lifetime> {
+    fun unsetAll(property: AnyKMutableProperty) {
+        // must be strengthened by connecting to other expiry sets
+        forEach { alive ->
+        if (alive(property) == false && State.of(property) !== Lock.Closed)
+            property.expire() } }
+
+    companion object : Expiry {
+        override fun add(element: Lifetime) = false
+        override fun addAll(elements: Collection<Lifetime>) = false
+        override fun clear() {}
+        override fun iterator(): MutableIterator<Lifetime> = TODO()
+        override fun remove(element: Lifetime): Boolean = false
+        override fun removeAll(elements: Collection<Lifetime>) = false
+        override fun retainAll(elements: Collection<Lifetime>) = false
+        override fun contains(element: Lifetime) = false
+        override fun containsAll(elements: Collection<Lifetime>) = false
+        override fun isEmpty() = true
+        override val size: Int
+            get() = 0
+    }
+}
+
+fun AnyKMutableProperty.expire() = set(null)
+
+private open class ObjectReference<R>(obj: R) : PropertyReference<R>(obj), KMutableProperty<R> {
+    override val setter = requireReference().setter
+}
+
+open class PropertyReference<R>(obj: R) : CallableReference<R>(obj), KProperty<R> {
+    override val getter = requireReference().getter
+    override val isConst = requireReference().isConst
+    override val isLateinit = requireReference().isLateinit
+}
+
+open class CallableReference<R>(private var obj: R) : Reference<R>(obj) {
+    final override fun setObject(obj: R) { this.obj = obj }
+    final override fun requireReference() = ::obj
+}
+
+open class Reference<R>(private val pointer: (() -> KCallable<R>?)? = null) : KCallable<R> {
+    internal constructor(obj: R) : this() { setObject(obj) }
+
+    internal open fun setObject(obj: R) = Unit
+    internal open fun requireReference(): KCallable<R> = pointer?.invoke()!!
+    
+    override fun call(vararg args: Any?) = requireReference().call(*args)
+    override fun callBy(args: KParameterMap) = call(*mapToTypedArray(args))
+    override val annotations = requireReference().annotations
+    override val isAbstract = requireReference().isAbstract
+    override val isFinal = requireReference().isFinal
+    override val isOpen = requireReference().isOpen
+    override val isSuspend = requireReference().isSuspend
+    override val name = requireReference().name
+    override val parameters = requireReference().parameters
+    override val returnType = requireReference().returnType
+    override val typeParameters = requireReference().typeParameters
+    override val visibility = requireReference().visibility
+}
+
+internal fun <R> R.asMutableProperty(): KMutableProperty<R> =
+    if (this is ObjectReference<*>)
+        asType()!!
+    else ObjectReference(this)
+
+internal fun <R> R.asProperty(): KProperty<R> =
+    if (this is PropertyReference<*>)
+        asType()!!
+    else PropertyReference(this)
+
+internal fun <R> R.asCallable(): KCallable<R> =
+    if (this is CallableReference<*>)
+        asType()!!
+    else CallableReference(this)
+
+fun <R> R.asReference() = Reference(this)
+
+typealias TagType = String
+private typealias TagTypePointer = () -> TagType?
+
+private fun Any?.asTagType() = asType<TagType>()
+
+private fun Number.toTagType() =
+    (if (TagType::class.isNumber)
+        this
+    else toString()).asTagType()!!
+
+private fun String.toTagType() =
+    (if (TagType::class.isNumber)
+        toInt()
+    else this).asTagType()!!
+
+private fun Any?.hashTag() = hashCode().toTagType()
+
+private typealias PathType = String
+private typealias PathArray = Array<PathType>
+
+private val KClass<TagType>.isNumber get() = TagType::class !== String::class
+private val KClass<TagType>.isString get() = TagType::class === String::class
+
+private fun String.concat(it: String) = this + it
+
+internal fun Array<out Tag>.mapToTagArray() = mapToTypedArray { it.id }
+
+internal fun Array<out Path>.mapToTagArray() = mapToTypedArray { it.id }
+
+internal typealias LevelType = Byte
+
+internal fun Number.toLevel() = toByte()
+
+internal typealias ChannelType = Short
+
+internal fun Number?.toChannel() = this?.asType<ChannelType>()
+
+private typealias TransitType = Short
+private typealias Transit = TransitType?
+
+internal fun Number?.toTransit() = this?.asType<TransitType>()
+
+private typealias KeyType = Short
+
+internal fun Number?.toCoordinateTarget(): AnyKClass = Any::class
+
+internal fun Number?.toCoordinateKey() = this?.asType<KeyType>()
+
 @Retention(SOURCE)
 @Target(ANNOTATION_CLASS, CLASS, CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
 annotation class Coordinate(
@@ -2524,6 +2565,54 @@ annotation class Tag(
 @Retention(SOURCE)
 @Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
 internal annotation class Keep
+
+@Retention(SOURCE)
+@Target(CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
+@Repeatable
+annotation class Event(
+    @JvmField val transit: TransitType = 0) {
+
+    @Retention(SOURCE)
+    @Target(FUNCTION, EXPRESSION)
+    @Repeatable
+    annotation class Listening(
+        @JvmField val channel: ChannelType = 0,
+        @JvmField val timeout: Long = 0L) {
+
+        @Retention(SOURCE)
+        @Target(EXPRESSION)
+        @Repeatable
+        annotation class OnEvent(
+            @JvmField val transit: TransitType)
+    }
+
+    @Retention(SOURCE)
+    @Target(FUNCTION, EXPRESSION)
+    @Repeatable
+    annotation class Committing(
+        @JvmField val channel: ChannelType = 0)
+
+    @Retention(SOURCE)
+    @Target(FUNCTION, EXPRESSION)
+    annotation class Retrying(
+        @JvmField val channel: ChannelType = 0)
+
+    @Retention(SOURCE)
+    @Target(FUNCTION, EXPRESSION)
+    annotation class Repeating(
+        @JvmField val channel: ChannelType = 0,
+        @JvmField val count: Int = 0)
+}
+
+@Retention(SOURCE)
+@Target(FUNCTION, EXPRESSION)
+annotation class Delay(
+    @JvmField val millis: Long = 0L)
+
+@Retention(SOURCE)
+@Target(FUNCTION, EXPRESSION)
+annotation class Timeout(
+    @JvmField val millis: Long = -1L)
 
 @Retention(SOURCE)
 @Target(ANNOTATION_CLASS, CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION)
@@ -2648,6 +2737,11 @@ private val AnyKCallable.event
 private val AnyKCallable.events
     get() = annotations.filterIsInstance<Event>()
 
+internal val Any?.transit: Transit
+    get() = when (this) {
+        is Number -> toTransit()
+        else -> asCallable().event?.transit }
+
 private val AnyKCallable.schedulerScope
     get() = annotations.find { it is Scope } as? Scope
 
@@ -2695,147 +2789,15 @@ private inline fun <reified T : Annotation> AnyKCallable.hasAnnotationType() =
 private inline fun <reified T : Annotation> Any.hasAnnotationType() =
     asCallable().hasAnnotationType<T>()
 
-private typealias PropertyCondition = suspend (AnyKProperty, TagType, AnyStep) -> Any?
-private typealias PropertyPredicate = suspend (AnyKProperty) -> Boolean
-private typealias PropertyState = suspend (AnyKProperty) -> Any?
+private fun AnyCoroutineStep.toStep() = suspend { invoke(annotatedOrSchedulerScope()) }
 
-private typealias PredicateFunction = suspend () -> Boolean
-private typealias DelayFunction = suspend () -> Long
+private fun Step.toCoroutine(): CoroutineStep = { this@toCoroutine() }
 
-internal interface Expiry : MutableSet<Lifetime> {
-    fun unsetAll(property: AnyKMutableProperty) {
-        // must be strengthened by connecting to other expiry sets
-        forEach { alive ->
-        if (alive(property) == false && State.of(property) !== Lock.Closed)
-            property.expire() } }
+private fun Step.toLiveStep(): SequencerStep = { invoke() }
 
-    companion object : Expiry {
-        override fun add(element: Lifetime) = false
-        override fun addAll(elements: Collection<Lifetime>) = false
-        override fun clear() {}
-        override fun iterator(): MutableIterator<Lifetime> = TODO()
-        override fun remove(element: Lifetime): Boolean = false
-        override fun removeAll(elements: Collection<Lifetime>) = false
-        override fun retainAll(elements: Collection<Lifetime>) = false
-        override fun contains(element: Lifetime) = false
-        override fun containsAll(elements: Collection<Lifetime>) = false
-        override fun isEmpty() = true
-        override val size: Int
-            get() = 0
-    }
-}
+private fun Runnable.toCoroutine(): CoroutineStep = { run() }
 
-private typealias Lifetime = (AnyKMutableProperty) -> Boolean?
-
-fun AnyKMutableProperty.expire() = set(null)
-
-private open class ObjectReference<R>(obj: R) : PropertyReference<R>(obj), KMutableProperty<R> {
-    override val setter = requireReference().setter
-}
-
-open class PropertyReference<R>(obj: R) : CallableReference<R>(obj), KProperty<R> {
-    override val getter = requireReference().getter
-    override val isConst = requireReference().isConst
-    override val isLateinit = requireReference().isLateinit
-}
-
-open class CallableReference<R>(private var obj: R) : Reference<R>(obj) {
-    final override fun setObject(obj: R) { this.obj = obj }
-    final override fun requireReference() = ::obj
-}
-
-open class Reference<R>(private val pointer: (() -> KCallable<R>?)? = null) : KCallable<R> {
-    internal constructor(obj: R) : this() { setObject(obj) }
-
-    internal open fun setObject(obj: R) = Unit
-    internal open fun requireReference(): KCallable<R> = pointer?.invoke()!!
-    
-    override fun call(vararg args: Any?) = requireReference().call(*args)
-    override fun callBy(args: KParameterMap) = call(*mapToTypedArray(args))
-    override val annotations = requireReference().annotations
-    override val isAbstract = requireReference().isAbstract
-    override val isFinal = requireReference().isFinal
-    override val isOpen = requireReference().isOpen
-    override val isSuspend = requireReference().isSuspend
-    override val name = requireReference().name
-    override val parameters = requireReference().parameters
-    override val returnType = requireReference().returnType
-    override val typeParameters = requireReference().typeParameters
-    override val visibility = requireReference().visibility
-}
-
-internal fun <R> R.asMutableProperty(): KMutableProperty<R> =
-    if (this is ObjectReference<*>)
-        asType()!!
-    else ObjectReference(this)
-
-internal fun <R> R.asProperty(): KProperty<R> =
-    if (this is PropertyReference<*>)
-        asType()!!
-    else PropertyReference(this)
-
-internal fun <R> R.asCallable(): KCallable<R> =
-    if (this is CallableReference<*>)
-        asType()!!
-    else CallableReference(this)
-
-fun <R> R.asReference() = Reference(this)
-
-internal fun trueWhenNull(it: Any?) = it === null
-
-private typealias TransitType = Short
-private typealias Transit = TransitType?
-
-internal val Any?.transit: Transit
-    get() = when (this) {
-        is Relay -> transit
-        is Number -> toTransit()
-        else -> asCallable().event?.transit }
-
-internal fun Number?.toTransit() = this?.asType<TransitType>()
-
-private typealias KeyType = Short
-
-internal fun Number?.toCoordinateTarget(): AnyKClass = Any::class
-
-internal fun Number?.toCoordinateKey() = this?.asType<KeyType>()
-
-internal typealias ChannelType = Short
-
-internal fun Number?.toChannel() = this?.asType<ChannelType>()
-
-typealias TagType = String
-private typealias TagTypePointer = () -> TagType?
-
-private fun Any?.asTagType() = asType<TagType>()
-
-private fun Number.toTagType() =
-    (if (TagType::class.isNumber)
-        this
-    else toString()).asTagType()!!
-
-private fun String.toTagType() =
-    (if (TagType::class.isNumber)
-        toInt()
-    else this).asTagType()!!
-
-private fun Any?.hashTag() = hashCode().toTagType()
-
-private typealias PathType = String
-private typealias PathArray = Array<PathType>
-
-private val KClass<TagType>.isNumber get() = TagType::class !== String::class
-private val KClass<TagType>.isString get() = TagType::class === String::class
-
-private fun String.concat(it: String) = this + it
-
-internal fun Array<out Tag>.mapToTagArray() = mapToTypedArray { it.id }
-
-internal fun Array<out Path>.mapToTagArray() = mapToTypedArray { it.id }
-
-internal typealias LevelType = Byte
-
-internal fun Number.toLevel() = toByte()
+private fun Runnable.toStep() = suspend { run() }
 
 fun Any?.asLifecycleOwner() = asType<LifecycleOwner>()
 internal fun Any?.asCoroutineScope() = asType<CoroutineScope>()
@@ -2868,6 +2830,13 @@ internal typealias AnyJobFunction = suspend (Any?, Any?) -> Any?
 internal typealias JobContinuation = suspend (Any?, Any?, Any?) -> Unit
 internal typealias AnyJobContinuation = suspend (Any?, Any?, Any?) -> Any?
 private typealias JobPredicate = (Job) -> Boolean
+private typealias PredicateFunction = suspend () -> Boolean
+private typealias DelayFunction = suspend () -> Long
+
+private typealias PropertyCondition = suspend (AnyKProperty, TagType, AnyStep) -> Any?
+private typealias PropertyPredicate = suspend (AnyKProperty) -> Boolean
+private typealias PropertyState = suspend (AnyKProperty) -> Any?
+private typealias Lifetime = (AnyKMutableProperty) -> Boolean?
 
 internal typealias FunctionSet = MutableSet<FunctionItem>
 private typealias FunctionItem = TagTypeToAnyPair
@@ -2907,6 +2876,31 @@ val emptyStep = suspend {}
 
 internal val processLifecycleScope
     get() = ProcessLifecycleOwner.get().lifecycleScope
+
+internal fun Any?.toJobId() = asJob().hashCode()
+
+internal suspend fun currentJob() = currentCoroutineContext().job
+internal fun currentThreadJob() = ::currentJob.block()
+
+private val Job.isNotActive get() = !isActive
+
+internal fun <T> blockOf(step: suspend CoroutineScope.() -> T): () -> T = { runBlocking(block = step) }
+internal fun <T> runnableOf(step: suspend CoroutineScope.() -> T) = Runnable { runBlocking(block = step) }
+internal fun <T> safeRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { trySafely(blockOf(step)) }
+internal fun <T> interruptingRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { tryInterrupting(step) }
+internal fun <T> safeInterruptingRunnableOf(step: suspend CoroutineScope.() -> T) = Runnable { trySafelyInterrupting(step) }
+
+internal fun <T> blockOf(step: suspend () -> T): () -> T = step::block
+internal fun <T> runnableOf(step: suspend () -> T) = Runnable { step.block() }
+internal fun <T> safeRunnableOf(step: suspend () -> T) = Runnable { trySafely(blockOf(step)) }
+internal fun <T> interruptingRunnableOf(step: suspend () -> T) = Runnable { tryInterrupting(blockOf(step)) }
+internal fun <T> safeInterruptingRunnableOf(step: suspend () -> T) = Runnable { trySafelyInterrupting(blockOf(step)) }
+
+internal fun <R> (suspend () -> R).block() = runBlocking { invoke() }
+internal fun <T, R> (suspend T.() -> R).block(scope: T) = runBlocking { invoke(scope) }
+internal fun <T, U, R> (suspend T.(U) -> R).block(scope: T, value: U) = runBlocking { invoke(scope, value) }
+internal fun <T, U, R> (suspend T.(U) -> R).block(scope: () -> T, value: U) = runBlocking { invoke(scope(), value) }
+internal fun <T, U, R> (suspend T.(U) -> R).block(scope: KCallable<T>, value: U) = runBlocking { invoke(scope.call(), value) }
 
 val currentThread get() = Thread.currentThread()
 internal val mainThread = currentThread

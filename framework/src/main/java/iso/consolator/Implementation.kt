@@ -66,7 +66,7 @@ internal fun Context.changeLocally(owner: LifecycleOwner, stage: ContextStep) =
 internal fun Context.changeBroadly(ref: WeakContext = asWeakReference(), stage: ContextStep) =
     commit { stage(this) }
 
-internal fun Context.changeGlobally(ref: WeakContext = asWeakReference(), owner: LifecycleOwner, stage: ContextStep) =
+internal fun Context.changeGlobally(owner: LifecycleOwner, ref: WeakContext = asWeakReference(), stage: ContextStep) =
     commit { stage(this) }
 
 @Diverging([STAGE_BUILD_APP_DB])
@@ -204,8 +204,7 @@ internal inline fun <R> Predicate.otherwise(block: () -> R) =
 
 internal fun Predicate.not(): Predicate = { this().not() }
 
-@Suppress("UNCHECKED_CAST")
-internal fun <R> Unit.type() = this as R
+internal fun trueWhenNull(it: Any?) = it === null
 
 internal inline fun <reified T : Throwable, R> tryCatching(block: () -> R, predicate: ThrowablePredicate = { it is T }, exit: ThrowableNothing = { throw it }) =
     try { block() }
@@ -372,8 +371,8 @@ internal fun <T> KProperty<T?>.isFalse() = get() == false
 
 fun <R> KFunction<R>.returnType() = returnType.jvmErasure
 
-internal fun Byte.toPercentage() =
-    (this * 100 / Byte.MAX_VALUE).toByte()
+@Suppress("UNCHECKED_CAST")
+internal fun <R> Unit.type() = this as R
 
 fun Any?.asObjectProvider() = asType<ObjectProvider>()
 fun Any?.asFunctionProvider() = asType<FunctionProvider>()
