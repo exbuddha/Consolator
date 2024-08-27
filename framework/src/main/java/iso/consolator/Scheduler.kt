@@ -2203,6 +2203,20 @@ private open class Item<R>(override var target: KCallable<R>? = null) : Addresse
         onSave(CTX_STEP, stage)
         onSave(FORM, form) }
 
+    companion object {
+        @JvmStatic fun <T> find(ref: Coordinate): T = TODO()
+
+        @JvmStatic fun <T> find(target: AnyKClass = Any::class, key: KeyType): T = TODO()
+
+        @JvmStatic fun <R, I : Item<R>> Item<R>.reload(property: KCallable<R>): I = TODO()
+
+        @JvmStatic fun <R, I : Item<R>> Item<R>.reload(tag: Tag): I = TODO()
+
+        @JvmStatic fun <R, I : Item<R>> Item<R>.reload(tag: TagType): I = TODO()
+
+        @JvmStatic fun <R, I : Item<R>> Item<R>.reload(target: AnyKClass, key: KeyType): I = TODO()
+    }
+
     override fun setTarget(target: KCallable<R>): Item<R> {
         this.target = target
         return this }
@@ -2222,18 +2236,6 @@ private open class Item<R>(override var target: KCallable<R>? = null) : Addresse
 
     enum class Type { Coroutine, JobFunction, ContextStep, SchedulerStep, LiveStep, Step, Work, Runnable, Message, Lock, State }
 
-    companion object {
-        @JvmStatic fun <T> find(ref: Coordinate): T = TODO()
-
-        @JvmStatic fun <T> find(target: AnyKClass = Any::class, key: KeyType): T = TODO()
-
-        @JvmStatic fun <R, I : Item<R>> Item<R>.reload(property: KCallable<R>): I = TODO()
-
-        @JvmStatic fun <R, I : Item<R>> Item<R>.reload(tag: TagType): I = TODO()
-
-        @JvmStatic fun <R, I : Item<R>> Item<R>.reload(target: AnyKClass, key: KeyType): I = TODO()
-    }
-
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is Item<*>) return other == target
@@ -2251,7 +2253,7 @@ private open class Item<R>(override var target: KCallable<R>? = null) : Addresse
     constructor(value: V) : this(PropertyReference(value)) {
         this.value.tag?.let { register(it) } }
 
-    companion object : MutableMap<Any, KCallable<*>> by mutableMapOf() {
+    internal companion object : MutableMap<Any, KCallable<*>> by mutableMapOf() {
         @JvmStatic private fun <V> Value<V>.register(tag: Tag) = set(tag, this)
 
         @JvmStatic private fun <V> Value<V>.saveTag(tag: TagType) = set(tag, this)
@@ -2259,14 +2261,14 @@ private open class Item<R>(override var target: KCallable<R>? = null) : Addresse
         @JvmStatic private fun <V> Value<V>.saveTarget(target: KCallable<V>) =
             target.tag?.let { set(it, target) }
 
-        @JvmStatic internal inline fun <reified V : Any> filterByTag(target: KCallable<V>, transform: (Tag, Any) -> TagType? = ::matchByTagOrValue, comparator: TagType.(Any?) -> Boolean = TagType::equals) =
+        @JvmStatic inline fun <reified V : Any> filterByTag(target: KCallable<V>, transform: (Tag, Any) -> TagType? = ::matchByTagOrValue, comparator: TagType.(Any?) -> Boolean = TagType::equals) =
             target.tag?.let { tag ->
                 filter { it.key.let { key ->
                     key !== tag &&
                     comparator(tag.id, transform(tag, key)) }
                 }.values }
 
-        @JvmStatic internal inline fun <reified V : Any> findByTag(target: KCallable<V>, transform: (Tag, Any) -> TagType? = ::matchByTagOrValue, comparator: TagType.(Any?) -> Boolean = TagType::equals): V? =
+        @JvmStatic inline fun <reified V : Any> findByTag(target: KCallable<V>, transform: (Tag, Any) -> TagType? = ::matchByTagOrValue, comparator: TagType.(Any?) -> Boolean = TagType::equals): V? =
             filterByTag(target, transform)?.firstOrNull()?.call().asType<V>()
 
         @JvmStatic private fun matchByTagOrValue(tag: Tag, key: Any) =
