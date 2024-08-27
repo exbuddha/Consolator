@@ -162,16 +162,20 @@ private fun NetCall.asCallable() =
 
 private fun NetCall.asProperty() = this as KProperty
 
-internal suspend fun NetCall.send(scope: Any?) =
+internal suspend fun NetCall.send(scope: Any?, respond: Respond, exit: ThrowableFunction) =
     scope.asCoroutineScope()?.run {
     tryCancelingForResult({
-        exec(this) { response ->
+        exec(this, respond)
+    }, exit) }
+
+internal suspend fun NetCall.send(scope: Any?) =
+    send(this, { response ->
         trySafelyCanceling {
-            reactToNetCallResponseReceived.commit(this, response) } }
-    }, { ex ->
-        trySafelyCanceling {
-            reactToNetCallRequestFailed.commit(this, ex) }
-    }) }
+            reactToNetCallResponseReceived.commit(this, response) } },
+        { ex -> ex?.let { ex ->
+            trySafelyCanceling {
+                reactToNetCallRequestFailed.commit(this, ex) } }
+        })
 
 private fun NetCall.exec(scope: Any?, respond: Respond) {
     markTag(calls)
