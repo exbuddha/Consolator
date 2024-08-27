@@ -181,6 +181,21 @@ interface BaseServiceScope : ResolverScope, ReferredContext, UniqueContext {
 
 @Coordinate
 object Scheduler : SchedulerScope, MutableLiveData<AnyStep?>(), AnyStepObserver, Synchronizer<AnyStep>, PriorityQueue<AnyFunction> {
+    @Key(1)
+    private var activityConfigurationChangeManager: ConfigurationChangeManager? = null
+
+    @Key(2)
+    private var activityNightModeChangeManager: NightModeChangeManager? = null
+
+    @Key(3)
+    private var activityLocalesChangeManager: LocalesChangeManager? = null
+
+    @Key(4)
+    internal var applicationMigrationManager: MigrationManager? = null
+
+    @Key(5)
+    private var applicationMemoryManager: MemoryManager? = null
+
     private fun observe() {
         observeForever(this)
         SchedulerScope.isSchedulerObserved = true }
@@ -208,21 +223,6 @@ object Scheduler : SchedulerScope, MutableLiveData<AnyStep?>(), AnyStepObserver,
             else -> null
         }?.reconstruct(provider)?.get()
         ?.commit(context)
-
-    @Key(1)
-    private var activityConfigurationChangeManager: ConfigurationChangeManager? = null
-
-    @Key(2)
-    private var activityNightModeChangeManager: NightModeChangeManager? = null
-
-    @Key(3)
-    private var activityLocalesChangeManager: LocalesChangeManager? = null
-
-    @Key(4)
-    internal var applicationMigrationManager: MigrationManager? = null
-
-    @Key(5)
-    private var applicationMemoryManager: MemoryManager? = null
 
     internal fun clearResolverObjects() {
         activityConfigurationChangeManager = null

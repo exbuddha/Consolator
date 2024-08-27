@@ -18,7 +18,12 @@ import kotlin.annotation.AnnotationRetention.SOURCE
 import kotlin.annotation.AnnotationTarget.CLASS
 
 var db: AppDatabase? = null
+    set(value) {
+        field = ::db.receive(value) }
+
 var session: RuntimeSessionEntity? = null
+    set(value) {
+        field = ::session.receive(value) }
 
 suspend fun buildNewSession(startTime: Long) {
     RuntimeDao {
