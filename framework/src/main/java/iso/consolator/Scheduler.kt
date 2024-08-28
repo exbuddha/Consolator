@@ -1751,7 +1751,7 @@ private fun FunctionSet.saveRunnable(self: AnyKCallable, tag: TagType) =
 private fun FunctionSet.saveMessage(self: AnyKCallable, tag: TagType) =
     save(self, tag, Item.Type.Message)
 
-private open class RunnableItem<R>(override var target: KCallable<R>? = null) : CoroutineItem<R>(target), Adjustable.By<Any, ClockIndex> {
+private open class RunnableItem<R>(override var target: KCallable<R>? = null) : CoroutineItem<R>(target), Adjustable.By<Any, ClockIndex>, Runnable {
     init {
         type = Type.Runnable }
 
@@ -1763,6 +1763,9 @@ private open class RunnableItem<R>(override var target: KCallable<R>? = null) : 
     override fun onAttachBy(container: Any): RunnableItem<R> {
         super.onAttachBy(container)
         return this }
+
+    override fun run() {
+        target?.call().asWork()?.invoke() }
 }
 
 private fun Any?.asRunnableItem() = asType<RunnableItem<*>>()
@@ -2355,7 +2358,7 @@ private fun getTag(what: Int): TagType? = TODO()
 
 private fun markTagsForJobLaunch(tag: TagType, step: AnyCoroutineStep, job: Job, owner: LifecycleOwner?, context: CoroutineContext, start: CoroutineStart) =
     tag.asTagType()?.also { tag ->
-    jobs?.saveCoroutine(step.asCallable(), tag)
+    jobs?.saveCoroutine(@Itemize step.asCallable(), tag)
         ?.asCoroutineItem()
         ?.onLifecycleOwnerSet(owner)
         ?.onJobLaunch(job, context, start) }
@@ -2363,7 +2366,7 @@ private fun markTagsForJobLaunch(tag: TagType, step: AnyCoroutineStep, job: Job,
 private fun markTagsInGroupForJobRelaunch(instance: JobKProperty, block: CoroutineStep, group: FunctionSet?, job: Job, owner: LifecycleOwner?, context: CoroutineContext, start: CoroutineStart) =
     block.asCallable().let { parent ->
     instance.tag?.also { tag ->
-    group?.saveCoroutine(parent, tag)
+    group?.saveCoroutine(@Itemize parent, tag)
         ?.asCoroutineItem()
         ?.onJobRelaunch(job, owner, context, start) } }
 
@@ -2372,7 +2375,7 @@ private fun markTagsForJobRepeat(step: JobFunction, group: FunctionSet?, job: Jo
     step.asCallable().let { block ->
     block.tag?.also { tag ->
     (relateByTag(tag) ?:
-    saveCoroutine(block, tag))
+    saveCoroutine(@Itemize block, tag))
         .asCoroutineItem()
         ?.onJobFunctionRepeat(step, block, tag, job, predicate, delay) } } }
 
@@ -2389,7 +2392,7 @@ private fun markTagsForSeqAttach(tag: Any?, step: LiveWork, index: Int) =
 private fun markTagsForSeqLaunch(step: SequencerStep, job: Job, index: Int, context: CoroutineContext?) =
     step.asCallable().let { step ->
     step.tag?.also { tag ->
-    livesteps?.saveLiveStep(step, tag)
+    livesteps?.saveLiveStep(@Itemize step, tag)
         ?.asLiveStepItem()
         ?.onObserve(job, index, context) } }
 
@@ -2403,13 +2406,13 @@ private fun markTagsForClkAttach(step: Any, index: Number) =
     when (step) {
     is Runnable ->
         getTag(step)?.also { tag ->
-        callbacks?.saveRunnable(step::run.asCallable(), tag)
+        callbacks?.saveRunnable(@Itemize step::run, tag)
             ?.asRunnableItem()
             ?.onAttachBy(step)
             ?.onAttach(index) }
     is Message ->
         getTag(step)?.also { tag ->
-        callbacks?.saveRunnable(step.callback::run.asCallable(), tag)
+        callbacks?.saveRunnable(@Itemize step.callback::run, tag)
             ?.asRunnableItem()
             ?.onAttachBy(step)
             ?.onAttach(index) }
