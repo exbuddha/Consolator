@@ -97,21 +97,20 @@ private var netCallFunction: JobFunction = { scope, _ ->
     if (isNetCallbackResumed && hasNetCallRepeatTimeElapsed)
         scope.asCoroutineScope()?.run {
         log(info, INET_TAG, "Trying to send out http request for network caller...")
-        with(::netCall) {
-        with(scope) {
-        commit(this) {
+        launch { with(::netCall) {
+        commit(this@run) {
             // convert to contextual function by current context of scope
-            set(this, INET_CALL,
+            set(this@run, INET_CALL,
                 @Keep ::buildNetCall.implicitly())
-            launch {
-                sendForResult(this,
+            sendForResult(this@run,
                 { response ->
                     trySafelyCanceling {
-                        reactToNetCallResponseReceived.commit(this, response) } },
+                    reactToNetCallResponseReceived.commit(this@run, response) } },
                 { ex -> ex?.let { ex ->
                     trySafelyCanceling {
-                        reactToNetCallRequestFailed.commit(this, ex) } }
-                }) } } } } } }
+                    reactToNetCallRequestFailed.commit(this@run, ex) } }
+                }) }
+        } } } }
 
 private var reactToNetCallResponseReceived: JobResponseFunction =
     @Tag(INET_SUCCESS) { scope, _, response ->
@@ -158,8 +157,7 @@ private var lastNetCallResponseTime = 0L
             field = value }
 
 internal fun <R> NetCall.commit(scope: Any?, block: () -> R) =
-    scope.asCoroutineScope()?.run {
-    lock(this, block) }
+    lock(scope, block)
 
 private fun <R> NetCall.lock(scope: Any?, block: () -> R) =
     synchronized(asCallable(), block)
@@ -172,13 +170,12 @@ private fun NetCall.asCallable() =
 private fun NetCall.asProperty() = this as KProperty
 
 internal fun <R, S : R> NetCall.sendForResult(scope: Any?, respond: (Response) -> R, exit: (Throwable?) -> S? = { null }) =
-    scope.asCoroutineScope()?.run {
     tryCancelingForResult({
-        execute(this, { respond(it) })
-    }, exit) }
+        execute(scope, { respond(it) })
+    }, exit)
 
 private fun <R> NetCall.execute(scope: Any?, respond: (Response) -> R) =
-    applyMarkTag(calls)[INET_CALL].asType<NetCall>()
+    applyMarkTag(calls)[scope, INET_CALL].asType<NetCall>()
     ?.call()
     ?.execute()
     ?.run(respond)!!
@@ -193,7 +190,7 @@ private fun JobThrowableFunction.commit(scope: Any?, ex: Throwable) {
 
 private var calls: FunctionSet? = null
 
-internal operator fun NetCall.get(id: TagType): Any? = when {
+internal operator fun NetCall.get(scope: Any?, id: TagType): Any? = when {
     id === INET_CALL -> this
     id === INET_FUNCTION -> netCallFunction
     id === INET_SUCCESS -> reactToNetCallResponseReceived

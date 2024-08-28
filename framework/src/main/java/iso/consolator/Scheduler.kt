@@ -2937,7 +2937,7 @@ internal typealias AnyKMutableProperty = KMutableProperty<*>
 // they may receive any value in order to resolve their own or another active context
 // states concurrently maintain and transact with the flow of communication among routines
 
-internal fun <R, V : R> KCallable<R>.receive(value: V) = value
+internal fun <R> KCallable<R>.receive(value: R) = value
 
 internal fun <R> KCallable<R>.resolve(routine: KCallable<R>? = asType()) = this
 

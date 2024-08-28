@@ -10,8 +10,6 @@ interface UniqueContext { var startTime: Long }
 
 fun now() = Calendar.getInstance().timeInMillis
 
-fun <R, V : R> KCallable<R>.receive(value: V) = value
-
 fun Byte.toPercentage() =
     (this * 100 / Byte.MAX_VALUE).toByte()
 
