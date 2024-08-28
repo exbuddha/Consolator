@@ -41,8 +41,8 @@ fun Application.commitStart() {
         preferClock()
         preferScheduler() }
     if (SchedulerScope.isClockPreferred)
-        clock = Clock("$SVC", Thread.MAX_PRIORITY)
-            @Synchronous(group = Clock::class) @Tag(CLOCK_INIT) {
+        clock = Clock("$SERVICE", Thread.MAX_PRIORITY)
+            @Synchronous(group = Clock::class) @Tag(CLK_INIT) {
             // turn clock until scope is active
             currentThread.log(info, SVC_TAG, "Clock is detected.") }
         .alsoStart() }
@@ -86,21 +86,21 @@ interface BaseServiceScope : ResolverScope, ReferredContext, UniqueContext {
         if (SchedulerScope.isClockPreferred)
             startClockSafely(this@invoke)
         if (State[2] !is Resolved)
-            commit @Synchronous @Tag(SERVICE_INIT) {
+            commit @Synchronous @Tag(SVC_INIT) {
                 setStartTime(this@invoke)
                 Sequencer {
                 if (isLogDbNull)
                     attach(IO, true)
                     @Tag(STAGE_BUILD_LOG_DB) { self ->
                     coordinateBuildDatabase(
-                        self.applyMarkTag(SERVICE_INIT, items),
+                        self.applyMarkTag(SVC_INIT, items),
                         ::logDb,
                         stage = Context::stageLogDbCreated) }
                 if (isNetDbNull)
                     attach(IO, true)
                     @Tag(STAGE_BUILD_NET_DB) { self ->
                     coordinateBuildDatabase(
-                        self.applyMarkTag(SERVICE_INIT, items),
+                        self.applyMarkTag(SVC_INIT, items),
                         ::netDb,
                         step = arrayOf(@Tag(STAGE_INIT_NET_DB) suspend {
                             updateNetworkCapabilities()
@@ -1855,7 +1855,7 @@ private open class Clock(
         this.priority = priority
         register() }
 
-    constructor() : this("$CLK")
+    constructor() : this("$CLOCK")
 
     constructor(callback: Runnable) : this() {
         register(callback) }

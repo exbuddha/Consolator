@@ -266,20 +266,20 @@ private typealias JobThrowableFunction = (Any?, Any?, Throwable) -> Unit
 
 private inline fun <reified T : Any> take(value: Any?): T = value.asType()!!
 
-internal const val NET_CAP = 230001
-internal const val NET_CAP_REGISTER = 231001
-internal const val NET_CAP_UNREGISTER = 231101
-internal const val NET_CAP_UPDATE = 231901
+internal const val NET_CAP = 1896
+internal const val NET_CAP_REGISTER = 1897
+internal const val NET_CAP_UNREGISTER = 1898
+internal const val NET_CAP_UPDATE = 1899
 
-internal const val INET = 250000
-internal const val INET_REGISTER = 251000
-internal const val INET_UNREGISTER = 251100
-internal const val INET_CALL = 250800
-internal const val INET_FUNCTION = 250901
-internal const val INET_SUCCESS = 251700
-internal const val INET_ERROR = 261800
-internal const val INET_DELAY = 261300
-internal const val INET_INTERVAL = 250097
-const val INET_MIN_INTERVAL = 250099
+internal const val INET = 1990
+internal const val INET_REGISTER = 1991
+internal const val INET_UNREGISTER = 1992
+internal const val INET_CALL = 1993
+internal const val INET_FUNCTION = 1994
+internal const val INET_SUCCESS = 1995
+internal const val INET_ERROR = 1996
+internal const val INET_DELAY = 1997
+internal const val INET_INTERVAL = 1998
+const val INET_MIN_INTERVAL = 1999
 
 internal const val INET_TAG = "INTERNET"
