@@ -266,19 +266,20 @@ private typealias JobThrowableFunction = (Any?, Any?, Throwable) -> Unit
 
 private inline fun <reified T : Any> take(value: Any?): T = value.asType()!!
 
-internal const val NET_CAP = "$NET-cap"
-internal const val NET_CAP_REGISTER = "$NET_CAP.$REGISTER"
-internal const val NET_CAP_UNREGISTER = "$NET_CAP.$UNREGISTER"
-internal const val NET_CAP_UPDATE = "$NET_CAP.$UPDATE"
+internal const val NET_CAP = 3100
+internal const val NET_CAP_REGISTER = 8800
+internal const val NET_CAP_UNREGISTER = 8900
+internal const val NET_CAP_UPDATE = 9000
 
-internal const val INET = "inet"
-internal const val INET_REGISTER = "$INET.$REGISTER"
-internal const val INET_UNREGISTER = "$INET.$UNREGISTER"
-internal const val INET_CALL = "$INET.$CALL"
-internal const val INET_FUNCTION = "$INET.$FUNC"
-internal const val INET_SUCCESS = "$INET.$SUCCESS"
-internal const val INET_ERROR = "$INET.$ERROR"
-internal const val INET_DELAY = "$INET.$DELAY"
-internal const val INET_INTERVAL = "$INET.$INTERVAL"
-const val INET_MIN_INTERVAL = "$INET.$MIN_INTERVAL"
+internal const val INET = 3200
+internal const val INET_REGISTER = 9100
+internal const val INET_UNREGISTER = 9200
+internal const val INET_CALL = 9300
+internal const val INET_FUNCTION = 9400
+internal const val INET_SUCCESS = 9500
+internal const val INET_ERROR = 9600
+internal const val INET_DELAY = 9700
+internal const val INET_INTERVAL = 9800
+const val INET_MIN_INTERVAL = 9900
+
 internal const val INET_TAG = "INTERNET"

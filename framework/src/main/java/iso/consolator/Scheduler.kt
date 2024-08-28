@@ -41,7 +41,7 @@ fun Application.commitStart() {
         preferClock()
         preferScheduler() }
     if (SchedulerScope.isClockPreferred)
-        clock = Clock(SVC, Thread.MAX_PRIORITY)
+        clock = Clock("$SVC", Thread.MAX_PRIORITY)
             @Synchronous(group = Clock::class) @Tag(CLOCK_INIT) {
             // turn clock until scope is active
             currentThread.log(info, SVC_TAG, "Clock is detected.") }
@@ -1855,7 +1855,7 @@ private open class Clock(
         this.priority = priority
         register() }
 
-    constructor() : this(CLK)
+    constructor() : this("$CLK")
 
     constructor(callback: Runnable) : this() {
         register(callback) }
@@ -2307,10 +2307,10 @@ private fun combineTags(tag: TagType, self: TagType?) =
 internal fun reduceTags(vararg tag: TagType) =
     (if (TagType::class.isNumber)
         tag.map(TagType::toInt)
-            .reduce(Int::plus)
+            .reduce(Int::processTag)
     else
         tag.map(TagType::toString)
-            .reduce(String::concat)).asTagType()!!
+            .reduce(String::processTag)).asTagType()!!
 
 private fun returnTag(it: Any?) =
     it.asCallable().tag?.id
@@ -2493,7 +2493,7 @@ internal fun <R> R.asCallable(): KCallable<R> =
 
 fun <R> R.asReference() = Reference(this)
 
-typealias TagType = String
+typealias TagType = Int
 private typealias TagTypePointer = () -> TagType?
 
 private fun Any?.asTagType() = asType<TagType>()
@@ -2516,7 +2516,8 @@ private typealias PathArray = Array<PathType>
 private val KClass<TagType>.isNumber get() = TagType::class !== String::class
 private val KClass<TagType>.isString get() = TagType::class === String::class
 
-private fun String.concat(it: String) = this + it
+private fun Number.processTag(it: Number) = this.toInt() + it.toInt()
+private fun String.processTag(it: String) = this + it
 
 internal fun Array<out Tag>.mapToTagArray() = mapToTypedArray { it.id }
 

@@ -69,24 +69,24 @@ internal fun Context.changeBroadly(ref: WeakContext = asWeakReference(), stage: 
 internal fun Context.changeGlobally(owner: LifecycleOwner, ref: WeakContext = asWeakReference(), stage: ContextStep) =
     commit { stage(this) }
 
-@Diverging([STAGE_BUILD_APP_DB])
+@Diverging(["$STAGE_BUILD_APP_DB"])
 fun Context.stageAppDbCreated(scope: Any?) {
     // bootstrap
 }
 
-@Diverging([STAGE_BUILD_SESSION])
+@Diverging(["$STAGE_BUILD_SESSION"])
 fun Context.stageSessionCreated(scope: Any?) {
     // update db records
 }
 
-@Diverging([STAGE_BUILD_LOG_DB])
+@Diverging(["$STAGE_BUILD_LOG_DB"])
 internal fun Context.stageLogDbCreated(scope: Any?) {
     mainUncaughtExceptionHandler = @Tag(UNCAUGHT_DB) ExceptionHandler { th, ex ->
         // record in db safely
     }
 }
 
-@Diverging([STAGE_BUILD_NET_DB])
+@Diverging(["$STAGE_BUILD_NET_DB"])
 internal fun Context.stageNetDbInitialized(scope: Any?) {
     // update net function pointers
 }
@@ -470,130 +470,131 @@ fun bypassAllLogs() {
 internal typealias Logger = (LogFunction, CharSequence, CharSequence) -> Any?
 private typealias LogFunction = (CharSequence, CharSequence) -> Any?
 
-internal const val TAG_DOT = "."
-internal const val TAG_AT = "@"
-internal const val TAG_HASH = "#"
-internal const val TAG_DASH = "-"
+internal const val TAG_DOT = 10000
+internal const val TAG_DASH = 100000
+internal const val TAG_AT = 1000000
+internal const val TAG_HASH = 10000000
 
-internal const val IS = "is"
-internal const val MIN = "min"
-internal const val NULL = "null"
+internal const val IS = 1
+internal const val MIN = 2
+internal const val MAX = 3
+internal const val NULL = 4
 
-const val MAIN = "main"
-internal const val KEEP = "keep"
-internal const val JOB = "job"
-internal const val BUILD = "build"
-internal const val INIT = "init"
-internal const val LAUNCH = "launch"
-internal const val COMMIT = "commit"
-internal const val EXEC = "exec"
-internal const val ATTACH = "attach"
-internal const val WORK = "work"
-internal const val LIVEWORK = "livework"
-internal const val STEP = "step"
-internal const val FORM = "form"
-internal const val REFORM = "reform"
-internal const val INDEX = "index"
-internal const val REGISTER = "register"
-internal const val UNREGISTER = "unregister"
-internal const val REPEAT = "repeat"
-internal const val DELAY = "delay"
-internal const val MIN_DELAY = "$MIN-$DELAY"
-internal const val YIELD = "yield"
-internal const val CALL = "call"
-internal const val POST = "post"
-internal const val CALLBACK = "callback"
-internal const val MSG = "msg"
-internal const val WHAT = "what"
-internal const val FUNC = "function"
-internal const val ACTIVE = "active"
-internal const val IS_ACTIVE = "$IS-$ACTIVE"
-internal const val PREDICATE = "predicate"
-internal const val SUCCESS = "success"
-internal const val ERROR = "error"
-internal const val UPDATE = "update"
-const val EXCEPTION = "exception"
-internal const val EX = "ex"
-internal const val CAUSE = "cause"
-internal const val MESSAGE = "msg"
-const val EXCEPTION_CAUSE = "$EX-$CAUSE"
-const val EXCEPTION_MESSAGE = "$EX-$MESSAGE"
-const val EXCEPTION_CAUSE_MESSAGE = "$EX-$CAUSE-$MESSAGE"
-internal const val IGNORE = "ignore"
-const val UNCAUGHT = "uncaught"
-const val NOW = "now"
-internal const val INTERVAL = "interval"
-internal const val MIN_INTERVAL = "$MIN-$INTERVAL"
+const val MAIN = 10
+internal const val KEEP = 20
+internal const val JOB = 30
+internal const val BUILD = 40
+internal const val INIT = 50
+internal const val LAUNCH = 60
+internal const val COMMIT = 70
+internal const val EXEC = 80
+internal const val ATTACH = 90
+internal const val WORK = 100
+internal const val LIVEWORK = 110
+internal const val STEP = 120
+internal const val FORM = 130
+internal const val REFORM = 140
+internal const val INDEX = 150
+internal const val REGISTER = 160
+internal const val UNREGISTER = 170
+internal const val REPEAT = 180
+internal const val DELAY = 190
+internal const val MIN_DELAY = 200
+internal const val YIELD = 210
+internal const val CALL = 220
+internal const val POST = 230
+internal const val CALLBACK = 240
+internal const val MSG = 250
+internal const val WHAT = 260
+internal const val FUNC = 270
+internal const val ACTIVE = 280
+internal const val IS_ACTIVE = 291
+internal const val PREDICATE = 300
+internal const val SUCCESS = 310
+internal const val ERROR = 320
+internal const val UPDATE = 330
+const val EXCEPTION = 340
+internal const val EX = 350
+internal const val CAUSE = 360
+internal const val MESSAGE = 370
+const val EXCEPTION_CAUSE = 380
+const val EXCEPTION_MESSAGE = 390
+const val EXCEPTION_CAUSE_MESSAGE = 400
+internal const val IGNORE = 410
+const val UNCAUGHT = 420
+const val NOW = 430
+internal const val INTERVAL = 440
+internal const val MIN_INTERVAL = 452
 
-internal const val CONFIG = "config"
-const val START = "start"
-const val RESTART = "restart"
-const val RESUME = "resume"
-const val PAUSE = "pause"
-const val STOP = "stop"
-const val DESTROY = "destroy"
-const val SAVE = "save"
+internal const val CONFIG = 460
+const val START = 470
+const val RESTART = 480
+const val RESUME = 490
+const val PAUSE = 500
+const val STOP = 510
+const val DESTROY = 520
+const val SAVE = 530
 
-internal const val APP = "app"
-internal const val ACTIVITY = "activity"
-internal const val FRAGMENT = "fragment"
-internal const val OVERLAY = "overlay"
-internal const val VIEW = "view"
-internal const val CONTEXT = "context"
-internal const val CTX = "ctx"
-internal const val OWNER = "owner"
-internal const val SHARED = "shared"
-internal const val SERVICE = "service"
-internal const val SVC = "svc"
-internal const val CLOCK = "clock"
-internal const val CLK = "clk"
-internal const val CTRL = "ctrl"
-internal const val FLO = "flo"
-internal const val SCH = "sch"
-internal const val SEQ = "seq"
-internal const val LOG = "log"
-internal const val NET = "net"
-internal const val DB = "db"
+internal const val APP = 1000
+internal const val ACTIVITY = 1100
+internal const val FRAGMENT = 1200
+internal const val OVERLAY = 1300
+internal const val VIEW = 1400
+internal const val CONTEXT = 1500
+internal const val CTX = 1600
+internal const val OWNER = 1700
+internal const val SHARED = 1800
+internal const val SERVICE = 1900
+internal const val SVC = 2000
+internal const val CLOCK = 2100
+internal const val CLK = 2200
+internal const val CTRL = 2300
+internal const val FLO = 2400
+internal const val SCH = 2500
+internal const val SEQ = 2600
+internal const val LOG = 2700
+internal const val NET = 2800
+internal const val DB = 2900
 
-const val APP_INIT = "$APP-$INIT"
+const val APP_INIT = 3000
 
-const val MAIN_ACTIVITY = "$MAIN-$ACTIVITY"
-const val MAIN_FRAGMENT = "$MAIN-$FRAGMENT"
-const val OVERLAY_FRAGMENT = "$OVERLAY-$FRAGMENT"
+const val MAIN_ACTIVITY = 3100
+const val MAIN_FRAGMENT = 3200
+const val OVERLAY_FRAGMENT = 3300
 
-internal const val APP_DB = "$APP-$DB"
-internal const val LOG_DB = "$LOG-$DB"
-internal const val NET_DB = "$NET-$DB"
-internal const val SESSION = "session"
+internal const val APP_DB = 9000
+internal const val LOG_DB = 9100
+internal const val NET_DB = 9200
+internal const val SESSION = 9300
 
-const val VIEW_ATTACH = "$VIEW.$ATTACH"
-const val VIEW_MIN_DELAY = "$VIEW.$MIN_DELAY"
-internal const val SCH_CONFIG = "$SCH.$CONFIG"
-internal const val CLOCK_INIT = "$CLOCK.$INIT"
-internal const val CLK_ATTACH = "$CLK.$ATTACH"
-internal const val CLK_EXEC = "$CLK.$EXEC"
-internal const val CTX_REFORM = "$CTX.$REFORM"
-internal const val CTX_STEP = "$CTX.$STEP"
-internal const val JOB_LAUNCH = "$JOB.$LAUNCH"
-internal const val JOB_REPEAT = "$JOB.$REPEAT"
-internal const val FLO_LAUNCH = "$FLO.$LAUNCH"
-internal const val SCH_COMMIT = "$SCH.$COMMIT"
-internal const val SCH_LAUNCH = "$SCH.$LAUNCH"
-internal const val SCH_EXEC = "$SCH.$EXEC"
-internal const val SCH_POST = "$SCH.$POST"
-internal const val SEQ_ATTACH = "$SEQ.$ATTACH"
-internal const val SEQ_LAUNCH = "$SEQ.$LAUNCH"
-internal const val SERVICE_INIT = "$SERVICE.$INIT"
-internal const val SVC_COMMIT = "$SVC.$COMMIT"
-internal const val NULL_STEP = "$NULL-$STEP"
-internal const val UNCAUGHT_DB = "$UNCAUGHT-$DB"
-const val UNCAUGHT_SHARED = "$UNCAUGHT-$SHARED"
+const val VIEW_ATTACH = 3500
+const val VIEW_MIN_DELAY = 3600
+internal const val SCH_CONFIG = 3700
+internal const val CLOCK_INIT = 3800
+internal const val CLK_ATTACH = 3900
+internal const val CLK_EXEC = 4000
+internal const val CTX_REFORM = 4100
+internal const val CTX_STEP = 4200
+internal const val JOB_LAUNCH = 4300
+internal const val JOB_REPEAT = 4400
+internal const val FLO_LAUNCH = 4500
+internal const val SCH_COMMIT = 4600
+internal const val SCH_LAUNCH = 4700
+internal const val SCH_EXEC = 4800
+internal const val SCH_POST = 4900
+internal const val SEQ_ATTACH = 5000
+internal const val SEQ_LAUNCH = 5100
+internal const val SERVICE_INIT = 5200
+internal const val SVC_COMMIT = 5300
+internal const val NULL_STEP = 5400
+internal const val UNCAUGHT_DB = 5500
+const val UNCAUGHT_SHARED = 5600
 
-const val STAGE_BUILD_APP_DB = "$APP_DB.$BUILD"
-const val STAGE_BUILD_SESSION = "$SESSION.$BUILD"
-internal const val STAGE_BUILD_LOG_DB = "$LOG_DB.$BUILD"
-internal const val STAGE_BUILD_NET_DB = "$NET_DB.$BUILD"
-internal const val STAGE_INIT_NET_DB = "$NET_DB.$INIT"
+const val STAGE_BUILD_APP_DB = 6000
+const val STAGE_BUILD_SESSION = 6100
+internal const val STAGE_BUILD_LOG_DB = 6200
+internal const val STAGE_BUILD_NET_DB = 6300
+internal const val STAGE_INIT_NET_DB = 6400
 
 internal const val START_TIME_KEY = "1"
 internal const val MODE_KEY = "2"

@@ -11,10 +11,10 @@ sealed class BaseApplication : Application(), UniqueContext {
 
     init {
         mainUncaughtExceptionHandler = @Tag(UNCAUGHT_SHARED) ExceptionHandler { th, ex ->
-            with(getSharedPreferences(UNCAUGHT, MODE_PRIVATE).edit()) {
-            putLong(START, startTime)
-            putLong(NOW, now())
-            putBoolean(MAIN, th.isMainThread())
+            with(getSharedPreferences("$UNCAUGHT", MODE_PRIVATE).edit()) {
+            putLong("$START", startTime)
+            putLong("$NOW", now())
+            putBoolean("$MAIN", th.isMainThread())
             putException(ex) } }
         Thread.setDefaultUncaughtExceptionHandler(mainUncaughtExceptionHandler) }
 
@@ -29,11 +29,11 @@ sealed class BaseApplication : Application(), UniqueContext {
     }
 
     private fun SharedPreferences.Editor.putException(ex: Throwable) {
-        putString(EXCEPTION, ex::class.qualifiedName)
-        putString(EXCEPTION_MESSAGE, ex.message)
+        putString("$EXCEPTION", ex::class.qualifiedName)
+        putString("$EXCEPTION_MESSAGE", ex.message)
         ex.cause?.let { cause ->
-        putString(EXCEPTION_CAUSE, cause::class.qualifiedName)
-        putString(EXCEPTION_CAUSE_MESSAGE, cause.message) } }
+        putString("$EXCEPTION_CAUSE", cause::class.qualifiedName)
+        putString("$EXCEPTION_CAUSE_MESSAGE", cause.message) } }
 
     internal companion object {
         const val ACTION_MIGRATE_APP: Short = 1

@@ -71,7 +71,7 @@ abstract class BaseFragment : Fragment(contentLayoutId), TransitionManager {
         @Delay(view_min_delay)
         @WithContext @Tag(VIEW_ATTACH) {
             context } // auto-register
-        .then @Parallel @Path(STAGE_BUILD_APP_DB) { _, _ ->
+        .then @Parallel @Path("$STAGE_BUILD_APP_DB") { _, _ ->
             tryCancelingSuspended(::currentContext, Context::buildAppDatabase) }
         .then @Committing @Event(ACTION_MIGRATE_APP) { _, _ ->
             change(Context::stageAppDbCreated) }
@@ -79,7 +79,7 @@ abstract class BaseFragment : Fragment(contentLayoutId), TransitionManager {
             Job::isAppDbCreated)
         .otherwise(
             CoroutineScope::retry)
-        .then @Path(STAGE_BUILD_SESSION) { _, _ ->
+        .then @Path("$STAGE_BUILD_SESSION") { _, _ ->
             tryCancelingSuspended(::buildSession) }
         .then @Committing @Event(ACTION_MIGRATE_APP) { _, _ ->
             change(Context::stageSessionCreated) }
