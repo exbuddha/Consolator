@@ -522,8 +522,8 @@ private fun Job.saveNewElement(step: AnyCoroutineStep) {}
 private fun FunctionSet.relateByTag(tag: Tag): FunctionItem? =
     tag.id.let { tag ->
     findByTag(tag) ?:
-    when {
-        (tag === INET_FUNCTION) -> findByTag(INET)
+    when (tag) {
+        INET_FUNCTION -> findByTag(INET)
         else -> null } }
 
 private fun FunctionSet.saveCoroutine(self: AnyKCallable, tag: Tag) =
@@ -2105,8 +2105,8 @@ fun AnyStep.relay(transit: Transit = this.transit) =
     commit(transit) }
 
 private open class Item<R>(override var target: KCallable<R>? = null) : Addressed<R>, Tagged, KCallable<R> by target ?: Reference({ target }) {
-    open fun onSave(subtag: TagType, value: Any?) = this.also { when {
-        subtag === FUNC ->
+    open fun onSave(subtag: TagType, value: Any?) = this.also { when (subtag) {
+        FUNC ->
             if (target === null)
                 value.asType<KCallable<R>>()?.apply(::setTarget)
             else {

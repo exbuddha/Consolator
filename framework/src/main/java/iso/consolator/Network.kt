@@ -190,25 +190,25 @@ private fun JobThrowableFunction.commit(scope: Any?, ex: Throwable) {
 
 private var calls: FunctionSet? = null
 
-internal operator fun NetCall.get(scope: Any?, id: TagType): Any? = when {
-    id === INET_CALL -> this
-    id === INET_FUNCTION -> netCallFunction
-    id === INET_SUCCESS -> reactToNetCallResponseReceived
-    id === INET_ERROR -> reactToNetCallRequestFailed
-    id === INET_DELAY -> netCallRepeatDelay
-    id === INET_INTERVAL -> netCallRepeatTime
+internal operator fun NetCall.get(scope: Any?, id: TagType): Any? = when (id) {
+    INET_CALL -> this
+    INET_FUNCTION -> netCallFunction
+    INET_SUCCESS -> reactToNetCallResponseReceived
+    INET_ERROR -> reactToNetCallRequestFailed
+    INET_DELAY -> netCallRepeatDelay
+    INET_INTERVAL -> netCallRepeatTime
     else -> null }
 
 internal operator fun NetCall.set(scope: Any?, id: TagType, value: Any?) {
     if (value !== null && value.isKept) {
         value.markSequentialTag(INET_CALL, id, calls) }
-    lock(id) { when {
-        id === INET_CALL -> netCall = take(value)
-        id === INET_FUNCTION -> netCallFunction = take(value)
-        id === INET_SUCCESS -> reactToNetCallResponseReceived = take(value)
-        id === INET_ERROR -> reactToNetCallRequestFailed = take(value)
-        id === INET_DELAY -> netCallRepeatDelay = take(value)
-        id === INET_INTERVAL -> netCallRepeatTime = take(value) } } }
+    lock(id) { when (id) {
+        INET_CALL -> netCall = take(value)
+        INET_FUNCTION -> netCallFunction = take(value)
+        INET_SUCCESS -> reactToNetCallResponseReceived = take(value)
+        INET_ERROR -> reactToNetCallRequestFailed = take(value)
+        INET_DELAY -> netCallRepeatDelay = take(value)
+        INET_INTERVAL -> netCallRepeatTime = take(value) } } }
 
 internal interface NetworkContext : SchedulerContext
 
