@@ -840,6 +840,28 @@ internal fun SequencerScope.cancel() =
 
 internal fun SequencerScope.commit(vararg tag: Tag): Any? = TODO()
 
+internal fun LiveWork.attach(tag: TagType? = null, owner: LifecycleOwner? = null) =
+    Sequencer.attach(this, tag)
+
+internal fun LiveWork.attachOnce(tag: TagType? = null, owner: LifecycleOwner? = null) =
+    Sequencer.attachOnce(this, tag)
+
+internal fun LiveWork.attachAfter(tag: TagType? = null, owner: LifecycleOwner? = null) =
+    Sequencer.attachAfter(this, tag)
+
+internal fun LiveWork.attachBefore(tag: TagType? = null, owner: LifecycleOwner? = null) =
+    Sequencer.attachBefore(this, tag)
+
+internal fun LiveWork.attachOnceAfter(tag: TagType? = null, owner: LifecycleOwner? = null) =
+    Sequencer.attachOnceAfter(this, tag)
+
+internal fun LiveWork.attachOnceBefore(tag: TagType? = null, owner: LifecycleOwner? = null) =
+    Sequencer.attachOnceBefore(this, tag)
+
+internal fun LiveWork.detach() {}
+
+internal fun LiveWork.close() {}
+
 private fun FunctionSet.saveLiveStep(self: AnyKCallable, tag: Tag) =
     save(self, tag, Item.Type.LiveStep)
 
@@ -866,28 +888,6 @@ private open class LiveStepItem<R>(override var target: KCallable<R>? = null) : 
 }
 
 private fun Any?.asLiveStepItem() = asType<LiveStepItem<*>>()
-
-internal fun LiveWork.attach(tag: TagType? = null, owner: LifecycleOwner? = null) =
-    Sequencer.attach(this, tag)
-
-internal fun LiveWork.attachOnce(tag: TagType? = null, owner: LifecycleOwner? = null) =
-    Sequencer.attachOnce(this, tag)
-
-internal fun LiveWork.attachAfter(tag: TagType? = null, owner: LifecycleOwner? = null) =
-    Sequencer.attachAfter(this, tag)
-
-internal fun LiveWork.attachBefore(tag: TagType? = null, owner: LifecycleOwner? = null) =
-    Sequencer.attachBefore(this, tag)
-
-internal fun LiveWork.attachOnceAfter(tag: TagType? = null, owner: LifecycleOwner? = null) =
-    Sequencer.attachOnceAfter(this, tag)
-
-internal fun LiveWork.attachOnceBefore(tag: TagType? = null, owner: LifecycleOwner? = null) =
-    Sequencer.attachOnceBefore(this, tag)
-
-internal fun LiveWork.detach() {}
-
-internal fun LiveWork.close() {}
 
 internal fun <T, R> Pair<LiveData<T>, (T) -> R>.toLiveWork(async: Boolean = false) =
     LiveWork(@Keep { first.asType() }, second.asType(), async)
@@ -934,23 +934,56 @@ private fun <T, R> LifecycleOwner.disposerOf(liveStep: Pair<LiveData<T>, (T) -> 
         step.removeObservers(this)
         capture(value) }
 
-internal infix fun LiveWork.then(next: SequencerStep): LiveWork = this
+private inline fun LiveWork.attachToLiveWork(crossinline statement: LiveWorkPointer): LiveWork = TODO()
 
-internal infix fun LiveWork.then(next: LiveWorkFunction): LiveWork = this
+private inline fun LiveWork.attachToSequence(crossinline statement: LiveWorkFunction): LiveWork = TODO()
 
-internal infix fun LiveWork.after(prev: SequencerStep): LiveWork = this
+private fun LiveWork.attachConjunctionToLiveWork(operator: LiveWorkKFunction, target: SequencerStep) =
+    attachToLiveWork { operator.call(this@attachConjunctionToLiveWork.lastMarkedLiveWork(), target) }
 
-internal infix fun LiveWork.given(predicate: LiveWorkPredicate): LiveWork = this
+private fun LiveWork.attachConjunctionToLiveWork(operator: LiveWorkKFunction, target: LiveWorkFunction) =
+    attachToSequence { operator.call(this@attachConjunctionToLiveWork.lastMarkedLiveWork(), target) }
 
-internal infix fun LiveWork.unless(predicate: LiveWorkPredicate): LiveWork = this
+private fun LiveWork.attachPredictionToLiveWork(operator: LiveWorkKFunction, predicate: LiveWorkPredicate) =
+    attachToLiveWork { operator.call(this@attachPredictionToLiveWork.lastMarkedLiveWork(), predicate) }
 
-internal infix fun LiveWork.otherwise(next: SequencerStep): LiveWork = this
+private fun LiveWork.lastMarkedLiveWork(): LiveWork = TODO()
 
-internal infix fun LiveWork.onCancel(action: SequencerStep): LiveWork = this
+internal infix fun LiveWork.then(next: SequencerStep): LiveWork = apply {
+    attachConjunctionToLiveWork(
+        LiveWork::then, next) }
 
-internal infix fun LiveWork.onError(action: SequencerStep): LiveWork = this
+internal infix fun LiveWork.thru(next: LiveWorkFunction): LiveWork = apply {
+    attachConjunctionToLiveWork(
+        LiveWork::thru, next) }
 
-internal infix fun LiveWork.onTimeout(action: SequencerStep): LiveWork = this
+internal infix fun LiveWork.after(prev: SequencerStep): LiveWork = apply {
+    attachConjunctionToLiveWork(
+        LiveWork::after, prev) }
+
+internal infix fun LiveWork.given(predicate: LiveWorkPredicate): LiveWork = apply {
+    attachPredictionToLiveWork(
+        LiveWork::given, predicate) }
+
+internal infix fun LiveWork.unless(predicate: LiveWorkPredicate): LiveWork = apply {
+    attachPredictionToLiveWork(
+        LiveWork::unless, predicate) }
+
+internal infix fun LiveWork.otherwise(next: SequencerStep): LiveWork = apply {
+    attachConjunctionToLiveWork(
+        LiveWork::otherwise, next) }
+
+internal infix fun LiveWork.onCancel(action: SequencerStep): LiveWork = apply {
+    attachConjunctionToLiveWork(
+        LiveWork::onCancel, action) }
+
+internal infix fun LiveWork.onError(action: SequencerStep): LiveWork = apply {
+    attachConjunctionToLiveWork(
+        LiveWork::onError, action) }
+
+internal infix fun LiveWork.onTimeout(action: SequencerStep): LiveWork = apply {
+    attachConjunctionToLiveWork(
+        LiveWork::onTimeout, action) }
 
 internal suspend fun SequencerScope.change(event: Transit) =
     reset {
@@ -1735,6 +1768,26 @@ internal fun postAhead(callback: Runnable) = clock?.postAhead?.invoke(callback)
 private fun Runnable.asMessage() =
     with(Clock) { getCoroutine(this@asMessage)?.run(::getMessage) }
 
+private fun Message.asCoroutine() = callback.asCoroutine()
+
+private fun Message.asStep() = callback.asStep()
+
+private fun Message.asRunnable() = callback
+
+internal fun message(callback: Runnable): Message = TODO()
+
+internal fun message(what: Int): Message = TODO()
+
+fun Message.send() {}
+
+fun Message.sendDelayed(delay: Long) {}
+
+fun Message.sendAtTime(uptime: Long) {}
+
+private fun Message.detach(): Message? = null
+
+private fun Message.close() {}
+
 fun Runnable.start() {}
 
 fun Runnable.startDelayed(delay: Long) {}
@@ -1770,77 +1823,111 @@ private open class RunnableItem<R>(override var target: KCallable<R>? = null) : 
 
 private fun Any?.asRunnableItem() = asType<RunnableItem<*>>()
 
-infix fun Runnable.then(next: Runnable): Runnable = this
+private inline fun Runnable.attachToRunnable(crossinline statement: RunnablePointer): Runnable = TODO()
 
-infix fun Runnable.then(next: RunnableFunction): Runnable = this
+private fun Runnable.attachConjunctionToRunnable(operator: RunnableKFunction, target: Runnable) =
+    attachToRunnable { operator.call(this@attachConjunctionToRunnable.lastMarkedMessage(), target) }
 
-infix fun Runnable.after(prev: Runnable): Runnable = this
+private fun Runnable.attachConjunctionToRunnable(operator: RunnableKFunction, target: RunnableFunction) =
+    attachToRunnable { operator.call(this@attachConjunctionToRunnable.lastMarkedMessage(), target) }
 
-infix fun Runnable.given(predicate: RunnablePredicate): Runnable = this
+private fun Runnable.attachPredictionToRunnable(operator: RunnableKFunction, predicate: RunnablePredicate) =
+    attachToRunnable { operator.call(this@attachPredictionToRunnable.lastMarkedMessage(), predicate) }
 
-infix fun Runnable.unless(predicate: RunnablePredicate): Runnable = this
+private fun Runnable.lastMarkedMessage(): Message = TODO()
 
-infix fun Runnable.otherwise(next: Runnable): Runnable = this
+infix fun Runnable.then(next: Runnable): Runnable = apply {
+    attachConjunctionToRunnable(
+        Runnable::then, next) }
 
-infix fun Runnable.otherwise(next: RunnableFunction): Runnable = this
+infix fun Runnable.thru(next: RunnableFunction): Runnable = apply {
+    attachConjunctionToRunnable(
+        Runnable::thru, next) }
 
-infix fun Runnable.onError(action: Runnable): Runnable = this
+infix fun Runnable.after(prev: Runnable): Runnable = apply {
+    attachConjunctionToRunnable(
+        Runnable::after, prev) }
 
-infix fun Runnable.onTimeout(action: Runnable): Runnable = this
+infix fun Runnable.given(predicate: RunnablePredicate): Runnable = apply {
+    attachPredictionToRunnable(
+        Runnable::given, predicate) }
 
-private fun Message.asCoroutine() = callback.asCoroutine()
+infix fun Runnable.unless(predicate: RunnablePredicate): Runnable = apply {
+    attachPredictionToRunnable(
+        Runnable::unless, predicate) }
 
-private fun Message.asStep() = callback.asStep()
+infix fun Runnable.otherwise(next: Runnable): Runnable = apply {
+    attachConjunctionToRunnable(
+        Runnable::otherwise, next) }
 
-private fun Message.asRunnable() = callback
+infix fun Runnable.onError(action: Runnable): Runnable = apply {
+    attachConjunctionToRunnable(
+        Runnable::onError, action) }
 
-internal fun message(callback: Runnable): Message = TODO()
+infix fun Runnable.onTimeout(action: Runnable): Runnable = apply {
+    attachConjunctionToRunnable(
+        Runnable::onTimeout, action) }
 
-internal fun message(what: Int): Message = TODO()
+private inline fun Message.attachToMessage(crossinline statement: MessagePointer): Message = TODO()
 
-fun Message.send() {}
+private fun Message.attachConjunctionToMessage(operator: MessageKFunction, target: Message) =
+    attachToMessage { operator.call(this@attachConjunctionToMessage.lastMarkedMessage(), target) }
 
-fun Message.sendDelayed(delay: Long) {}
+private fun Message.attachConjunctionToMessage(operator: MessageKFunction, target: Runnable) =
+    attachToMessage { operator.call(this@attachConjunctionToMessage.lastMarkedMessage(), target) }
 
-fun Message.sendAtTime(uptime: Long) {}
+private fun Message.attachPredictionToMessage(operator: MessageKFunction, predicate: MessagePredicate) =
+    attachToMessage { operator.call(this@attachPredictionToMessage.lastMarkedMessage(), predicate) }
 
-private fun Message.detach(): Message? = null
+private fun Message.lastMarkedMessage(): Message = TODO()
 
-private fun Message.close() {}
+internal infix fun Message.thenRun(next: Runnable): Message = apply {
+    attachConjunctionToMessage(
+        Message::thenRun, next) }
 
-internal infix fun Message.thenRun(next: Runnable): Message = this
+internal infix fun Message.afterRun(prev: Runnable): Message = apply {
+    attachConjunctionToMessage(
+        Message::afterRun, prev) }
 
-internal infix fun Message.afterRun(prev: Runnable): Message = this
+internal infix fun Message.otherwiseRun(next: Runnable): Message = apply {
+    attachConjunctionToMessage(
+        Message::otherwiseRun, next) }
 
-internal infix fun Message.otherwiseRun(next: Runnable): Message = this
+internal infix fun Message.onErrorRun(action: Runnable): Message = apply {
+    attachConjunctionToMessage(
+        Message::onErrorRun, action) }
 
-internal infix fun Message.onErrorRun(action: Runnable): Message = this
+internal infix fun Message.onTimeoutRun(action: Runnable): Message = apply {
+    attachConjunctionToMessage(
+        Message::onTimeoutRun, action) }
 
-internal infix fun Message.onTimeoutRun(action: Runnable): Message = this
+internal infix fun Message.then(next: Message): Message = apply {
+    attachConjunctionToMessage(
+        Message::then, next) }
 
-internal infix fun Message.then(next: Message): Message = this
+internal infix fun Message.after(prev: Message): Message = apply {
+    attachConjunctionToMessage(
+        Message::after, prev) }
 
-internal infix fun Message.then(next: Int): Message = this
+internal infix fun Message.given(predicate: MessagePredicate): Message = apply {
+    attachPredictionToMessage(
+        Message::given, predicate) }
 
-internal infix fun Message.after(prev: Message): Message = this
+internal infix fun Message.unless(predicate: MessagePredicate): Message = apply {
+    attachPredictionToMessage(
+        Message::unless, predicate) }
 
-internal infix fun Message.after(prev: Int): Message = this
+internal infix fun Message.otherwise(next: Message): Message = apply {
+    attachConjunctionToMessage(
+        Message::otherwise, next) }
 
-internal infix fun Message.given(predicate: MessagePredicate): Message = this
+internal infix fun Message.onError(action: Message): Message = apply {
+    attachConjunctionToMessage(
+        Message::onError, action) }
 
-internal infix fun Message.unless(predicate: MessagePredicate): Message = this
-
-internal infix fun Message.otherwise(next: Message): Message = this
-
-internal infix fun Message.otherwise(next: Int): Message = this
-
-internal infix fun Message.onError(action: Message): Message = this
-
-internal infix fun Message.onTimeout(action: Message): Message = this
-
-internal infix fun Message.then(next: MessageFunction): Message = this
-
-internal infix fun Message.otherwise(next: MessageFunction): Message = this
+internal infix fun Message.onTimeout(action: Message): Message = apply {
+    attachConjunctionToMessage(
+        Message::onTimeout, action) }
 
 private var clock: Clock? = null
     get() = field.singleton().also { field = it }
@@ -2825,6 +2912,7 @@ private typealias LiveStep = LiveData<Step?>
 private typealias LiveStepPointer = () -> LiveStep?
 private typealias CaptureFunction = AnyToAnyFunction
 private typealias LiveWork = Triple<LiveStepPointer, CaptureFunction?, Boolean>
+private typealias LiveWorkPointer = () -> LiveWork
 private typealias LiveSequence = MutableList<LiveWork>
 private typealias LiveWorkFunction = (LiveWork) -> Any?
 private typealias LiveWorkPredicate = (LiveWork) -> Boolean
@@ -2857,8 +2945,10 @@ private typealias StepPointer = () -> Step
 private typealias HandlerFunction = Clock.(Message) -> Unit
 private typealias MessageFunction = (Message) -> Any?
 private typealias MessagePredicate = (Message) -> Boolean
+private typealias MessagePointer = () -> Message
 private typealias RunnableFunction = (Runnable) -> Any?
 private typealias RunnablePredicate = (Runnable) -> Boolean
+private typealias RunnablePointer = () -> Runnable
 private typealias RunnableList = MutableList<Runnable>
 private typealias RunnableGrid = MutableList<RunnableList>
 
@@ -2926,6 +3016,9 @@ internal fun Context.registerReceiver(filter: IntentFilter) =
 private typealias CoroutineKFunction = KFunction<CoroutineStep?>
 private typealias JobKFunction = KFunction<Job?>
 private typealias JobKProperty = KMutableProperty<Job?>
+private typealias LiveWorkKFunction = KFunction<LiveWork>
+private typealias RunnableKFunction = KFunction<Runnable>
+private typealias MessageKFunction = KFunction<Message>
 private typealias ResolverKClass = KClass<out Resolver>
 private typealias ResolverKProperty = KMutableProperty<out Resolver?>
 private typealias UnitKFunction = KFunction<Unit>
