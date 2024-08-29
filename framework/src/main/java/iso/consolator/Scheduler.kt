@@ -2489,7 +2489,7 @@ private fun markTagsForSeqAttach(tag: Any?, step: LiveWork, index: Int) =
     tag?.asTagType()?.also { tag ->
     (livesteps?.findByTag(tag)
         ?.instance
-        ?: LiveStepItem<Unit>()
+        ?: LiveStepItem<Any?>()
             .also { livesteps?.add(it.toFunctionItem({ tag }, true)) }
         ).asLiveStepItem()
         ?.onAttachBy(step)
