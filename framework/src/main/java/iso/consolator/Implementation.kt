@@ -6,11 +6,11 @@ package iso.consolator
 import android.app.*
 import android.content.*
 import android.content.pm.*
-import androidx.core.util.*
 import android.net.*
 import android.util.*
 import androidx.annotation.*
 import androidx.core.content.*
+import androidx.core.util.*
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.*
 import androidx.room.*

@@ -91,14 +91,14 @@ interface BaseServiceScope : ResolverScope, ReferredContext, UniqueContext {
                 Sequencer {
                 if (isLogDbNull)
                     attach(IO, true)
-                    @Tag(STAGE_BUILD_LOG_DB) { self ->
+                    @Tag(STAGE_BUILD_LOG_DB) { self, _ ->
                     coordinateBuildDatabase(
                         self.applyMarkTag(SVC_INIT, items),
                         ::logDb,
                         stage = Context::stageLogDbCreated) }
                 if (isNetDbNull)
                     attach(IO, true)
-                    @Tag(STAGE_BUILD_NET_DB) { self ->
+                    @Tag(STAGE_BUILD_NET_DB) { self, _ ->
                     coordinateBuildDatabase(
                         self.applyMarkTag(SVC_INIT, items),
                         ::netDb,
@@ -138,12 +138,12 @@ interface BaseServiceScope : ResolverScope, ReferredContext, UniqueContext {
         condition(instance, tag,
             formAfterMarkingTagsForCtxReform(tag, currentJob(), stage, post)) }
 
-    private suspend inline fun <reified D : RoomDatabase> SequencerScope.buildDatabaseOrResetByTag(instance: KMutableProperty<out D?>, tag: TagType) {
+    private suspend inline fun <reified D : RoomDatabase> SequencerScope.buildDatabaseOrResetByTag(instance: KMutableProperty<out D?>, tag: TagType) =
         ref?.get()?.run<Context, D?> {
             sequencer { trySafelyCanceling {
             resetByTagOnError(tag) {
             commitAsyncAndResetByTag(instance, tag, ::buildDatabase) } } }
-        }?.apply(instance::set) }
+        }?.apply(instance::set)
 
     private suspend inline fun <R> SequencerScope.commitAsyncAndResetByTag(lock: AnyKProperty, tag: TagType, block: () -> R) =
         commitAsyncOrResetByTag(lock, tag) { block().also { resetByTag(tag) } }
@@ -1027,10 +1027,10 @@ private typealias SequencerIndex = Int
 private class Sequencer : Synchronizer<LiveWork>, Transactor<SequencerIndex, Boolean?>, PriorityQueue<SequencerIndex>, AdjustOperator<LiveWork, SequencerIndex> {
     constructor() : this(DEFAULT_OBSERVER)
 
-    private constructor(observer: StepObserver) {
+    private constructor(observer: AnyStepObserver) {
         this.observer = observer }
 
-    private val observer: StepObserver
+    private val observer: AnyStepObserver
     override var queue: IntMutableList = LinkedList()
     private var seq: LiveSequence = mutableListOf()
 
@@ -1192,10 +1192,10 @@ private class Sequencer : Synchronizer<LiveWork>, Transactor<SequencerIndex, Boo
             throw interruptByTag(tag, ex) }
 
     // preserve tags
-    private fun resettingFirstly(step: SequencerStep) = step after { reset() }
-    private fun resettingLastly(step: SequencerStep) = step then { reset() }
-    private fun resettingByTagFirstly(step: SequencerStep) = step after { resetByTag(getTag(step)) }
-    private fun resettingByTagLastly(step: SequencerStep) = step then { resetByTag(getTag(step)) }
+    private fun resettingFirstly(step: SequencerStep) = step after { _, _ -> reset() }
+    private fun resettingLastly(step: SequencerStep) = step then { _, _ -> reset() }
+    private fun resettingByTagFirstly(step: SequencerStep) = step after { _, _ -> resetByTag(getTag(step)) }
+    private fun resettingByTagLastly(step: SequencerStep) = step then { _, _ -> resetByTag(getTag(step)) }
 
     private fun getTag(step: SequencerStep) = returnTag(step)!!
 
@@ -1226,7 +1226,7 @@ private class Sequencer : Synchronizer<LiveWork>, Transactor<SequencerIndex, Boo
         clearLatestObjects() }
 
     companion object {
-        var DEFAULT_OBSERVER = StepObserver {
+        var DEFAULT_OBSERVER = AnyStepObserver {
             it?.block() /* or apply (live step) capture function internally */ }
 
         const val ATTACHED_ALREADY = -1
@@ -1332,106 +1332,108 @@ private class Sequencer : Synchronizer<LiveWork>, Transactor<SequencerIndex, Boo
     fun attachOnceBefore(work: LiveWork, tag: TagType? = null): Int = TODO()
 
     private fun stepAfterTrackingTagsForSeqLaunch(step: SequencerStep, index: IntFunction, context: CoroutineContext? = null) =
-        (step after { currentJob().let { job ->
+        (step after { _, _ -> currentJob().let { job ->
             synchronize { markTagsForSeqLaunch(step, job, adjust(index()), context) } } })!!
+
+    // optionally or by tag, provide return value of step to the next attached in sequence
 
     fun attach(async: Boolean = false, step: SequencerStep): LiveWork {
         var index = -1
         return stepToNull(async) { liveData(block = {
-            stepAfterTrackingTagsForSeqLaunch(step, { index })(step) }) }
+            stepAfterTrackingTagsForSeqLaunch(step, { index })(step, null) }) }
             .also { index = attach(it, returnTag(step)) } }
 
     fun attach(async: Boolean = false, step: SequencerStep, capture: CaptureFunction): LiveWork {
         var index = -1
         return Triple({ liveData(block = {
-            stepAfterTrackingTagsForSeqLaunch(step, { index })(step) }) },
+            stepAfterTrackingTagsForSeqLaunch(step, { index })(step, null) }) },
             capture, async)
             .also { index = attach(it, returnTag(step)) } }
 
     fun attach(context: CoroutineContext, async: Boolean = false, step: SequencerStep): LiveWork {
         var index = -1
         return stepToNull(async) { liveData(context, block = {
-            stepAfterTrackingTagsForSeqLaunch(step, { index }, context)(step) }) }
+            stepAfterTrackingTagsForSeqLaunch(step, { index }, context)(step, null) }) }
             .also { index = attach(it, returnTag(step)) } }
 
     fun attach(context: CoroutineContext, async: Boolean = false, step: SequencerStep, capture: CaptureFunction): LiveWork {
         var index = -1
         return Triple({ liveData(context, block = {
-            stepAfterTrackingTagsForSeqLaunch(step, { index }, context)(step) }) },
+            stepAfterTrackingTagsForSeqLaunch(step, { index }, context)(step, null) }) },
             capture, async)
             .also { index = attach(it, returnTag(step)) } }
 
     fun attach(index: Int, async: Boolean = false, step: SequencerStep) =
         stepToNull(async) { liveData(block = {
-            stepAfterTrackingTagsForSeqLaunch(step, { index })(step) }) }
+            stepAfterTrackingTagsForSeqLaunch(step, { index })(step, null) }) }
             .also { attach(index, it, returnTag(step)) }
 
     fun attach(index: Int, async: Boolean = false, step: SequencerStep, capture: CaptureFunction) =
         Triple({ liveData(block = {
-            stepAfterTrackingTagsForSeqLaunch(step, { index })(step) }) },
+            stepAfterTrackingTagsForSeqLaunch(step, { index })(step, null) }) },
             capture, async)
             .also { attach(index, it, returnTag(step)) }
 
     fun attach(index: Int, context: CoroutineContext, async: Boolean = false, step: SequencerStep) =
         stepToNull(async) { liveData(context, block = {
-            stepAfterTrackingTagsForSeqLaunch(step, { index }, context)(step) }) }
+            stepAfterTrackingTagsForSeqLaunch(step, { index }, context)(step, null) }) }
             .also { attach(index, it, returnTag(step)) }
 
     fun attach(index: Int, context: CoroutineContext, async: Boolean = false, step: SequencerStep, capture: CaptureFunction) =
         Triple({ liveData(context, block = {
-            stepAfterTrackingTagsForSeqLaunch(step, { index }, context)(step) }) },
+            stepAfterTrackingTagsForSeqLaunch(step, { index }, context)(step, null) }) },
             capture, async)
             .also { attach(index, it, returnTag(step)) }
 
     fun attachAfter(async: Boolean = false, step: SequencerStep): LiveWork {
         var index = -1
         return stepToNull(async) { liveData(block = {
-            stepAfterTrackingTagsForSeqLaunch(step, { index })(step) }) }
+            stepAfterTrackingTagsForSeqLaunch(step, { index })(step, null) }) }
             .also { index = attachAfter(it, returnTag(step)) } }
 
     fun attachAfter(async: Boolean = false, step: SequencerStep, capture: CaptureFunction): LiveWork {
         var index = -1
         return Triple({ liveData(block = {
-            stepAfterTrackingTagsForSeqLaunch(step, { index })(step) }) },
+            stepAfterTrackingTagsForSeqLaunch(step, { index })(step, null) }) },
             capture, async)
             .also { index = attachAfter(it, returnTag(step)) } }
 
     fun attachAfter(context: CoroutineContext, async: Boolean = false, step: SequencerStep): LiveWork {
         var index = -1
         return stepToNull(async) { liveData(context, block = {
-            stepAfterTrackingTagsForSeqLaunch(step, { index }, context)(step) }) }
+            stepAfterTrackingTagsForSeqLaunch(step, { index }, context)(step, null) }) }
             .also { index = attachAfter(it, returnTag(step)) } }
 
     fun attachAfter(context: CoroutineContext, async: Boolean = false, step: SequencerStep, capture: CaptureFunction): LiveWork {
         var index = -1
         return Triple({ liveData(context, block = {
-            stepAfterTrackingTagsForSeqLaunch(step, { index }, context)(step) }) },
+            stepAfterTrackingTagsForSeqLaunch(step, { index }, context)(step, null) }) },
             capture, async)
             .also { index = attachAfter(it, returnTag(step)) } }
 
     fun attachBefore(async: Boolean = false, step: SequencerStep): LiveWork {
         var index = -1
         return stepToNull(async) { liveData(block = {
-            stepAfterTrackingTagsForSeqLaunch(step, { index })(step) }) }
+            stepAfterTrackingTagsForSeqLaunch(step, { index })(step, null) }) }
             .also { index = attachBefore(it, returnTag(step)) } }
 
     fun attachBefore(async: Boolean = false, step: SequencerStep, capture: CaptureFunction): LiveWork {
         var index = -1
         return Triple({ liveData(block = {
-            stepAfterTrackingTagsForSeqLaunch(step, { index })(step) }) },
+            stepAfterTrackingTagsForSeqLaunch(step, { index })(step, null) }) },
             capture, async)
             .also { index = attachBefore(it, returnTag(step)) } }
 
     fun attachBefore(context: CoroutineContext, async: Boolean = false, step: SequencerStep): LiveWork {
         var index = -1
         return stepToNull(async) { liveData(context, block = {
-            stepAfterTrackingTagsForSeqLaunch(step, { index }, context)(step) }) }
+            stepAfterTrackingTagsForSeqLaunch(step, { index }, context)(step, null) }) }
             .also { index = attachBefore(it, returnTag(step)) } }
 
     fun attachBefore(context: CoroutineContext, async: Boolean = false, step: SequencerStep, capture: CaptureFunction): LiveWork {
         var index = -1
         return Triple({ liveData(context, block = {
-            stepAfterTrackingTagsForSeqLaunch(step, { index }, context)(step) }) },
+            stepAfterTrackingTagsForSeqLaunch(step, { index }, context)(step, null) }) },
             capture, async)
             .also { index = attachBefore(it, returnTag(step)) } }
 
@@ -1663,6 +1665,23 @@ inline fun <T, U, R> (suspend T.(U) -> R)?.given(crossinline predicate: Predicat
 
 inline fun <T, U, R> (suspend T.(U) -> R)?.unless(crossinline predicate: Predicate, crossinline fallback: suspend T.(U) -> R): (suspend T.(U) -> R)? = this?.let { {
     if (predicate().not()) this@unless(it) else fallback(it) } }
+
+inline infix fun <T, U, V, R, S> (suspend T.(U, V) -> R)?.then(crossinline next: suspend T.(U, V) -> S): (suspend T.(U, V) -> S)? = this?.let { { it, value ->
+    this@then(it, value)
+    next(it, value) } }
+
+inline infix fun <T, U, V, R, S> (suspend T.(U, V) -> R)?.after(crossinline prev: suspend T.(U, V) -> S): (suspend T.(U, V) -> R)? = this?.let { { it, value ->
+    prev(it, value)
+    this@after(it, value) } }
+
+inline infix fun <T, U, V, R, S> (suspend T.(U, V) -> R)?.thru(crossinline next: suspend (R) -> S): (suspend T.(U, V) -> S)? = this?.let { { it, value ->
+    next(this@thru(it, value)) } }
+
+inline fun <T, U, V, R> (suspend T.(U, V) -> R)?.given(crossinline predicate: Predicate, crossinline fallback: suspend T.(U, V) -> R): (suspend T.(U, V) -> R)? = this?.let { { it, value ->
+    if (predicate()) this@given(it, value) else fallback(it, value) } }
+
+inline fun <T, U, V, R> (suspend T.(U, V) -> R)?.unless(crossinline predicate: Predicate, crossinline fallback: suspend T.(U, V) -> R): (suspend T.(U, V) -> R)? = this?.let { { it, value ->
+    if (predicate().not()) this@unless(it, value) else fallback(it, value) } }
 
 inline infix fun <R, S> (() -> R)?.then(crossinline next: () -> S): (() -> S)? = this?.let { {
     this@then()
@@ -2884,7 +2903,7 @@ private fun AnyCoroutineStep.toStep() = suspend { invoke(annotatedOrSchedulerSco
 
 private fun Step.toCoroutine(): CoroutineStep = { this@toCoroutine() }
 
-private fun Step.toLiveStep(): SequencerStep = { invoke() }
+private fun Step.toLiveStep(): SequencerStep = { _, _ -> invoke() }
 
 private fun Runnable.toCoroutine(): CoroutineStep = { run() }
 
@@ -2904,11 +2923,10 @@ private typealias SchedulerNode = KClass<out Annotation>
 private typealias SchedulerPath = Array<KClass<out Throwable>>
 private typealias SchedulerStep = suspend CoroutineScope.(Any?, Job) -> Unit
 
-private typealias SequencerScope = LiveDataScope<Step?>
-private typealias SequencerStep = suspend SequencerScope.(Any?) -> Unit
-private typealias StepObserver = Observer<Step?>
+private typealias SequencerScope = LiveDataScope<AnyStep?>
+private typealias SequencerStep = suspend SequencerScope.(Any?, Any?) -> Any?
 private typealias AnyStepObserver = Observer<AnyStep?>
-private typealias LiveStep = LiveData<Step?>
+private typealias LiveStep = LiveData<AnyStep?>
 private typealias LiveStepPointer = () -> LiveStep?
 private typealias CaptureFunction = AnyToAnyFunction
 private typealias LiveWork = Triple<LiveStepPointer, CaptureFunction?, Boolean>
