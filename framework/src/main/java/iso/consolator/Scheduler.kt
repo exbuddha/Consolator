@@ -2293,7 +2293,7 @@ private open class Item<R>(override var target: KCallable<R>? = null) : Addresse
                 }.values }
 
         @JvmStatic inline fun <reified V : Any> findByTag(target: KCallable<V>, transform: (Tag, Any) -> TagType? = ::matchByTagOrValue, comparator: TagType.(Any?) -> Boolean = TagType::equals): V? =
-            filterByTag(target, transform)?.firstOrNull()?.call().asType<V>()
+            filterByTag(target, transform, comparator)?.firstOrNull()?.call().asType<V>()
 
         @JvmStatic private fun matchByTagOrValue(tag: Tag, key: Any) =
             if (key is Tag) key.id else key.asTagType()
