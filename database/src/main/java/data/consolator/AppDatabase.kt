@@ -48,8 +48,8 @@ suspend fun buildNewSession(startTime: Long) {
     session = getSession(
         newSession(startTime)) } }
 
-fun <D : RoomDatabase> buildDatabase(cls: KClass<D>, context: Context) =
-    with(cls) { buildDatabase(java, context, lastAnnotatedFilename()) }
+fun <D : RoomDatabase> buildDatabase(cls: KClass<D>, context: Context, name: String? = cls.lastAnnotatedFilename()) =
+    with(cls) { buildDatabase(java, context, name) }
 
 private fun <D : RoomDatabase> buildDatabase(cls: Class<D>, context: Context, name: String?) =
     Room.databaseBuilder(context, cls, name).build()
