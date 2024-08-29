@@ -2460,7 +2460,6 @@ private fun SequencerStep.setTagTo(step: Step) = this
 private fun getTag(stage: ContextStep): TagType = TODO()
 private fun getTag(callback: Runnable): TagType? = TODO()
 private fun getTag(msg: Message): TagType? = TODO()
-private fun getTag(what: Int): TagType? = TODO()
 
 private fun markTagsForJobLaunch(tag: TagType, step: AnyCoroutineStep, job: Job, owner: LifecycleOwner?, context: CoroutineContext, start: CoroutineStart) =
     tag.asTagType()?.also { tag ->
