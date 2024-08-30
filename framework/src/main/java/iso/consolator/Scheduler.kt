@@ -107,8 +107,8 @@ interface BaseServiceScope : ResolverScope, ReferredContext, UniqueContext {
                             updateNetworkState() }),
                         stage = Context::stageNetDbInitialized) }
                 resumeAsync()
-    } }
-    return mode }
+        } }
+        return mode }
 
     private fun startClockSafely(intent: Intent?) =
         intent?.run {
