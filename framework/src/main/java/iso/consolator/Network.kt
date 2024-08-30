@@ -106,9 +106,9 @@ private var netCallFunction: JobFunction = { scope, _ ->
                 { response ->
                     trySafelyCanceling {
                     reactToNetCallResponseReceived.commit(this@run, response) } },
-                { ex -> ex?.let { ex ->
+                { ex ->
                     trySafelyCanceling {
-                    reactToNetCallRequestFailed.commit(this@run, ex) } }
+                    reactToNetCallRequestFailed.commit(this@run, ex) }
                 }) }
         } } } }
 
