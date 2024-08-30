@@ -171,14 +171,13 @@ private fun NetCall.asProperty() = this as KProperty
 
 internal fun <R, S : R> NetCall.sendForResult(scope: Any?, respond: (Response) -> R, exit: (Throwable) -> S? = { null }) =
     tryCancelingForResult({
-        execute(scope) { respond(it) }
+        execute(scope).run(respond)
     }, exit)
 
-private fun <R> NetCall.execute(scope: Any?, respond: (Response) -> R) =
+private fun NetCall.execute(scope: Any?) =
     applyMarkTag(calls)[scope, INET_CALL].asType<NetCall>()
     ?.call()
-    ?.execute()
-    ?.run(respond)!!
+    ?.execute()!!
 
 private fun JobResponseFunction.commit(scope: Any?, response: Response) {
     markTag(calls)
