@@ -130,12 +130,12 @@ private var reactToNetCallRequestFailed: JobThrowableFunction =
 private var isNetCallbackResumed = true
 
 private val hasNetCallRepeatTimeElapsed
-    get() = hasTimeIntervalElapsed(netCallRepeatInterval!!)
+    get() = netCallRepeatInterval!!.hasTimeIntervalElapsed()
 
 @Tag(INET_DELAY)
 private var netCallRepeatDelay = -1L
     get() = if (field < 0)
-            getDelayTime(netCallRepeatInterval!!)
+            netCallRepeatInterval!!.getDelayTime()
         else field
 
 private var netCallRepeatInterval: TimeInterval? = null

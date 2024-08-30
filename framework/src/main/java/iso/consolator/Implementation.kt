@@ -178,11 +178,11 @@ internal fun Context.startTime() = asUniqueContext()?.startTime ?: -1L
 
 internal typealias TimeInterval = LongFunctionPair
 
-internal fun hasTimeIntervalElapsed(ref: TimeInterval) =
-    with(ref) { hasTimeIntervalElapsed(first(), second()) }
+internal fun TimeInterval.hasTimeIntervalElapsed() =
+    hasTimeIntervalElapsed(first(), second())
 
-internal fun getDelayTime(ref: TimeInterval) =
-    with(ref) { getDelayTime(first(), second()) }
+internal fun TimeInterval.getDelayTime() =
+    getDelayTime(first(), second())
 
 internal fun hasTimeIntervalElapsed(last: Long, interval: Long) =
     getDelayTime(last, interval) <= 0 || last == 0L
