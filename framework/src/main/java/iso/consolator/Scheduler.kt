@@ -51,7 +51,7 @@ fun Application.commitStart(component: KClass<out Service>) {
     commitStart()
     with(foregroundContext) {
         startService(
-        intendFor(component.asType()!!)
+        intendFor(component)
         .putExtra(START_TIME_KEY,
             startTime())) } }
 

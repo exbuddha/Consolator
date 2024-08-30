@@ -161,7 +161,7 @@ internal fun Context.isPermissionGranted(permission: String) =
     ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
 
 internal fun Context.intendFor(cls: Class<*>) = Intent(this, cls)
-private fun Context.intendFor(cls: AnyKClass) = intendFor(cls.java)
+internal fun Context.intendFor(cls: AnyKClass) = intendFor(cls.java)
 
 interface ReferredContext { var ref: WeakContext? }
 
