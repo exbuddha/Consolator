@@ -162,10 +162,10 @@ internal fun <R> NetCall.commit(scope: Any?, block: () -> R) =
 private fun <R> NetCall.lock(scope: Any?, block: () -> R) =
     synchronized(asCallable(), block)
 
-private fun NetCall.asCallable() =
-    if (this === ::netCall) ::netCall
-    else if (this is CallableReference<*>) asType()!!
-    else asProperty().get().asReference() // register lock
+private fun NetCall.asCallable() = when (this) {
+    ::netCall -> ::netCall
+    is CallableReference<*> -> asType()!!
+    else -> asProperty().get().asReference() /* register lock */ }
 
 private fun NetCall.asProperty() = this as KProperty
 
