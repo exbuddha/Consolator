@@ -2865,7 +2865,7 @@ private val AnyKCallable.launchScope
     get() = annotations.find { it is LaunchScope } as? LaunchScope
 
 private val Any.annotatedScope
-    get() = trySafelyForResult { asCallable().schedulerScope!!.let { annotation ->
+    get() = trySafelyForResult { asCallable().schedulerScope?.let { annotation ->
         if (annotation.type === Scheduler::class ||
             annotation.type === SchedulerScope::class)
             SchedulerScope()
