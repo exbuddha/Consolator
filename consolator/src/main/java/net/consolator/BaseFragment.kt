@@ -33,7 +33,7 @@ abstract class BaseFragment : Fragment(contentLayoutId), TransitionManager {
         super.onViewCreated(view, savedInstanceState)
         if (State[1] is Resolved) return
         trySafely { (this as LifecycleOwner)
-       .launch(start = LAZY) @MainViewGroup
+        .launch(start = LAZY) @MainViewGroup
         @Listening @OnEvent(ACTION_MIGRATE_APP) {
             defer<MigrationManager>(Fragment::onViewCreated, this@BaseFragment, {
                 // listen to db updates
