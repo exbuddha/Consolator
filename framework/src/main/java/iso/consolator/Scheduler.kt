@@ -536,24 +536,34 @@ private open class CoroutineItem<R>(override var target: KCallable<R>?) : Item<R
     init {
         type = Type.Coroutine }
 
-    open fun onLifecycleOwnerSet(owner: LifecycleOwner?): CoroutineItem<R> {
-        onSave(OWNER, owner)
+    open fun onSaveLifecycleOwner(owner: LifecycleOwner?) = this
+
+    open fun onSaveCoroutineContext(context: CoroutineContext?) = this
+
+    open fun onSaveCoroutineStart(start: CoroutineStart) = this
+
+    open fun onSaveJob(job: Job) = this
+
+    open fun onContextReform(job: Job, stage: ContextStep?, form: AnyStep): Item<R> {
+        onSaveJob(job)
+        onSave(CTX_STEP, stage)
+        onSave(FORM, form)
         return this }
 
     open fun onJobLaunch(job: Job, context: CoroutineContext, start: CoroutineStart): CoroutineItem<R> {
-        onSave(JOB, job)
-        onSave(CONTEXT, context)
-        onSave(START, start)
+        onSaveJob(job)
+        onSaveCoroutineContext(context)
+        onSaveCoroutineStart(start)
         return this }
 
     open fun onJobRelaunch(job: Job, owner: LifecycleOwner?, context: CoroutineContext, start: CoroutineStart) =
-        onLifecycleOwnerSet(owner)
+        onSaveLifecycleOwner(owner)
         .onJobLaunch(job, context, start)
 
     open fun onJobFunctionRepeat(block: JobFunction, self: AnyKCallable, tag: Tag, job: Job, predicate: PredicateFunction, delay: DelayFunction): CoroutineItem<R> {
         // optionally, replace target with self
         self.asType<KCallable<R>>()?.apply(::setTarget)
-        onSave(JOB, job)
+        onSaveJob(job)
         onSave(PREDICATE, predicate)
         onSave(DELAY, delay)
         return this }
@@ -871,7 +881,7 @@ private open class LiveStepItem<R>(override var target: KCallable<R>? = null) : 
 
     override fun onAttach(index: SequencerIndex): LiveStepItem<R> {
         super.onAttach(index)
-        onSave(INDEX, index)
+        onSaveIndex(index)
         return this }
 
     override fun onAttachBy(container: LiveWork): LiveStepItem<R> {
@@ -881,9 +891,9 @@ private open class LiveStepItem<R>(override var target: KCallable<R>? = null) : 
 
     override fun onObserve(job: Job, index: SequencerIndex, context: CoroutineContext?): LiveStepItem<R> {
         super.onObserve(job, index, context)
-        onSave(JOB, job)
-        onSave(INDEX, index) // optionally, readjust by remarks or from seq
-        onSave(CONTEXT, context)
+        onSaveJob(job)
+        onSaveIndex(index) // optionally, readjust by remarks or from seq
+        onSaveCoroutineContext(context)
         return this }
 }
 
@@ -1829,7 +1839,7 @@ private open class RunnableItem<R>(override var target: KCallable<R>? = null) : 
 
     override fun onAttach(index: ClockIndex): RunnableItem<R> {
         super.onAttach(index)
-        onSave(INDEX, index)
+        onSaveIndex(index)
         return this }
 
     override fun onAttachBy(container: Any): RunnableItem<R> {
@@ -2222,10 +2232,7 @@ private open class Item<R>(override var target: KCallable<R>? = null) : Addresse
                 /* save sub-function */ }
     } }
 
-    open fun onContextReform(job: Job, stage: ContextStep?, form: AnyStep) {
-        onSave(JOB, job)
-        onSave(CTX_STEP, stage)
-        onSave(FORM, form) }
+    open fun onSaveIndex(index: Number) = this
 
     companion object {
         @JvmStatic fun <T> find(ref: Coordinate): T = TODO()
@@ -2465,7 +2472,7 @@ private fun markTagsForJobLaunch(tag: TagType, step: AnyCoroutineStep, job: Job,
     tag.asTagType()?.also { tag ->
     jobs?.saveCoroutine(@Itemize step.asCallable(), tag)
         ?.asCoroutineItem()
-        ?.onLifecycleOwnerSet(owner)
+        ?.onSaveLifecycleOwner(owner)
         ?.onJobLaunch(job, context, start) }
 
 private fun markTagsInGroupForJobRelaunch(instance: JobKProperty, block: CoroutineStep, group: FunctionSet?, job: Job, owner: LifecycleOwner?, context: CoroutineContext, start: CoroutineStart) =
@@ -2504,7 +2511,7 @@ private fun markTagsForSeqLaunch(step: SequencerStep, job: Job, index: Int, cont
 private fun markTagsForCtxReform(tag: TagType?, job: Job, stage: ContextStep?, form: AnyStep) =
     tag?.also { tag ->
     items?.findByTag(tag)
-        ?.asItem()
+        ?.asCoroutineItem()
         ?.onContextReform(job, stage, form) }
 
 private fun markTagsForClkAttach(step: Any, index: Number) =
