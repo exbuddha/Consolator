@@ -43,8 +43,8 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-process:2.8.6")
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
-    implementation("org.jetbrains.kotlin:kotlin-reflect:2.0.20")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.1")
+    implementation("org.jetbrains.kotlin:kotlin-reflect:2.0.21")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
     implementation(project(":context"))
     implementation(project(":database"))
 }

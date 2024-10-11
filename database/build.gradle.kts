@@ -37,7 +37,7 @@ dependencies {
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-paging:2.6.1")
     annotationProcessor("androidx.room:room-compiler:2.6.1")
-    implementation("org.jetbrains.kotlin:kotlin-reflect:2.0.20")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.1")
+    implementation("org.jetbrains.kotlin:kotlin-reflect:2.0.21")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
     implementation(project(":context"))
 }
