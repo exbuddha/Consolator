@@ -3063,7 +3063,19 @@ internal typealias AnyKMutableProperty = KMutableProperty<*>
 
 internal fun <R> KCallable<R>.receive(value: R) = value
 
-internal fun <R> KCallable<R>.resolve(routine: KCallable<R>? = asType()) = this
+internal fun <R> KCallable<R>.determine(vararg subroutine: KCallable<R>? = arrayOf(asType())) = this
+
+internal fun <R> KCallable<R>.perceive(vararg subroutine: KCallable<R>? = arrayOf(asType())) = this
+
+internal fun <R> KCallable<R>.satisfy(vararg subroutine: KCallable<R>? = arrayOf(asType())) = this
+
+internal fun <R> KCallable<R>.falsify(vararg subroutine: KCallable<R>? = arrayOf(asType())) = this
+
+internal fun <R> KCallable<R>.fulfill(vararg subroutine: KCallable<R>? = arrayOf(asType())) = this
+
+internal fun <R> KCallable<R>.forfeit(vararg subroutine: KCallable<R>? = arrayOf(asType())) = this
+
+internal fun <R> KCallable<R>.resolve(vararg subroutine: KCallable<R>? = arrayOf(asType())) = this
 
 internal fun <R> KCallable<R>.synchronize(block: () -> R) = synchronized(this, block)
 
