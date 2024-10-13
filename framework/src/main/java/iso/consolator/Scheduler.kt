@@ -3096,7 +3096,7 @@ enum class Lock : State { Closed, Open }
 
 abstract class Routine : State, KCallable<State>
 
-internal fun AnyKCallable.asState() = State.of(asKProperty())
+internal fun AnyKCallable.asState() = State of asKProperty()!!
 
 // user states are registered and loaded with control flow logic at runtime
 // they can be retrieved as live references and provide access to job controllers
@@ -3126,7 +3126,7 @@ sealed interface State {
     companion object : Synchronizer<State> {
         @JvmStatic fun of(vararg args: Any?): State = Ambiguous
 
-        internal fun of(property: AnyKProperty): State = Ambiguous
+        internal infix fun of(property: AnyKProperty): State = Ambiguous
 
         @JvmStatic operator fun <R> invoke(block: Companion.(State) -> R): State = TODO()
 
