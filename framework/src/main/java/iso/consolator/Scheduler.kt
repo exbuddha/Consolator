@@ -139,11 +139,14 @@ interface BaseServiceScope : ResolverScope, ReferredContext, UniqueContext {
             formAfterMarkingTagsForCtxReform(tag, currentJob(), stage, post)) }
 
     private suspend inline fun <reified D : RoomDatabase> SequencerScope.buildDatabaseOrResetByTag(instance: KMutableProperty<out D?>, tag: TagType) =
-        ref?.get()?.run<Context, D?> {
-            sequencer { trySafelyCanceling {
-            resetByTagOnError(tag) {
-            commitAsyncAndResetByTag(instance, tag, ::buildDatabase) } } }
-        }?.apply(instance::set)
+        ref?.get()?.run {
+        perceiveOrResetByTag(instance, tag, ::buildDatabase) }
+        ?.apply(instance::set)
+
+    private suspend inline fun <reified R> SequencerScope.perceiveOrResetByTag(instance: KMutableProperty<out R?>, tag: TagType, block: KFunction<R>) =
+        sequencer { trySafelyCanceling {
+        resetByTagOnError(tag) {
+        commitAsyncAndResetByTag(instance, tag, block::call) } } }
 
     private suspend inline fun <R> SequencerScope.commitAsyncAndResetByTag(lock: AnyKProperty, tag: TagType, block: () -> R) =
         commitAsyncOrResetByTag(lock, tag) { block().also { resetByTag(tag) } }
