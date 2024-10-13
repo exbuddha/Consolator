@@ -3060,6 +3060,7 @@ typealias AnyKFunction = KFunction<*>
 internal typealias AnyKProperty = KProperty<*>
 internal typealias AnyKMutableProperty = KMutableProperty<*>
 
+private fun AnyKCallable.asKProperty() = asType<AnyKProperty>()
 private fun AnyKCallable.asKMutableProperty() = asType<AnyKMutableProperty>()
 
 // callables can be considered as the origination points for features or routines
@@ -3094,6 +3095,8 @@ private interface Synchronizer<L> {
 enum class Lock : State { Closed, Open }
 
 abstract class Routine : State, KCallable<State>
+
+internal fun AnyKCallable.asState() = State.of(asKProperty())
 
 // user states are registered and loaded with control flow logic at runtime
 // they can be retrieved as live references and provide access to job controllers
