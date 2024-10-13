@@ -1737,6 +1737,9 @@ internal fun <R> callBy(args: KParameterMap): (KCallable<R>) -> R = {
 private fun <R> KCallable<R>.mapToTypedArray(args: KParameterMap) =
     parameters.map(args::get).toTypedArray()
 
+private inline fun <R, reified S : KCallable<R>> S.asTypedArray() =
+    arrayOf<S>(asType()!!)
+
 private val items: FunctionSet? = null
 
 internal inline fun <L : Any, R, S : R> transact(noinline lock: () -> L, predicate: (L?) -> Boolean = { true }, block: (L) -> R, fallback: () -> S? = { null }): R? {
@@ -3063,19 +3066,19 @@ internal typealias AnyKMutableProperty = KMutableProperty<*>
 
 internal fun <R> KCallable<R>.receive(value: R) = value
 
-internal fun <R> KCallable<R>.determine(vararg subroutine: KCallable<R>? = arrayOf(asType())) = this
+internal fun <R> KCallable<R>.determine(vararg subroutine: KCallable<R>? = asTypedArray()) = this
 
-internal fun <R> KCallable<R>.perceive(vararg subroutine: KCallable<R>? = arrayOf(asType())) = this
+internal fun <R> KCallable<R>.perceive(vararg subroutine: KCallable<R>? = asTypedArray()) = this
 
-internal fun <R> KCallable<R>.satisfy(vararg subroutine: KCallable<R>? = arrayOf(asType())) = this
+internal fun <R> KCallable<R>.satisfy(vararg subroutine: KCallable<R>? = asTypedArray()) = this
 
-internal fun <R> KCallable<R>.falsify(vararg subroutine: KCallable<R>? = arrayOf(asType())) = this
+internal fun <R> KCallable<R>.falsify(vararg subroutine: KCallable<R>? = asTypedArray()) = this
 
-internal fun <R> KCallable<R>.fulfill(vararg subroutine: KCallable<R>? = arrayOf(asType())) = this
+internal fun <R> KCallable<R>.fulfill(vararg subroutine: KCallable<R>? = asTypedArray()) = this
 
-internal fun <R> KCallable<R>.forfeit(vararg subroutine: KCallable<R>? = arrayOf(asType())) = this
+internal fun <R> KCallable<R>.forfeit(vararg subroutine: KCallable<R>? = asTypedArray()) = this
 
-internal fun <R> KCallable<R>.resolve(vararg subroutine: KCallable<R>? = arrayOf(asType())) = this
+internal fun <R> KCallable<R>.resolve(vararg subroutine: KCallable<R>? = asTypedArray()) = this
 
 internal fun <R> KCallable<R>.synchronize(block: () -> R) = synchronized(this, block)
 
