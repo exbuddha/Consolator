@@ -3060,11 +3060,14 @@ typealias AnyKFunction = KFunction<*>
 internal typealias AnyKProperty = KProperty<*>
 internal typealias AnyKMutableProperty = KMutableProperty<*>
 
+private fun AnyKCallable.asKMutableProperty() = asType<AnyKMutableProperty>()
+
 // callables can be considered as the origination points for features or routines
 // they may receive any value in order to resolve their own or another active context
 // states concurrently maintain and transact with the flow of communication among routines
 
-internal fun <R> KCallable<R>.receive(value: R) = value
+internal fun <R, S : R> KCallable<R>.receive(value: S) =
+    value.also(this@receive.asKMutableProperty()!!::set)
 
 internal fun <R> KCallable<R>.determine(vararg subroutine: KCallable<R>? = asTypedArray()) = this
 
