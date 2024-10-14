@@ -3128,6 +3128,8 @@ sealed interface State {
 
         internal infix fun of(property: AnyKProperty): State = Ambiguous
 
+        @JvmStatic operator fun invoke(value: State): State = TODO()
+
         @JvmStatic operator fun <R> invoke(block: Companion.(State) -> R): State = TODO()
 
         @JvmStatic fun State.register(vararg args: Any?): State = TODO()
