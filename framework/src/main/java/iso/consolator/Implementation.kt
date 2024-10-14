@@ -329,6 +329,9 @@ internal inline fun <reified T : Any> T?.reconstruct(vararg args: Any?, construc
 internal inline fun <reified T : Any> T?.reconstruct(vararg args: Any?) =
     this ?: T::class.new(*args)
 
+internal val <T : Any> KClass<out T>.companion
+    get() = objectInstance as T
+
 internal val <T : Any> KClass<out T>.lock
     get() = objectInstance ?: this
 
