@@ -2382,7 +2382,10 @@ private fun runnable(target: AnyKClass, key: KeyType) =
     SchedulerScope().get<Runnable>(target, key)
 
 internal fun FunctionSet.addFunction(function: Any, tag: TagType?, keep: Boolean) =
-    add(function.toFunctionItem(tag?.let { { it } } ?: currentThreadJob()::hashTag, keep))
+    add(function.toFunctionItem(
+        tag?.let { { it } }
+            ?: currentThreadJob()::hashTag,
+        keep))
 
 internal fun Any.toFunctionItem(tag: TagTypePointer, keep: Boolean) =
     FunctionItem(tag, this to keep) /* provides extra filters */
