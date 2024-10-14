@@ -81,7 +81,7 @@ fun unregisterInternetCallback() {
 internal var networkCaller: Job? = null
     set(value) {
         // update addressable layer
-        field = ::networkCaller.receive(value) }
+        field = ::networkCaller.receiveUniquely(value) }
 
 @Tag(INET_CALL)
 internal var netCall: Call? = null

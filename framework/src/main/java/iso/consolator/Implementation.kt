@@ -50,7 +50,7 @@ internal val foregroundActivity: Activity?
 
 var foregroundLifecycleOwner: LifecycleOwner? = null
     set(value) {
-        field = ::foregroundLifecycleOwner.receive(value) }
+        field = ::foregroundLifecycleOwner.receiveUniquely(value) }
 
 @Tag(VIEW_MIN_DELAY)
 const val view_min_delay = 300L
@@ -260,32 +260,43 @@ internal inline fun <R, S : R> tryFinallyForResult(block: () -> R, final: (R?) -
     finally { final(result) } }
 
 inline fun <R> tryCanceling(block: () -> R) =
-    try { block() } catch (ex: Throwable) { throw CancellationException(null, ex) }
+    try { block() }
+    catch (ex: Throwable) { throw CancellationException(null, ex) }
 
 internal inline fun <R> trySafelyCanceling(block: () -> R) =
     tryCancelingForResult(block)
 
 internal inline fun <R> tryCancelingForResult(block: () -> R, exit: (Throwable) -> R? = { null }) =
-    try { block() } catch (ex: CancellationException) { throw ex } catch (ex: Throwable) { exit(ex) }
+    try { block() }
+    catch (ex: CancellationException) { throw ex }
+    catch (ex: Throwable) { exit(ex) }
 
 suspend inline fun <R> tryCancelingSuspended(crossinline block: suspend () -> R) = tryCanceling { block() }
 suspend inline fun <T, R> tryCancelingSuspended(scope: T, crossinline block: suspend T.() -> R) = tryCanceling { scope.block() }
 suspend inline fun <T, R> tryCancelingSuspended(crossinline scope: suspend () -> T, crossinline block: suspend T.() -> R) = tryCancelingSuspended(scope(), block)
 
 internal inline fun <R> tryInterrupting(block: () -> R) =
-    try { block() } catch (ex: Throwable) { throw InterruptedException() }
+    try { block() }
+    catch (ex: Throwable) { throw InterruptedException() }
 
 internal fun <R> tryInterrupting(step: suspend CoroutineScope.() -> R) =
-    try { blockOf(step)() } catch (ex: Throwable) { throw InterruptedStepException(step, cause = ex) }
+    try { blockOf(step)() }
+    catch (ex: Throwable) { throw InterruptedStepException(step, cause = ex) }
 
 internal inline fun <R> trySafelyInterrupting(block: () -> R) =
-    try { block() } catch (ex: InterruptedException) { throw ex } catch (_: Throwable) {}
+    try { block() }
+    catch (ex: InterruptedException) { throw ex }
+    catch (_: Throwable) {}
 
 internal fun <R> trySafelyInterrupting(step: suspend CoroutineScope.() -> R) =
-    try { blockOf(step)() } catch (ex: InterruptedException) { throw InterruptedStepException(step, cause = ex) } catch (_: Throwable) {}
+    try { blockOf(step)() }
+    catch (ex: InterruptedException) { throw InterruptedStepException(step, cause = ex) }
+    catch (_: Throwable) {}
 
 internal inline fun <R> tryInterruptingForResult(noinline step: suspend CoroutineScope.() -> R, exit: (Throwable) -> R? = { null }) =
-    try { blockOf(step)() } catch (ex: InterruptedException) { throw InterruptedStepException(step, cause = ex) } catch (ex: Throwable) { exit(ex) }
+    try { blockOf(step)() }
+    catch (ex: InterruptedException) { throw InterruptedStepException(step, cause = ex) }
+    catch (ex: Throwable) { exit(ex) }
 
 internal inline fun <T, reified R> Array<out T>.mapToTypedArray(transform: (T) -> R) =
     map(transform).toTypedArray()

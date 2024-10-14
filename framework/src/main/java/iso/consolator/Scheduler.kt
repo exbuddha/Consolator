@@ -3067,8 +3067,10 @@ private fun AnyKCallable.asKMutableProperty() = asType<AnyKMutableProperty>()
 // they may receive any value in order to resolve their own or another active context
 // states concurrently maintain and transact with the flow of communication among routines
 
+internal fun <R, S : R> KCallable<R>.receiveUniquely(value: S) = value
+
 internal fun <R, S : R> KCallable<R>.receive(value: S) =
-    value.also(this@receive.asKMutableProperty()!!::set)
+    receiveUniquely(value).also(this@receive.asKMutableProperty()!!::set)
 
 internal fun <R> KCallable<R>.determine(vararg subroutine: KCallable<R>? = asTypedArray()) = this
 
